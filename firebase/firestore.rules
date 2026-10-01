@@ -1,0 +1,140 @@
+rules_version = '2';
+
+// FreshBliss security rules.
+// Model: the SERVER is the authority. Clients may only read public catalogue
+// data, read their own orders, and write their own cart / wishlist / feedback.
+// Prices, stock, order status, paymentStatus and delivery fees are written only
+// by Cloud Functions (Admin SDK), which bypasses these rules.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- helpers ----------
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    // "staff" is a custom auth claim set by the server. It is never read from
+    // a Firestore document, so a user cannot promote themselves.
+    function isStaff() {
+      return signedIn() && request.auth.token.staff == true;
+    }
+
+    function isRating(v) {
+      return v is int && v >= 1 && v <= 5;
+    }
+
+    // ---------- catalogue (public read, server write) ----------
+
+    // Stock lives on the product doc so it can stream to the storefront.
+    // Nobody on the client may write it, staff included.
+    match /products/{productId} {
+      allow read: if resource.data.active == true || isStaff();
+      allow write: if false;
+    }
+
+    // Zones and fees are public so the pincode check works; server-only write.
+    match /deliveryZones/{zoneId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ---------- carts (owner only, shape-checked) ----------
+
+    // A cart is only the customer's intent. The server re-reads prices and
+    // stock and uses just productId / size / qty. Rules cannot loop over array
+    // items, so we limit the top-level shape and the list size here.
+    function validCart(d) {
+      return d.keys().hasOnly(['items', 'note', 'tip', 'promoCode', 'pincode', 'updatedAt'])
+        && d.keys().hasAll(['items', 'updatedAt'])
+        && d.items is list
+        && d.items.size() <= 30
+        && (!('note' in d) || (d.note is string && d.note.size() <= 200))
+        && (!('tip' in d) || (d.tip is int && d.tip in [0, 10, 20, 30]))
+        && (!('promoCode' in d) || d.promoCode == null
+              || (d.promoCode is string && d.promoCode.size() <= 32))
+        && (!('pincode' in d) || d.pincode == null
+              || (d.pincode is string && d.pincode.matches('^[0-9]{6}$')))
+        && d.updatedAt == request.time;
+    }
+
+    match /carts/{uid} {
+      allow read, delete: if isOwner(uid);
+      allow create, update: if isOwner(uid) && validCart(request.resource.data);
+    }
+
+    // ---------- wishlists (owner only, shape-checked) ----------
+
+    function validWishlist(d) {
+      return d.keys().hasOnly(['productIds', 'updatedAt'])
+        && d.keys().hasAll(['productIds', 'updatedAt'])
+        && d.productIds is list
+        && d.productIds.size() <= 100
+        && d.updatedAt == request.time;
+    }
+
+    match /wishlists/{uid} {
+      allow read, delete: if isOwner(uid);
+      allow create, update: if isOwner(uid) && validWishlist(request.resource.data);
+    }
+
+    // ---------- orders (owner read, server-only write) ----------
+
+    // Orders hold status, paymentStatus and fees, so no client write is ever
+    // allowed. Cancel, status moves and payment all go through functions.
+    match /orders/{orderId} {
+      allow read: if signedIn() && (resource.data.uid == request.auth.uid || isStaff());
+      allow write: if false;
+    }
+
+    // ---------- feedback (create-only, own DELIVERED order) ----------
+
+    function validFeedback(orderId, d) {
+      let order = get(/databases/$(database)/documents/orders/$(orderId)).data;
+      return d.keys().hasOnly(['orderId', 'uid', 'overall', 'packaging', 'delivery', 'comment', 'createdAt'])
+        && d.keys().hasAll(['orderId', 'uid', 'overall', 'comment', 'createdAt'])
+        && d.orderId == orderId
+        && d.uid == request.auth.uid
+        && order.uid == request.auth.uid
+        && order.status == 'DELIVERED'
+        && isRating(d.overall)
+        && (!('packaging' in d) || d.packaging == null || isRating(d.packaging))
+        && (!('delivery' in d) || d.delivery == null || isRating(d.delivery))
+        && d.comment is string
+        && d.comment.size() <= 300
+        && d.createdAt == request.time;
+    }
+
+    // The doc id IS the order id, so there can be only one review per order.
+    // There is no update or delete rule, so a review cannot be changed later.
+    match /feedback/{orderId} {
+      allow read: if signedIn() && (resource.data.uid == request.auth.uid || isStaff());
+      allow create: if signedIn() && validFeedback(orderId, request.resource.data);
+    }
+
+    // ---------- server-only collections ----------
+
+    // checkouts: priced quotes made by createCheckout, before payment.
+    match /checkouts/{checkoutId} {
+      allow read, write: if false;
+    }
+
+    // promoCodes: server-only so codes cannot be listed by customers.
+    match /promoCodes/{code} {
+      allow read, write: if false;
+    }
+
+    // paymentEvents (webhook dedupe ledger) and excelSync (the Excel copy ledger) are
+    // server-only too. They are covered by the default deny below.
+
+    // ---------- default deny ----------
+    // Anything not matched above is closed to every client.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

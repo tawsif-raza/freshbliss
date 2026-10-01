@@ -1,0 +1,34 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+/* Inter is loaded by next/font (see pages/_app.js); the rest of the stack is the
+   design system's fallback. tokens.css provides every other colour, radius,
+   shadow and text style. */
+@theme inline {
+  --font-sans: var(--font-inter), Inter, "Segoe UI", Arial, sans-serif;
+}
+
+@layer base {
+  body {
+    background: var(--fb-surface-page);
+    color: var(--fb-ink);
+  }
+
+  /* Focus: 2px solid focus-ring with a 2px offset, on every interactive element. */
+  :focus-visible {
+    outline: 2px solid var(--fb-focus-ring);
+    outline-offset: 2px;
+  }
+}
+
+/* Motion is optional: honour the visitor's setting everywhere. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
