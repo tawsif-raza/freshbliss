@@ -1,0 +1,3 @@
+ProductCard shows one fruit box: an image gallery with 2 to 4 slots, a category badge, a wishlist heart, the name, ingredients, price and an Add to Cart button.
+
+Provide `id`, `name`, `description` and `price`; optionally `badge` (Popular, New, Fitness, Limited), `stock`, and `images` (up to four URLs, otherwise labelled image slots show). Hover or focus a dot to switch image. Wire `onWishlist(id, next)` and `onAdd(product)`; pass `wishlisted` to control the heart. At `stock` 0 the card is dimmed with an Out of stock overlay and the button is disabled; at 5 or fewer it shows "Only N left". Stock comes from a real-time Firestore listener, never from the browser.

@@ -1,0 +1,3 @@
+DeliveryChecker is a pincode field with a Check button and a status line that reports Available or Not available, the zone, fee and ETA. Use it on the home hero (`tone="onDark"`), the cart and the product page.
+
+Pass `check(pincode)` returning `{serviceable, zone, fee, eta, message}` (sync or a promise); connect it to the `deliveryZones` data or a server function. The built-in fallback is a demo rule only: 5600xx is Zone A (free, 30 to 45 min), other 560xxx is Zone B (fee 30, 45 to 60 min), everything else is not serviceable. `onResult` receives the result with the pincode, or null when not serviceable. The result is announced through a live region and never relies on color alone. Delivery fees are always recomputed on the server.

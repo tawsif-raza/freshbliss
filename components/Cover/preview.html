@@ -1,0 +1,37 @@
+<!-- @dsCard height=300 -->
+<!doctype html>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+body{margin:0;background:var(--surface-page)}
+.cv{width:960px;height:300px;display:block}
+.slab{fill:var(--brand);rx:var(--radius-xl)}
+.gold{fill:var(--gold-bright)}
+.mid{fill:var(--hero-mid);rx:var(--radius-xl)}
+.acc{fill:var(--green-accent)}
+.tile{fill:var(--gold-bright);rx:var(--radius-xl)}
+.name{font-family:var(--font-serif);font-weight:700;font-size:76px;fill:var(--ink)}
+.tag{font-family:var(--font-sans);font-size:14px;fill:var(--ink-muted)}
+</style>
+<svg class="cv" viewBox="0 0 960 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="FreshBliss">
+<!-- derivation
+blocks: brand slab 200x218 (bleeds top), gold slab 170x138 (bleeds top+right), hero-mid block 92x148, green-accent disc r=40 at the slab foot.
+arrangement: staggered stack right of x=496, slabs hang from the top edge, discs sit in one row along the bottom.
+pattern: literal motif (citrus slices) -> discs and a half-round cut from radius-pill scale; the brand is fruit, so circles and half-rounds beat rules or stripes.
+steps: pitch 56, disc r=24, slab radius-xl (18px), name 76px serif, tagline 14px.
+-->
+<rect class="slab" x="600" y="-18" width="200" height="218"/>
+<rect class="tile" x="812" y="-18" width="170" height="138"/>
+<rect class="mid" x="496" y="132" width="92" height="168"/>
+<path class="gold" d="M640 200a40 40 0 0 1 80 0z"/>
+<circle class="acc" cx="812" cy="172" r="40"/>
+<g>
+<circle class="gold" cx="620" cy="264" r="24"/>
+<circle class="acc" cx="676" cy="264" r="24"/>
+<circle class="slab" cx="732" cy="264" r="24"/>
+<circle class="gold" cx="788" cy="264" r="24"/>
+<circle class="acc" cx="844" cy="264" r="24"/>
+<circle class="slab" cx="900" cy="264" r="24"/>
+</g>
+<text class="name" x="40" y="224">FreshBliss</text>
+<text class="tag" x="42" y="256">Freshness. Health. Convenience. Always.</text>
+</svg>

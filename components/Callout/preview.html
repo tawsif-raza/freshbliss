@@ -1,0 +1,7 @@
+<!-- @dsCard group="Feedback" height=210 subtitle="rule and warning" -->
+<!doctype html>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>body{margin:0;padding:24px;background:var(--surface-page)}</style><div id="r"></div>
+<script>const F=window.FreshBliss,h=React.createElement;
+const el=h("div",{style:{display:"grid",gap:16}},h(F.Callout,{title:"Critical architecture decision:"},"Firebase is the source of truth. Excel is the reporting layer."),h(F.Callout,{tone:"warning",title:"Security rule:"},"Inventory changes and payment verification are validated server-side."));
+ReactDOM.createRoot(document.getElementById("r")).render(el);</script>

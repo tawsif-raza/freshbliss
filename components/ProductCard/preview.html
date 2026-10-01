@@ -1,0 +1,8 @@
+<!-- @dsCard group="Storefront" height=470 subtitle="image slots, wishlist, stock states" -->
+<!doctype html>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>body{margin:0;background:var(--surface-page)}</style><div id="r"></div>
+<script>const F=window.FreshBliss,h=React.createElement;
+const P={id:"classic-fresh-mix",name:"Classic Fresh Mix",description:"Watermelon, Pineapple, Grapes, Kiwi",price:149,badge:"Popular",stock:25};
+const el=h("div",{style:{padding:24,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(230px,1fr))",gap:18}},h(F.ProductCard,P),h(F.ProductCard,{...P,id:"g",name:"Gym Fuel Pack",description:"Apple, Banana, Berries, Nuts",price:159,badge:"Fitness",stock:3,wishlisted:true}),h(F.ProductCard,{...P,id:"r",name:"Ramadan Special Box",description:"Dates, Fruits, Pomegranate, Mixed",price:199,badge:"Limited",stock:0}));
+ReactDOM.createRoot(document.getElementById("r")).render(el);</script>

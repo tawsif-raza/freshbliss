@@ -1,0 +1,34 @@
+{
+  "v": 3,
+  "assetGroups": {},
+  "blobs": {},
+  "createdOnFiles": {
+    "at": "2026-09-29T11:41:11Z",
+    "v": 1
+  },
+  "docs": {
+    "readme": "project/README.md",
+    "sections": []
+  },
+  "groups": [],
+  "lastChange": {
+    "by": "Jarvy",
+    "at": "2026-09-30T13:28:17Z",
+    "via": "Claude (Cowork)",
+    "note": "Delivery essentials: pincode check, promo, tip, cancel, rider call, feedback, help, share"
+  },
+  "layout": "files",
+  "libraries": [
+    {
+      "name": "react",
+      "version": "18"
+    },
+    {
+      "name": "react-dom",
+      "version": "18"
+    }
+  ],
+  "namespace": "FreshBliss",
+  "sections": {},
+  "title": "FreshBliss"
+}

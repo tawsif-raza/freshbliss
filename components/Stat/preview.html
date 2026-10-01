@@ -1,0 +1,7 @@
+<!-- @dsCard group="Containers" height=150 subtitle="number with label" -->
+<!doctype html>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>body{margin:0;padding:24px;background:var(--surface-page)}</style><div id="r"></div>
+<script>const F=window.FreshBliss,h=React.createElement;
+const el=h("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:18}},h(F.Stat,{value:"₹149",label:"Classic Fresh Mix",note:"Watermelon, pineapple, kiwi"}),h(F.Stat,{value:"37%",label:"Repeat customers",note:"Returning rate"}),h(F.Stat,{value:"18 min",label:"Arriving in",note:"ETA"}));
+ReactDOM.createRoot(document.getElementById("r")).render(el);</script>

@@ -1,0 +1,7 @@
+<!-- @dsCard group="Containers" height=220 subtitle="grouped content" -->
+<!doctype html>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>body{margin:0;padding:24px;background:var(--surface-page)}</style><div id="r"></div>
+<script>const F=window.FreshBliss,h=React.createElement;
+const el=h("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:18}},h(F.Card,{title:"Real-time inventory"},"Stock updates reach every open browser the moment an order is confirmed."),h(F.Card,{title:"Order tracking"},"Confirmed, Preparing, Packed, Out for Delivery, Delivered."));
+ReactDOM.createRoot(document.getElementById("r")).render(el);</script>

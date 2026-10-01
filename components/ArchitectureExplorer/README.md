@@ -1,0 +1,3 @@
+ArchitectureExplorer is the interactive system diagram: three tabbed views (Customer Journey Flow, Technical Architecture, Data Flow from Firebase to Excel), nodes that light up what they talk to, a detail panel that slides open on hover or click, and an animated order lifecycle (Checkout, Razorpay payment verified, Stock safely decremented, Cart cleared, Excel updated).
+
+It needs no data props; all node content is built in. Pass `initialView`, `title` and `subtitle` to reframe it, and give it the full page width (it stacks the panel below the diagram under 900px). Hover previews a node, click pins it, the chips in the panel jump to related nodes in any view.

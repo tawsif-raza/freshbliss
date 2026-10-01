@@ -1,0 +1,7 @@
+<!-- @dsCard group="Storefront" height=980 subtitle="line items and order summary" -->
+<!doctype html>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>body{margin:0;background:var(--surface-page)}</style><div id="r"></div>
+<script>const F=window.FreshBliss,h=React.createElement;
+const el=h("div",{style:{padding:24}},h(F.Cart,{deliveryFee:0,discount:0,freeDeliveryFrom:500,promoCodes:{FRESH10:{type:"percent",value:10,min:200}},items:[{id:"a",name:"Classic Fresh Mix",detail:"Watermelon, Pineapple, Grapes, Kiwi",price:149,qty:1,stock:25},{id:"b",name:"Tropical Bliss",detail:"Mango, Pineapple, Papaya, Kiwi",price:179,qty:1,stock:18}]}));
+ReactDOM.createRoot(document.getElementById("r")).render(el);</script>

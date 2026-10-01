@@ -1,0 +1,5 @@
+HomeScreen is the storefront landing page: sticky navigation, a hero on the `hero-deep` to `hero-mid` gradient with parallax, a category selector that filters the box grid, the fruit box grid of `ProductCard`s, the one-hour delivery model and the footer.
+
+Give it `products` (defaults to the four launch boxes) and `categories` (defaults to Fresh, Fitness, Ramadan, Family, Office, Seasonal); categories with no products show "0 boxes" and an empty state, because categories are data. `ramadan` swaps the hero badge for Ramadan Special. Sections fade and rise as they enter the viewport and the hero drifts on scroll; both switch off under reduced motion. Pass `heroImage` when a fruit-box photo exists, and `onAddToCart`, `onWishlist`, `onNavigate`, `onLogin` to connect behavior. Place it at full page width.
+
+Delivery essentials: the hero has a pincode check (`checkDelivery`, `onDeliveryResult`; the default rule is a demo), the box grid has a search field with a "No matches" state, and a floating Help button (`supportPhone`, `onHelp`; `support={false}` hides it) opens WhatsApp, call and FAQ options. Supply a real support number; none is built in.
