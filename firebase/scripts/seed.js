@@ -26,9 +26,17 @@ const SIZES = [
 ];
 
 // The first four are the launch boxes from the storefront design. The fifth is
-// extra test data with stock 0, so you can see the "Out of stock" state.
+// extra test data with stock 0, so you can see the "Out of stock" state. The last four are the premium
+// range, the only ones with "Harvest & Health" facts (the product page leaves that section out when a
+// product has none):
+//   origin       where it was grown (text)
+//   calories     energy, as text ("About 45 kcal per 100 g": standard reference values for the fruit, not a
+//                lab measurement of the box)
+//   keyBenefits  short phrases
+// PLACEHOLDER CONTENT: check every origin, calorie figure and benefit against your real suppliers and
+// boxes before launch (docs/GO_LIVE.md, section 8.3).
 function buildProducts() {
-  const box = (slug, name, ingredients, price, stock, category, badge) => ({
+  const box = (slug, name, ingredients, price, stock, category, badge, harvest = {}) => ({
     slug,
     name,
     description: ingredients.join(', '),
@@ -41,6 +49,7 @@ function buildProducts() {
     images: [], // no photos supplied yet
     deliveryTime: 'Within 1 hour',
     active: true,
+    ...harvest,
   });
   return [
     box('classic-fresh-mix', 'Classic Fresh Mix', ['Watermelon', 'Pineapple', 'Grapes', 'Kiwi'], 149, 25, 'Fresh', 'Popular'),
@@ -48,6 +57,26 @@ function buildProducts() {
     box('gym-fuel-pack', 'Gym Fuel Pack', ['Apple', 'Banana', 'Berries', 'Nuts'], 159, 4, 'Fitness', 'Fitness'),
     box('ramadan-special-box', 'Ramadan Special Box', ['Dates', 'Fruits', 'Pomegranate', 'Mixed'], 199, 12, 'Ramadan', 'Limited'),
     box('mango-season-box', 'Mango Season Box', ['Alphonso Mango', 'Papaya', 'Pineapple'], 229, 0, 'Seasonal', null),
+    box('exotic-berry-medley', 'Exotic Berry Medley', ['Blueberries', 'Raspberries', 'Strawberries'], 349, 14, 'Exotics', 'New', {
+      origin: 'Sourced from the Mahabaleshwar hills',
+      calories: 'About 45 kcal per 100 g',
+      keyBenefits: ['High in antioxidants', 'Rich in vitamin C', 'Good source of fibre'],
+    }),
+    box('citrus-immunity-shield', 'Citrus Immunity Shield', ['Oranges', 'Grapefruits', 'Lemons'], 189, 20, 'Immunity', 'New', {
+      origin: 'Sourced from the orchards of Nagpur',
+      calories: 'About 42 kcal per 100 g',
+      keyBenefits: ['Rich in vitamin C', 'Supports immunity', 'Naturally hydrating'],
+    }),
+    box('midnight-mango-indulgence', 'Midnight Mango Indulgence', ['Alphonso Mango', 'Hapus Mango'], 399, 10, 'Exotics', 'New', {
+      origin: 'Sourced from Ratnagiri, on the Konkan coast',
+      calories: 'About 65 kcal per 100 g',
+      keyBenefits: ['Rich in vitamin A', 'Source of vitamin C', 'Naturally sweet'],
+    }),
+    box('keto-green-pack', 'The Keto Green Pack', ['Avocados', 'Green Apples', 'Kiwi'], 279, 12, 'Fitness', 'New', {
+      origin: 'Sourced from the hills of Coorg',
+      calories: 'About 90 kcal per 100 g',
+      keyBenefits: ['Healthy fats', 'Low in sugar', 'High in fibre'],
+    }),
   ];
 }
 

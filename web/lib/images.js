@@ -26,6 +26,11 @@ const PHOTO = {
   pineapple: '1550258987-190a2d41a8ba', // a pineapple
   grapes: '1596363505729-4190a9506133', // dark grapes
   kiwi: '1585059895524-72359e06133a', // halved kiwi
+  berryMix: '1596591606975-97ee5cef3a1e', // blueberries, raspberries and blackberries
+  orangeSlices: '1582979512210-99b6a53386f9', // orange slices, close up
+  orangeBoard: '1580052614034-c55d20bfee3b', // a halved orange on a board
+  orangePile: '1611080626919-7cf5a9dbab5b', // a pile of oranges
+  avocado: '1523049673857-eb18f1d7b578', // a halved avocado
 };
 
 // The size is part of the address: the `w` and `q` in the link. Photos are stored at 800 pixels wide, and
@@ -45,6 +50,10 @@ const BY_PRODUCT = {
   'gym-fuel-pack': [PHOTO.breakfastBowl, PHOTO.blueberries, PHOTO.apple],
   'ramadan-special-box': [PHOTO.fruitBasket, PHOTO.grapes, PHOTO.fruitSpread], // no dates photo yet: mixed fruit stands in
   'mango-season-box': [PHOTO.mangoHalves, PHOTO.mango, PHOTO.pineapple],
+  'exotic-berry-medley': [PHOTO.berryMix, PHOTO.blueberries, PHOTO.fruitBowl],
+  'citrus-immunity-shield': [PHOTO.orangeSlices, PHOTO.orangeBoard, PHOTO.orangePile], // the supplied cherry photo was swapped for oranges
+  'midnight-mango-indulgence': [PHOTO.mango, PHOTO.mangoHalves],
+  'keto-green-pack': [PHOTO.avocado, PHOTO.kiwi],
 };
 
 // By category, for a product added later that is not in the list above.
@@ -53,6 +62,8 @@ const BY_CATEGORY = {
   Fitness: [PHOTO.breakfastBowl, PHOTO.blueberries],
   Ramadan: [PHOTO.fruitBasket, PHOTO.grapes],
   Seasonal: [PHOTO.mangoHalves, PHOTO.mango],
+  Exotics: [PHOTO.berryMix, PHOTO.mango],
+  Immunity: [PHOTO.orangeSlices, PHOTO.orangePile],
   Combos: [PHOTO.fruitSpread, PHOTO.fruitBasket],
 };
 const FALLBACK = [PHOTO.fruitSpread, PHOTO.fruitBasket];

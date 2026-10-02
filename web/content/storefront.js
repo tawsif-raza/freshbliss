@@ -40,6 +40,8 @@ export const CATEGORIES = [
   { id: 'fresh', label: 'Fresh Boxes', category: 'Fresh' },
   { id: 'fitness', label: 'Fitness Packs', category: 'Fitness' },
   { id: 'ramadan', label: 'Ramadan Specials', category: 'Ramadan' },
+  { id: 'exotics', label: 'Exotics', category: 'Exotics' },
+  { id: 'immunity', label: 'Immunity', category: 'Immunity' },
   { id: 'combos', label: 'Combos', category: 'Combos' },
 ];
 

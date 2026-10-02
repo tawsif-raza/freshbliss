@@ -10,6 +10,7 @@
 import { useSyncExternalStore } from 'react';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from './firebaseClient';
+import { normaliseBenefits, normaliseCalories, normaliseOrigin } from './harvest';
 import { placeholderImagesFor } from './images';
 
 // Same fallback the server uses when a product has no sizes.
@@ -22,7 +23,10 @@ const DEFAULT_SIZES = [{ id: 'regular', label: 'Regular', extra: 0 }];
 // the storefront simply leaves that part out; it never makes up a figure:
 //   images        up to 4 photo URLs. With none, stock placeholder photos are shown (lib/images.js) and
 //                 `placeholderImages` is true so the page can say the photo is illustrative
-//   calories      whole number, kcal for one box
+//   origin        where it was grown, for example "Ratnagiri, Konkan coast"      (the "Harvest & Health"
+//   calories      text, for example "About 45 kcal per 100 g" (a whole number      section of the product
+//                 is still read, as kcal per box)                                  page: lib/harvest.js)
+//   keyBenefits   up to 6 short phrases, for example ["High in vitamin C"]
 //   nutritionNote short text under the calories, for example "Per Regular box"
 //   packaging     short text about how the box is packed
 export function normaliseProduct(id, data) {
@@ -52,7 +56,9 @@ export function normaliseProduct(id, data) {
     images: own.length > 0 ? own : placeholderImagesFor({ id, category }),
     placeholderImages: own.length === 0,
     deliveryTime: data.deliveryTime ?? null,
-    calories: Number.isInteger(data.calories) && data.calories > 0 ? data.calories : null,
+    origin: normaliseOrigin(data.origin),
+    calories: normaliseCalories(data.calories),
+    keyBenefits: normaliseBenefits(data.keyBenefits),
     nutritionNote: typeof data.nutritionNote === 'string' ? data.nutritionNote : '',
     packaging: typeof data.packaging === 'string' ? data.packaging : '',
     sizes,

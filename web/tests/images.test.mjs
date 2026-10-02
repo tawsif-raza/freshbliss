@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { HERO_IMAGES, photo, placeholderImagesFor, resizeImage } from '../lib/images.js';
 
-const SEEDED = ['classic-fresh-mix', 'tropical-bliss', 'gym-fuel-pack', 'ramadan-special-box', 'mango-season-box'];
+const SEEDED = ['classic-fresh-mix', 'tropical-bliss', 'gym-fuel-pack', 'ramadan-special-box', 'mango-season-box', 'exotic-berry-medley', 'citrus-immunity-shield', 'midnight-mango-indulgence', 'keto-green-pack'];
 
 describe('placeholder photos', () => {
   it('every seeded box has its own photos (2 or more, so the gallery has thumbnails)', () => {

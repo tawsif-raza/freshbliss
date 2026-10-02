@@ -1,10 +1,10 @@
 // One fruit box: /products/<id>
 // A photo gallery, a size choice with the price following it, a quantity that stops at what we can
 // actually sell, a delivery estimate for the visitor's pincode, and expandable details (ingredients,
-// calories, packaging). Everything about the box is live: if the last one sells, the page says so.
+// packaging), plus a "Harvest & Health" row (origin, calories, key benefits). Everything about the box is live: if the last one sells, the page says so.
 //
-// Calories and packaging text appear only if the shop owner has added them to the product in
-// Firestore (see lib/catalog.js). A missing figure is left out, never made up.
+// Origin, calories, benefits and packaging text appear only if the shop owner has added them to the product
+// in Firestore (see lib/catalog.js). A missing fact is left out, never made up.
 
 import Head from 'next/head';
 import Link from 'next/link';
@@ -12,6 +12,7 @@ import { useRouter } from 'next/router';
 import { useState } from 'react';
 import Accordion from '@/components/Accordion';
 import Callout from '@/components/Callout';
+import HarvestHealth from '@/components/HarvestHealth';
 import ProductGallery from '@/components/ProductGallery';
 import RelatedProducts from '@/components/RelatedProducts';
 import { ProductDetailSkeleton } from '@/components/ProductSkeleton';
@@ -96,16 +97,6 @@ function ProductDetail({ product, products, status }) {
             </li>
           ))}
         </ul>
-      ),
-    },
-    product.calories !== null && {
-      id: 'nutrition',
-      title: 'Nutrition',
-      content: (
-        <p>
-          About <span className="font-bold">{product.calories} kcal</span> per box.
-          {product.nutritionNote && <span className="text-ink-muted"> {product.nutritionNote}</span>}
-        </p>
       ),
     },
     { id: 'packaging', title: 'Packaging', content: <p>{product.packaging || DEFAULT_PACKAGING}</p> },
@@ -210,6 +201,9 @@ function ProductDetail({ product, products, status }) {
           </section>
         </div>
       </div>
+
+      {/* Where it grew, its energy and its benefits (only the facts the shop has added) */}
+      <HarvestHealth product={product} />
 
       <section aria-labelledby="details-title" className="mt-10 max-w-3xl">
         <h2 id="details-title" className="text-heading-3 text-ink">
