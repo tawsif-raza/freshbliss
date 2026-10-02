@@ -33,7 +33,7 @@ const exported = Object.entries(index);
 
 describe('functions are deployed to asia-south1', () => {
   it('exports exactly the functions we expect (plus the emulator-only helper)', () => {
-    assert.deepEqual(Object.keys(index).sort(), [...EXPECTED, 'devGrantStaff'].sort());
+    assert.deepEqual(Object.keys(index).sort(), [...EXPECTED, 'devGrantStaff', 'createMockOrder'].sort());
   });
 
   for (const [name, fn] of exported) {

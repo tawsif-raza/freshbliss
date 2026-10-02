@@ -33,4 +33,5 @@ exports.getOrdersDownloadUrl = require('./getOrdersDownloadUrl').getOrdersDownlo
 // `firebase deploy` (which does not set this variable) never publishes it.
 if (process.env.FUNCTIONS_EMULATOR === 'true') {
   exports.devGrantStaff = require('./devGrantStaff').devGrantStaff;
+  exports.createMockOrder = require('./createMockOrder').createMockOrder; // checkout without Razorpay, for local testing
 }

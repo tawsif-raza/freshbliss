@@ -11,7 +11,9 @@
 
 import Head from 'next/head';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { useEffect, useRef, useState } from 'react';
+import { Loader2 } from 'lucide-react';
 import Callout from '@/components/Callout';
 import CartSkeleton from '@/components/CartSkeleton';
 import { Field, inputClass } from '@/components/Field';
@@ -21,8 +23,9 @@ import CheckoutSummary from '@/components/checkout/CheckoutSummary';
 import PromoCode from '@/components/checkout/PromoCode';
 import TipSelector from '@/components/checkout/TipSelector';
 import { useCart } from '@/context/CartContext';
+import { usingEmulators } from '@/lib/firebaseClient';
 import { previewTotals } from '@/lib/pricing';
-import { CheckoutError, friendlyError, loadRazorpay, previewPricing, runCheckout, verifyPayment } from '@/lib/razorpayCheckout';
+import { CheckoutError, friendlyError, loadRazorpay, previewPricing, runCheckout, runMockCheckout, verifyPayment } from '@/lib/razorpayCheckout';
 import { PINCODE, deliveryFeeFor, feeLabel, useSavedPincode, useZones } from '@/lib/zones';
 
 // What the button says at each step of the payment.
@@ -111,6 +114,7 @@ function OrderResult({ outcome, onBack }) {
 // ---------- the page ----------
 
 export default function CheckoutPage() {
+  const router = useRouter();
   const { items, lines, subtotal, hydrated, catalogStatus, clearCart } = useCart();
   const { zones, status: zonesStatus } = useZones();
   const { pincode: savedPincode, setPincode: savePincode } = useSavedPincode();
@@ -135,8 +139,10 @@ export default function CheckoutPage() {
   // Start with the pincode remembered from the product page or an earlier visit, until they type their own.
   const pincode = typedPincode ?? savedPincode;
 
-  // Load the payment script in the background so it is ready when they press Pay.
+  // Load the payment script in the background so it is ready when they press Pay. (Not when testing locally:
+  // that path never opens Razorpay.)
   useEffect(() => {
+    if (usingEmulators) return;
     loadRazorpay().catch(() => {}); // a failure is reported properly when they press Pay
   }, []);
 
@@ -259,6 +265,22 @@ export default function CheckoutPage() {
       setShowErrors(true);
       (fieldErrors.pincode ? pincodeRef : addressRef).current?.focus();
       return;
+    }
+
+    // LOCAL TESTING ONLY (the storefront is talking to the emulators; never true in a production build):
+    // no Razorpay. The button spins for 1.5 seconds, a test order is created on the server, the cart is
+    // emptied, and the customer lands on the live tracking page. See lib/razorpayCheckout.js (runMockCheckout).
+    if (usingEmulators) {
+      setStage('paying');
+      try {
+        const order = await runMockCheckout({ lines, details: { pincode, address: form.address.trim(), note: form.note.trim(), tip, promoCode } });
+        await router.push(`/orders/${order.orderId}`);
+        clearCart(); // after leaving: emptying it first would flash "Your cart is empty" on this page for a moment
+      } catch (err) {
+        setError(friendlyError(err));
+        setStage('idle');
+      }
+      return; // on success we have left this page: nothing more to reset here
     }
 
     try {
@@ -489,9 +511,14 @@ export default function CheckoutPage() {
                   aria-busy={busy}
                   className="mt-5 min-h-13 w-full rounded-pill bg-gold-bright px-6 text-heading-3 text-on-gold motion-safe:transition-[filter] hover:brightness-95 disabled:cursor-not-allowed disabled:bg-surface-sunken disabled:text-ink-muted disabled:hover:brightness-100"
                 >
-                  {busy ? STAGE_TEXT[stage] : serverPricing ? `Pay ₹${serverPricing.total}` : 'Pay securely'}
+                  {busy && <Loader2 size={22} aria-hidden="true" className="mr-2 inline-block align-[-4px] motion-safe:animate-spin" />}
+                  {busy && !usingEmulators ? STAGE_TEXT[stage] : serverPricing ? `Pay ₹${serverPricing.total}` : 'Pay securely'}
                 </button>
-                <p className="mt-2 text-small text-ink-muted">You pay in Razorpay&apos;s secure window. Your total is confirmed before it opens.</p>
+                {usingEmulators ? (
+                  <p className="mt-2 text-small text-ink-muted">Local test mode: no payment is taken, and the order is created straight away.</p>
+                ) : (
+                  <p className="mt-2 text-small text-ink-muted">You pay in Razorpay&apos;s secure window. Your total is confirmed before it opens.</p>
+                )}
                 <p role="status" className="sr-only">
                   {busy ? STAGE_TEXT[stage] : ''}
                 </p>

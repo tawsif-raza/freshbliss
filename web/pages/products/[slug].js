@@ -123,7 +123,7 @@ function ProductDetail({ product, products, status }) {
       </Head>
 
       <div className="grid items-start gap-8.5 md:grid-cols-2">
-        <ProductGallery images={product.images} name={product.name} />
+        <ProductGallery images={product.images} name={product.name} illustrative={product.placeholderImages} />
 
         <div>
           <div className="flex flex-wrap items-center gap-3">

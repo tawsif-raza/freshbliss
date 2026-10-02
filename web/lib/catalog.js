@@ -10,6 +10,7 @@
 import { useSyncExternalStore } from 'react';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from './firebaseClient';
+import { placeholderImagesFor } from './images';
 
 // Same fallback the server uses when a product has no sizes.
 const DEFAULT_SIZES = [{ id: 'regular', label: 'Regular', extra: 0 }];
@@ -19,7 +20,8 @@ const DEFAULT_SIZES = [{ id: 'regular', label: 'Regular', extra: 0 }];
 //
 // Optional fields a shop owner may add to a product in the Firestore console. When one is missing
 // the storefront simply leaves that part out; it never makes up a figure:
-//   images        up to 4 photo URLs
+//   images        up to 4 photo URLs. With none, stock placeholder photos are shown (lib/images.js) and
+//                 `placeholderImages` is true so the page can say the photo is illustrative
 //   calories      whole number, kcal for one box
 //   nutritionNote short text under the calories, for example "Per Regular box"
 //   packaging     short text about how the box is packed
@@ -35,6 +37,9 @@ export function normaliseProduct(id, data) {
         }))
       : DEFAULT_SIZES;
 
+  const own = Array.isArray(data.images) ? data.images.filter((u) => typeof u === 'string').slice(0, 4) : [];
+  const category = data.category ?? null;
+
   return {
     id, // also the page address: /products/<id>
     name: data.name ?? id,
@@ -43,8 +48,9 @@ export function normaliseProduct(id, data) {
     price: data.price, // whole rupees
     stock: Number.isInteger(data.stock) ? Math.max(0, data.stock) : 0,
     badge: data.badge ?? null,
-    category: data.category ?? null,
-    images: Array.isArray(data.images) ? data.images.filter((u) => typeof u === 'string').slice(0, 4) : [],
+    category,
+    images: own.length > 0 ? own : placeholderImagesFor({ id, category }),
+    placeholderImages: own.length === 0,
     deliveryTime: data.deliveryTime ?? null,
     calories: Number.isInteger(data.calories) && data.calories > 0 ? data.calories : null,
     nutritionNote: typeof data.nutritionNote === 'string' ? data.nutritionNote : '',

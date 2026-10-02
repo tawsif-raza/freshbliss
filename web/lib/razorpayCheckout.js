@@ -96,6 +96,33 @@ export async function previewPricing({ lines, pincode, tip = 0, promoCode = null
   return data;
 }
 
+// ---------- local testing: checkout without Razorpay ----------
+
+// The local-testing stand-in for runCheckout (used ONLY when the storefront talks to the emulators; see
+// the checkout page). It never touches Razorpay. After at least `minimumMs` (so the Pay button's spinner is
+// seen and the screen does not flash), it asks the emulator-only createMockOrder function to make the order.
+// The browser cannot write an order itself: the security rules forbid it, on purpose.
+//
+//   lines    the cart lines [{ productId, size, qty }]
+//   details  { pincode, address, note, tip, promoCode }
+// Resolves with { orderId, status, paymentStatus, pricing }, or rejects with a server error (use friendlyError()).
+export async function runMockCheckout({ lines, details, minimumMs = 1500 }) {
+  const started = Date.now();
+  await ensureSignedIn();
+  const items = lines.map(({ productId, size, qty }) => ({ productId, size, qty }));
+  const { data } = await httpsCallable(functions, 'createMockOrder')({
+    items,
+    pincode: details.pincode,
+    address: details.address,
+    note: details.note,
+    tip: details.tip ?? 0,
+    promoCode: details.promoCode ?? null,
+  });
+  const remaining = minimumMs - (Date.now() - started);
+  if (remaining > 0) await wait(remaining);
+  return data;
+}
+
 // ---------- 4. the payment window ----------
 
 // The payment window follows the shop's brand colour, read from the theme.

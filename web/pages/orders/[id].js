@@ -133,7 +133,7 @@ function DeliveryCodeCard({ order }) {
 function OrderSummary({ order }) {
   const items = order.items ?? [];
   const p = order.pricing ?? {};
-  const totalLabel = { REFUND_PENDING: 'Total (refund pending)', REFUNDED: 'Total refunded' }[order.paymentStatus] ?? 'Total paid';
+  const totalLabel = { REFUND_PENDING: 'Total (refund pending)', REFUNDED: 'Total refunded', PAID_MOCK: 'Total (test order)' }[order.paymentStatus] ?? 'Total paid';
 
   return (
     <Card title="Order summary">

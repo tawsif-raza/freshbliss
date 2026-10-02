@@ -4,9 +4,11 @@
 //
 //   onPickCategory  (categoryId) => void   called when a button is pressed
 
+import Image from 'next/image';
 import { useState } from 'react';
 import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
 import { DEFAULT_HERO_MODE, HERO_MODES, TRUST_BADGES } from '@/content/storefront';
+import { HERO_IMAGES } from '@/lib/images';
 
 function CheckIcon() {
   return (
@@ -23,8 +25,21 @@ export default function Hero({ onPickCategory }) {
 
   return (
     <MotionConfig reducedMotion="user">
-      <section aria-labelledby="hero-title" className="bg-gradient-to-br from-hero-deep to-hero-mid text-on-hero">
-        <div className="fb-container py-14.5 md:py-20">
+      <section aria-labelledby="hero-title" className="relative overflow-hidden bg-gradient-to-br from-hero-deep to-hero-mid text-on-hero">
+        {/* The banner photo for the season, fading when the switch is pressed (placeholder stock photography:
+            see lib/images.js). Decorative, so hidden from screen readers. */}
+        <div aria-hidden="true" className="absolute inset-0">
+          <AnimatePresence initial={false}>
+            <motion.div key={modeId} className="absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.6 }}>
+              <Image src={HERO_IMAGES[modeId]} alt="" fill priority sizes="100vw" unoptimized className="object-cover" />
+            </motion.div>
+          </AnimatePresence>
+          {/* Deep green over the photo keeps the words readable: solid-ish on phones, fading to the photo on wide screens. */}
+          <div className="absolute inset-0 bg-hero-deep/80 md:hidden" />
+          <div className="absolute inset-0 hidden bg-gradient-to-r from-hero-deep via-hero-deep/85 to-hero-deep/25 md:block" />
+        </div>
+
+        <div className="fb-container relative py-14.5 md:py-20">
           {/* The season switch: two buttons, one pressed. */}
           <div role="group" aria-label="Choose what to show" className="inline-flex rounded-pill border border-on-hero/30 p-1">
             {Object.values(HERO_MODES).map((m) => (

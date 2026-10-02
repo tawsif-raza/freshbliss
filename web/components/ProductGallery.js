@@ -8,9 +8,10 @@
 
 import Image from 'next/image';
 import { useState } from 'react';
+import { resizeImage } from '@/lib/images';
 import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
 
-export default function ProductGallery({ images, name }) {
+export default function ProductGallery({ images, name, illustrative = false }) {
   const [chosen, setChosen] = useState(0);
 
   // If the photos change (for example staff edit the product), never point past the end.
@@ -45,6 +46,8 @@ export default function ProductGallery({ images, name }) {
           </AnimatePresence>
         </div>
 
+        {illustrative && <p className="mt-2 text-small text-ink-muted">Illustrative photo. The real box may look a little different.</p>}
+
         {images.length > 1 && (
           <ul className="mt-3 grid grid-cols-4 gap-3" aria-label={`${name} photos`}>
             {images.map((src, i) => (
@@ -56,7 +59,7 @@ export default function ProductGallery({ images, name }) {
                   aria-current={i === index}
                   className={`relative block aspect-[4/3] w-full overflow-hidden rounded-md border-2 bg-surface-cream ${i === index ? 'border-brand' : 'border-line hover:border-green-accent'}`}
                 >
-                  <Image src={src} alt="" fill sizes="120px" unoptimized className="object-cover" />
+                  <Image src={resizeImage(src, 240)} alt="" fill sizes="120px" unoptimized className="object-cover" />
                 </button>
               </li>
             ))}

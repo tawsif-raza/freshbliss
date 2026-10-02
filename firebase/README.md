@@ -41,6 +41,7 @@ npm run deploy:functions     # Cloud Functions
 | `retryExcelSync` | callable | staff (dashboard button) | Re-sends Excel rows and updates that failed |
 | `getOrdersDownloadUrl` | callable | staff (dashboard button) | Signs a 15-minute link to download the orders workbook from S3; logs who asked |
 | `devGrantStaff` | callable | emulator only | Makes your test account staff; not deployed |
+| `createMockOrder` | callable | emulator only | Local testing: the checkout page calls it instead of Razorpay. Creates a real order (priced by the real pricing code) as `PREPARING` / `PAID_MOCK`; takes no stock and no payment; refuses to run outside the emulator; not deployed |
 
 ## Data
 

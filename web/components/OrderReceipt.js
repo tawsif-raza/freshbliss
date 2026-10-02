@@ -19,7 +19,7 @@ import { feeLabel } from '@/lib/zoneMatch';
 
 const capitalise = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
-const PAYMENT_STATUS = { PAID: 'Paid', REFUND_PENDING: 'Refund pending', REFUNDED: 'Refunded' };
+const PAYMENT_STATUS = { PAID: 'Paid', PAID_MOCK: 'Test order', REFUND_PENDING: 'Refund pending', REFUNDED: 'Refunded' };
 
 export default function OrderReceipt({ order, open, onClose }) {
   const dialogRef = useRef(null);
@@ -120,9 +120,15 @@ export default function OrderReceipt({ order, open, onClose }) {
           </dl>
 
           <section aria-label="Payment" className="mt-5 border-t border-line pt-4 text-small text-ink">
-            <p>
-              <span className="font-bold">Payment:</span> online, through Razorpay{paymentStatus && ` (${paymentStatus})`}
-            </p>
+            {order.paymentStatus === 'PAID_MOCK' ? (
+              <p>
+                <span className="font-bold">Payment:</span> test order, no payment was taken
+              </p>
+            ) : (
+              <p>
+                <span className="font-bold">Payment:</span> online, through Razorpay{paymentStatus && ` (${paymentStatus})`}
+              </p>
+            )}
             {reference && (
               <p>
                 <span className="font-bold">Payment reference:</span> <span className="text-code">{reference}</span>
