@@ -12,7 +12,8 @@
 // cancelOrder, processRefund). The customer's tracking page hears the change
 // through its own onSnapshot listener.
 //
-// Below the lists is the "Retry Excel sync" button (see components/admin/ExcelSyncCard.js).
+// Below the lists is the Excel card with the "Download orders sheet" and "Retry Excel sync"
+// buttons (see components/admin/ExcelSyncCard.js).
 //
 // Staff access: a user is staff when their sign-in token has the `staff` claim,
 // which only the server can set. Give it with `npm run set-admin -- <uid>` (see

@@ -12,11 +12,12 @@ exports.updateOrderStatus = require('./updateOrderStatus').updateOrderStatus;
 exports.cancelOrder = require('./cancelOrder').cancelOrder;
 exports.processRefund = require('./processRefund').processRefund;
 
-// Copies each new order into an Excel workbook and keeps its status up to date
-// (see docs/AZURE_SETUP.md and docs/EXCEL_SYNC.md). Does nothing until Azure is set up.
+// Copies each new order into an Excel workbook (a .xlsx file in Amazon S3) and keeps its
+// status up to date (see docs/AWS_SETUP.md and docs/EXCEL_SYNC.md). Does nothing until AWS is set up.
 exports.excelSync = require('./excelSync').excelSync;
 exports.excelSyncUpdate = require('./excelSyncUpdate').excelSyncUpdate; // keeps each row's status in step
 exports.retryExcelSync = require('./excelSyncUpdate').retryExcelSync; // staff "Retry Excel sync" button
+exports.getOrdersDownloadUrl = require('./getOrdersDownloadUrl').getOrdersDownloadUrl; // staff "Download orders sheet" button
 
 // Local-only helper for the admin page. Only exported inside the emulator, so
 // `firebase deploy` (which does not set this variable) never publishes it.

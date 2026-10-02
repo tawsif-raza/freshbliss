@@ -10,7 +10,7 @@ export function friendlyError(err) {
   const code = typeof err?.code === 'string' ? err.code : '';
   if (code.startsWith('functions/') && !['functions/internal', 'functions/unknown'].includes(code) && err.message) {
     // The Firebase SDK adds the HTTP status to the end ("... yet. [400]"). Drop it.
-    return err.message.replace(/s*[d{3}]$/, '');
+    return err.message.replace(/\s*\[\d{3}\]$/, '');
   }
   console.error('Unexpected error:', err);
   return 'Something went wrong. Please try again.';
