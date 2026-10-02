@@ -316,6 +316,12 @@ exports.createCheckout = onCall(
   },
 );
 
-// Exported only so the pricing rules can be unit tested without Firebase.
+// Exported so the pricing rules can be unit tested without Firebase, and so previewCheckout.js
+// can price a cart with exactly the same code (it must never disagree with what is charged).
 exports.normaliseLines = normaliseLines;
 exports.priceCart = priceCart;
+exports.findZone = findZone;
+exports.loadPromo = loadPromo;
+exports.loadProducts = loadProducts;
+exports.ALLOWED_TIPS = ALLOWED_TIPS;
+exports.PINCODE = PINCODE;

@@ -1,7 +1,9 @@
 {
   "name": "freshbliss-web",
   "private": true,
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "description": "FreshBliss storefront (Next.js, Pages router, Tailwind v4).",
   "scripts": {
     "tokens": "node scripts/build-tokens.mjs",
@@ -9,7 +11,9 @@
     "dev": "next dev",
     "prebuild": "npm run tokens",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "lint": "eslint .",
+    "test": "node --no-warnings --test \"tests/*.test.mjs\""
   },
   "dependencies": {
     "firebase": "^12.19.0",
@@ -20,6 +24,8 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.3.8",
     "postcss": "^8.5.28",
     "tailwindcss": "^4.3.3"
   }

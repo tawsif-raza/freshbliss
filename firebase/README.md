@@ -29,6 +29,7 @@ npm run deploy:functions     # Cloud Functions
 
 | Function | Kind | Who or what calls it | What it does |
 |---|---|---|---|
+| `previewCheckout` | callable | customer's browser | Prices a cart for the checkout page (delivery fee, promo discount, total) without charging, saving or touching stock; uses the same pricing code as `createCheckout` |
 | `createCheckout` | callable | customer | Prices the saved cart on the server, checks stock, creates the Razorpay order |
 | `verifyPayment` | callable | customer's browser | Checks Razorpay's signature, then creates the order and takes the stock |
 | `razorpayWebhook` | HTTP | Razorpay | Same as `verifyPayment`, for customers whose browser never called back |

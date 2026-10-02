@@ -4,7 +4,7 @@ Deploying the Firebase backend (`firebase/`) and the Vercel storefront (`web/`) 
 
 Commands are for the project root unless a `cd` says otherwise. PowerShell and bash differ only where marked.
 
-> **What has been tested, and what has not.** Everything below was checked against this repository: the unit tests (83), the preflight script, the Razorpay mode guard, and `web/vercel.json` against Vercel's published schema. **Nothing has been run against a real Firebase, Razorpay, AWS or Vercel account.** The first real deployment is the first real test, which is why section 9 is a rehearsal in *test* mode before any real money moves.
+> **What has been tested, and what has not.** Everything below was checked against this repository: the unit tests (101 in `firebase/`, 21 in `web/`), the preflight script, the Razorpay mode guard, and `web/vercel.json` against Vercel's published schema. **Nothing has been run against a real Firebase, Razorpay, AWS or Vercel account.** The first real deployment is the first real test, which is why section 9 is a rehearsal in *test* mode before any real money moves.
 
 ## Contents
 
@@ -131,8 +131,8 @@ npm run deploy:functions    # Cloud Functions only
 (`npm run deploy:production` runs preflight and both in order.) These use `--only`, so **no emulator, no hosting, no extensions** are touched, and `firebase.json`'s emulator settings are ignored by deploy.
 
 - [ ] **Rules deployed.** Console → Firestore → Rules shows today's date. Check that a signed-out visitor cannot read anything private: in the console's Rules playground, a read of `orders/anything` unauthenticated is **denied**.
-- [ ] **Indexes deployed.** Nothing to build: every query in the app is a single-field or equality-only query, which Firestore serves without a composite index, so `firestore.indexes.json` is correctly empty. If you ever add a query with a range plus a sort on different fields, you will need an entry in that file *before* the code that needs it, because the emulator does not enforce indexes and production does.
-- [ ] **Functions deployed.** The terminal ends with `Deploy complete!`. Run `firebase functions:list --project production`: every row must show location **`asia-south1`** (Mumbai), none `us-central1`. (The code guarantees this twice: each function names the region, and `functions/index.js` sets it as the default for any function added later. `tests/regions.test.js` fails if one ever drifts.) Console → Functions lists: `createCheckout`, `verifyPayment`, `razorpayWebhook`, `updateOrderStatus`, `cancelOrder`, `processRefund`, `excelSync`, `excelSyncUpdate`, `retryExcelSync`, `getOrdersDownloadUrl`. **`devGrantStaff` must NOT be there** (it is emulator-only).
+- [ ] **Indexes deployed.** There is **one** composite index, for the customer's "My orders" page (`orders`: `uid` ascending, `createdAt` descending; see `firebase/firestore.indexes.json`). It is deployed by `npm run deploy:rules`, and it takes a few minutes to build: Console → Firestore → Indexes must show it as **Enabled** before you open `/account`, or the page will say it could not load orders. Every other query in the app is single-field or equality-only and needs none. If you ever add a query that filters on one field and sorts on another, add its index to that file *before* the code that needs it, because the emulator does not enforce indexes and production does.
+- [ ] **Functions deployed.** The terminal ends with `Deploy complete!`. Run `firebase functions:list --project production`: every row must show location **`asia-south1`** (Mumbai), none `us-central1`. (The code guarantees this twice: each function names the region, and `functions/index.js` sets it as the default for any function added later. `tests/regions.test.js` fails if one ever drifts.) Console → Functions lists: `createCheckout`, `previewCheckout`, `verifyPayment`, `razorpayWebhook`, `updateOrderStatus`, `cancelOrder`, `processRefund`, `excelSync`, `excelSyncUpdate`, `retryExcelSync`, `getOrdersDownloadUrl`. **`devGrantStaff` must NOT be there** (it is emulator-only).
 - [ ] **Copy the webhook URL** printed as `Function URL (razorpayWebhook(asia-south1))`, or from Console → Functions → `razorpayWebhook` → Trigger. You need it in section 6.
 - [ ] If the CLI asks about **cleanup policy for container images**, answer yes (for example keep 1 day) so old builds do not accrue storage cost.
 
@@ -299,6 +299,18 @@ GCLOUD_PROJECT=<project-id> SEED_CONFIRM_PROJECT=<project-id> npm run seed -- --
 - [ ] Back on `/admin/orders`, press **Check again**. The dashboard opens.
 - [ ] **Staff accounts are anonymous browser sessions.** If a staff member clears their browser data or uses another browser, they get a *new* ID and must be granted again. Plan for who the staff are before launch. Until real sign-in exists, give the role only to browsers you control.
 
+### 8.3 Storefront content (words, photos, business details)
+
+The home page, product pages and receipts show wording and figures the business is held to. Nothing here is code; each is a small edit. **A customer reading it will believe it, so check each is true.**
+
+- [ ] **The claims in [web/content/storefront.js](../web/content/storefront.js):** "1-Hour Delivery in Bengaluru", "Fresh & Hygienic", "Zero Preservatives", the hero and value-proposition text, and every FAQ answer. Change anything that is not true of how you actually work. (The delivery-zone answer fills itself in from your live zones.)
+- [ ] **Reviews.** The "What customers say" section is **hidden in production until you add real reviews** to `TESTIMONIALS` in the same file (with the customer's permission). The three entries in it are placeholders, shown only while developing and labelled as samples. **Never add invented reviews.**
+- [ ] **Business details on the receipt:** fill in [web/content/business.js](../web/content/business.js) (legal name, address, GSTIN, contact). Anything left empty is not printed.
+- [ ] **Tax.** The receipt shows what the customer was charged (items, delivery, tip, discount) and **no tax line**, because an order does not store a tax breakdown. If the business is GST-registered and must issue tax invoices, that needs a decision with your accountant (tax-inclusive prices or not, which rate) and a change to what an order stores. Do not launch with the receipt called a tax invoice.
+- [ ] **Product photos.** Add up to 4 image URLs to each product's `images` field in Firestore. Without them the site shows "Photo coming soon". The gallery switches between photos when there is more than one.
+- [ ] **Nutrition and packaging (optional).** Add `calories` (a whole number, kcal per box), `nutritionNote` (for example "Per Regular box") and `packaging` (short text) to a product to show them on its page. **Only add figures you have measured or can source.** A product without `calories` simply has no Nutrition section; the site never makes a number up.
+- [ ] **Categories.** The home page tabs are All, Fresh Boxes, Fitness Packs, Ramadan Specials and Combos. They match a product's `category` field (`Fresh`, `Fitness`, `Ramadan`, `Combos`). A tab with no products says so. Products in any other category (like `Seasonal`) appear under All only.
+
 ---
 
 ## 9. Rehearsal in test mode
@@ -314,6 +326,9 @@ Do this with `RAZORPAY_MODE=test` and your `rzp_test_` key, against the real pro
 - [ ] **Excel:** `orders/orders.xlsx` has one row per order, and columns P to R follow each status change. **Download orders sheet** saves a file that opens in Excel.
 - [ ] **Logs are quiet:** Firebase console → Functions → Logs. Filter by severity `ERROR`. There are none you do not understand. (A failed Excel copy logs an error with a hint and never affects the order.)
 - [ ] **Browser console** (section 5.4): no unexpected CSP reports. Enforce the policy if you chose to.
+- [ ] **Storefront, end to end** (the new screens were built and checked by tests and a production build, **but nobody has clicked through them in a browser yet**, so do it now): home page (flip Everyday Fresh / Ramadan Special, switch category tabs, add a box from a card with the size chips) → a product page (photos, size and price, quantity stops at stock, pincode estimate) → cart → **checkout**: type a pincode in each zone (the fee shows at once: free or ₹30), type one outside the area (a red "Outside delivery area" box, Pay stays off), apply a good promo code (the discount appears) and a bad one (a clear message), pick a tip, and check the total shown on the **Pay** button is the amount Razorpay asks for.
+- [ ] **Account page:** after an order, `/account` lists it, newest first; **Reorder** puts the same boxes in the cart; and the **Firestore index is Enabled** (section 3.5).
+- [ ] **Receipt:** on `/orders/<id>` press **View receipt**, then **Print / Save as PDF**. The preview shows only the receipt (no header, no buttons), with a masked payment reference. Check the printed total.
 - [ ] **Phone check:** the whole flow works on a real phone on mobile data, not just your laptop.
 - [ ] **Delete the test orders** from Firestore so the real orders and the Excel sheet start clean (delete the `orders/…`, matching `excelSync/…`, `checkouts/…` and `paymentEvents/…` documents, and delete `orders/orders.xlsx` from the bucket: the next real order creates a fresh one).
 
@@ -368,6 +383,8 @@ These are true of the code today. None blocks launch, but each is a decision you
 - **Refunds are manual.** `processRefund` only *records* that a refund was made. Money is returned by a person, in the Razorpay dashboard. There is no automatic refund and no check that one happened.
 - **Staff and customers are anonymous sessions.** There is no phone or email login. A customer who clears their browser data loses access to their orders, including the tracking link, because both are tied to that browser's session. A staff member who does so must be granted staff again (section 8.2). "Customer" in Excel shows `Guest` and the phone column is blank for the same reason.
 - **No App Check.** Anyone can create anonymous accounts and carts against your project. The server re-prices and re-checks everything and the rules block direct writes, so the exposure is nuisance and cost, not data or money. Add [App Check](https://firebase.google.com/docs/app-check) when you have steady traffic.
+- **The price preview has no rate limit.** `previewCheckout` (the checkout page's live total and promo check) answers any signed-in visitor, and anonymous accounts are free to create, so someone could try many promo codes. It gives the same answer for a wrong, switched-off or expired code, so it does not reveal which codes exist, and `createCheckout` has had the same exposure. If promo codes are ever worth more than a few percent, add App Check and a per-user limit.
+- **No tax invoice.** Receipts show amounts charged, with no tax breakdown (section 8.3).
 - **No alerting.** Errors are only in the logs. Create a log-based alert (Google Cloud → Logging → Alerts) for severity `ERROR` on the Functions, so a failure reaches your phone instead of waiting for you to look.
 - **The Excel copy is a copy.** If AWS is down, orders still work and the staff **Retry Excel sync** button catches up afterwards ([EXCEL_SYNC.md](../firebase/docs/EXCEL_SYNC.md)). Charts and pivot tables in the live file are lost on the next save; work in a downloaded copy.
 - **One region.** Functions and Firestore are in Mumbai. A regional Google outage stops ordering; there is no failover.

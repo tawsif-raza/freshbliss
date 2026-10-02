@@ -15,6 +15,7 @@ setGlobalOptions({ region: 'asia-south1' });
 initializeApp();
 
 exports.createCheckout = require('./createCheckout').createCheckout;
+exports.previewCheckout = require('./previewCheckout').previewCheckout; // prices a cart for the checkout page, charges nothing
 exports.verifyPayment = require('./verifyPayment').verifyPayment;
 exports.razorpayWebhook = require('./razorpayWebhook').razorpayWebhook;
 exports.updateOrderStatus = require('./updateOrderStatus').updateOrderStatus;

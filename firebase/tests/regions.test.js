@@ -13,6 +13,7 @@ const fromFunctions = createRequire(path.join(__dirname, '..', 'functions', 'pac
 const REGION = 'asia-south1';
 const EXPECTED = [
   'createCheckout',
+  'previewCheckout',
   'verifyPayment',
   'razorpayWebhook',
   'updateOrderStatus',

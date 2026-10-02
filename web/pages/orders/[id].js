@@ -10,6 +10,7 @@ import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import Callout from '@/components/Callout';
+import OrderReceipt from '@/components/OrderReceipt';
 import OrderTimeline from '@/components/OrderTimeline';
 import SummaryRow from '@/components/SummaryRow';
 import { auth, db } from '@/lib/firebaseClient';
@@ -22,12 +23,16 @@ const capitalise = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 // Follows one order in real time.
 //   status: 'loading' | 'ready' | 'missing' | 'error'
 //   live:   true while the data is coming from the server (false = offline/cached)
+const LOADING = Object.freeze({ status: 'loading', order: null, live: false });
+
 function useLiveOrder(orderId) {
-  const [state, setState] = useState({ status: 'loading', order: null, live: false });
+  // Every answer is stored with the order id it is for, so when the page moves to another order the old
+  // answer is simply not used (it shows "loading" until the new one arrives), with no reset step.
+  const [answer, setAnswer] = useState({ forId: null, ...LOADING });
 
   useEffect(() => {
     if (!orderId) return undefined;
-    setState({ status: 'loading', order: null, live: false });
+    const setState = (next) => setAnswer({ forId: orderId, ...next });
 
     let stopOrder = () => {};
 
@@ -65,7 +70,7 @@ function useLiveOrder(orderId) {
     };
   }, [orderId]);
 
-  return state;
+  return answer.forId === orderId ? answer : LOADING;
 }
 
 // ---------- pieces ----------
@@ -171,6 +176,12 @@ export default function OrderTrackingPage() {
   const orderId = router.isReady && typeof router.query.id === 'string' ? router.query.id : null;
   const { status, order, live } = useLiveOrder(orderId);
 
+  // The printable receipt. It opens by itself when the address ends in ?receipt=1 (the links from the
+  // confirmation screen and the account page), or when the customer presses the button.
+  //   'auto'   follow the address    'open'  the customer asked    'closed'  the customer closed it
+  const [receipt, setReceipt] = useState('auto');
+  const receiptOpen = status === 'ready' && (receipt === 'open' || (receipt === 'auto' && router.isReady && router.query.receipt === '1'));
+
   const head = (
     <Head>
       <title>Track your order | FreshBliss</title>
@@ -227,7 +238,8 @@ export default function OrderTrackingPage() {
   return (
     <MotionConfig reducedMotion="user">
       {head}
-      <div className="fb-container py-14.5">
+      {/* Left out of the printed receipt (see styles/globals.css). */}
+      <div className="fb-container fb-no-print py-14.5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-label text-gold">
             Order <span className="text-code normal-case tracking-normal">{order.id}</span>
@@ -277,12 +289,21 @@ export default function OrderTrackingPage() {
           <OrderSummary order={order} />
         </div>
 
-        <div className="mt-8">
+        <div className="mt-8 flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => setReceipt('open')}
+            className="min-h-11 rounded-pill bg-gold-bright px-6 text-nav-link text-on-gold hover:brightness-95"
+          >
+            View receipt
+          </button>
           <Link href="/products" className="inline-grid min-h-11 place-items-center rounded-pill border border-brand px-6 text-nav-link text-brand-text hover:bg-surface-cream">
             Continue shopping
           </Link>
         </div>
       </div>
+
+      <OrderReceipt order={order} open={receiptOpen} onClose={() => setReceipt('closed')} />
     </MotionConfig>
   );
 }

@@ -14,7 +14,7 @@ export default function App({ Component, pageProps }) {
           {/* Skip link: first thing a keyboard user tabs to. */}
           <a
             href="#fbs-main"
-            className="sr-only rounded-pill bg-brand px-4 py-2 text-nav-link text-on-brand focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50"
+            className="fb-no-print sr-only rounded-pill bg-brand px-4 py-2 text-nav-link text-on-brand focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50"
           >
             Skip to content
           </a>

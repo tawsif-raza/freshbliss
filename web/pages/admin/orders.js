@@ -45,7 +45,6 @@ function useLiveOrders(enabled, makeQuery, sorter) {
 
   useEffect(() => {
     if (!enabled) return undefined;
-    setResult({ docs: [], state: 'loading' });
     const stop = onSnapshot(
       makeQuery(),
       (snap) => setResult({ docs: snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort(sorter), state: 'ready' }),
@@ -120,8 +119,23 @@ export default function AdminOrdersPage() {
     }
   }
 
+  // Ask once, when the page opens. The answer arrives later, so setting state there is fine.
   useEffect(() => {
-    checkAccess();
+    let alive = true;
+    ensureSignedIn()
+      .then(async (user) => {
+        const { claims } = await user.getIdTokenResult(false);
+        if (!alive) return;
+        setUid(user.uid);
+        setAccess(claims.staff === true ? 'staff' : 'denied');
+      })
+      .catch((err) => {
+        console.error('Could not check staff access:', err);
+        if (alive) setAccess('error');
+      });
+    return () => {
+      alive = false;
+    };
   }, []);
 
   // "Check again": used after someone has granted this account the staff role.
@@ -223,7 +237,7 @@ export default function AdminOrdersPage() {
                   This account still does not have the staff role.
                 </p>
               )}
-              <p className="mt-3 text-small text-ink-muted">After you are given the role, press "Check again".</p>
+              <p className="mt-3 text-small text-ink-muted">After you are given the role, press &quot;Check again&quot;.</p>
             </section>
 
             {usingEmulators && (

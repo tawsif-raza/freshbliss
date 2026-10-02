@@ -6,6 +6,7 @@
 //   onRemove    () => void
 //   locked      true while a payment is in progress (nothing may change then)
 
+import Image from 'next/image';
 import { useId } from 'react';
 
 function StepIcon({ plus }) {
@@ -38,7 +39,7 @@ export default function CartLineItem({ item, maxQty, onChangeQty, onRemove, lock
     <li className="flex gap-4 rounded-xl border border-line bg-surface-card p-4 shadow-card">
       <div className="size-24 shrink-0 overflow-hidden rounded-md bg-surface-cream">
         {image ? (
-          <img src={image} alt={name} loading="lazy" className="h-full w-full object-cover" />
+          <Image src={image} alt={name} width={96} height={96} unoptimized className="h-full w-full object-cover" />
         ) : (
           <div className="grid h-full place-items-center px-2 text-center text-small text-ink-muted">No photo yet</div>
         )}

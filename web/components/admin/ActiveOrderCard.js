@@ -202,7 +202,7 @@ export default function ActiveOrderCard({ order }) {
               </span>
             </span>
           </label>
-          <p className="text-small text-ink-muted">The customer sees the order as cancelled with a refund pending. You then process the refund under "Needs refund".</p>
+          <p className="text-small text-ink-muted">The customer sees the order as cancelled with a refund pending. You then process the refund under &quot;Needs refund&quot;.</p>
         </ActionPanel>
       )}
     </li>

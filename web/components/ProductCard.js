@@ -1,15 +1,21 @@
-// One fruit box in the product grid.
-// Presentational: it gets everything through props, so it works the same with
-// the cart context, a test, or a different page.
+// One fruit box in a product grid.
+// Presentational: it gets everything through props, so it works the same with the cart context, a
+// test, or a different page.
 //
 //   product           a normalised product from useProducts()
 //   wishlisted        is the heart on?
 //   onToggleWishlist  (productId) => void
-//   onAdd             (product) => { ok, message }   (CartContext.addToCart)
+//   onAdd             (product, { size }) => { ok, message }   (CartContext.addToCart)
+//
+// Shows a live stock badge, a size chip row (when there is more than one size) and the price for the
+// chosen size. The photo and the name open the product page.
 
+import Image from 'next/image';
+import Link from 'next/link';
 import { useEffect, useId, useState } from 'react';
-
-const LOW_STOCK_AT = 5; // "Only N left" at 5 or fewer, per the design system
+import SizeSelector from '@/components/SizeSelector';
+import StockBadge from '@/components/StockBadge';
+import { unitPrice } from '@/lib/pricing';
 
 function HeartIcon({ filled }) {
   // Outline heart, 1.75px stroke (Lucide-style). The brand has not supplied icons yet.
@@ -31,10 +37,13 @@ function HeartIcon({ filled }) {
 }
 
 export default function ProductCard({ product, wishlisted = false, onToggleWishlist, onAdd }) {
-  const { id, name, description, price, badge, stock, images } = product;
+  const { id, name, description, badge, stock, images, sizes } = product;
   const soldOut = stock <= 0;
-  const lowStock = !soldOut && stock <= LOW_STOCK_AT;
   const image = images[0];
+  const href = `/products/${id}`;
+
+  const [size, setSize] = useState(sizes[0].id);
+  const price = unitPrice(product, size) ?? product.price;
 
   const titleId = useId();
   const stateId = useId();
@@ -48,7 +57,7 @@ export default function ProductCard({ product, wishlisted = false, onToggleWishl
   }, [feedback]);
 
   function handleAdd() {
-    const result = onAdd?.(product);
+    const result = onAdd?.(product, { size });
     if (result) setFeedback(result);
   }
 
@@ -59,13 +68,15 @@ export default function ProductCard({ product, wishlisted = false, onToggleWishl
         soldOut ? '' : 'motion-safe:hover:-translate-y-1'
       }`}
     >
-      {/* Photo */}
+      {/* Photo (opens the product page) */}
       <div className="relative aspect-[4/3] bg-surface-cream">
-        {image ? (
-          <img src={image} alt={name} loading="lazy" className="h-full w-full object-cover" />
-        ) : (
-          <div className="grid h-full place-items-center text-small text-ink-muted">Photo coming soon</div>
-        )}
+        <Link href={href} tabIndex={-1} aria-hidden="true" className="absolute inset-0 block">
+          {image ? (
+            <Image src={image} alt="" fill sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw" unoptimized className="object-cover" />
+          ) : (
+            <span className="grid h-full place-items-center text-small text-ink-muted">Photo coming soon</span>
+          )}
+        </Link>
 
         {badge && (
           <span className="absolute top-3 left-3 z-10 rounded-pill bg-gold-bright px-2.5 py-1 text-[11px] leading-none font-bold text-on-gold">
@@ -87,9 +98,7 @@ export default function ProductCard({ product, wishlisted = false, onToggleWishl
         {/* Out of stock: covers the photo but lets clicks through to the heart. */}
         {soldOut && (
           <div className="pointer-events-none absolute inset-0 z-[5] grid place-items-center bg-surface-card/90">
-            <span className="rounded-pill border border-danger bg-surface-danger px-4 py-2 text-nav-link text-danger">
-              Out of stock
-            </span>
+            <span className="rounded-pill border border-danger bg-surface-danger px-4 py-2 text-nav-link text-danger">Out of stock</span>
           </div>
         )}
       </div>
@@ -97,10 +106,16 @@ export default function ProductCard({ product, wishlisted = false, onToggleWishl
       {/* Details */}
       <div className="flex flex-1 flex-col gap-2 px-4.5 pt-4 pb-4.5">
         <h3 id={titleId} className="text-heading-3 text-ink">
-          {name}
+          <Link href={href} className="hover:underline">
+            {name}
+          </Link>
         </h3>
         <p className="text-small text-ink-muted">{description}</p>
-        {lowStock && <p className="text-small font-bold text-danger">Only {stock} left</p>}
+        <div>
+          <StockBadge stock={stock} />
+        </div>
+
+        {sizes.length > 1 && <SizeSelector sizes={sizes} basePrice={product.price} value={size} onChange={setSize} disabled={soldOut} />}
 
         <div className="mt-auto flex items-center justify-between gap-2 pt-2">
           <p className={`text-kpi ${soldOut ? 'text-ink-muted' : 'text-brand-text'}`}>₹{price}</p>
@@ -116,12 +131,8 @@ export default function ProductCard({ product, wishlisted = false, onToggleWishl
         </div>
 
         {/* Always rendered so screen readers announce changes (live region). */}
-        <p
-          id={stateId}
-          role="status"
-          className={`min-h-[1.5em] text-small ${feedback && !feedback.ok ? 'text-danger' : 'text-brand-text'}`}
-        >
-          {soldOut ? 'Out of stock' : (feedback?.message ?? '')}
+        <p id={stateId} role="status" className={`min-h-[1.5em] text-small ${feedback && !feedback.ok ? 'text-danger' : 'text-brand-text'}`}>
+          {feedback?.message ?? ''}
         </p>
       </div>
     </article>
