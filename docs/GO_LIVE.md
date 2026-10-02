@@ -4,7 +4,7 @@ Deploying the Firebase backend (`firebase/`) and the Vercel storefront (`web/`) 
 
 Commands are for the project root unless a `cd` says otherwise. PowerShell and bash differ only where marked.
 
-> **What has been tested, and what has not.** Everything below was checked against this repository: the unit tests (69), the preflight script, the Razorpay mode guard, and `web/vercel.json` against Vercel's published schema. **Nothing has been run against a real Firebase, Razorpay, AWS or Vercel account.** The first real deployment is the first real test, which is why section 9 is a rehearsal in *test* mode before any real money moves.
+> **What has been tested, and what has not.** Everything below was checked against this repository: the unit tests (83), the preflight script, the Razorpay mode guard, and `web/vercel.json` against Vercel's published schema. **Nothing has been run against a real Firebase, Razorpay, AWS or Vercel account.** The first real deployment is the first real test, which is why section 9 is a rehearsal in *test* mode before any real money moves.
 
 ## Contents
 
@@ -132,7 +132,7 @@ npm run deploy:functions    # Cloud Functions only
 
 - [ ] **Rules deployed.** Console → Firestore → Rules shows today's date. Check that a signed-out visitor cannot read anything private: in the console's Rules playground, a read of `orders/anything` unauthenticated is **denied**.
 - [ ] **Indexes deployed.** Nothing to build: every query in the app is a single-field or equality-only query, which Firestore serves without a composite index, so `firestore.indexes.json` is correctly empty. If you ever add a query with a range plus a sort on different fields, you will need an entry in that file *before* the code that needs it, because the emulator does not enforce indexes and production does.
-- [ ] **Functions deployed.** The terminal ends with `Deploy complete!`. Console → Functions lists, all in `asia-south1`: `createCheckout`, `verifyPayment`, `razorpayWebhook`, `updateOrderStatus`, `cancelOrder`, `processRefund`, `excelSync`, `excelSyncUpdate`, `retryExcelSync`, `getOrdersDownloadUrl`. **`devGrantStaff` must NOT be there** (it is emulator-only).
+- [ ] **Functions deployed.** The terminal ends with `Deploy complete!`. Run `firebase functions:list --project production`: every row must show location **`asia-south1`** (Mumbai), none `us-central1`. (The code guarantees this twice: each function names the region, and `functions/index.js` sets it as the default for any function added later. `tests/regions.test.js` fails if one ever drifts.) Console → Functions lists: `createCheckout`, `verifyPayment`, `razorpayWebhook`, `updateOrderStatus`, `cancelOrder`, `processRefund`, `excelSync`, `excelSyncUpdate`, `retryExcelSync`, `getOrdersDownloadUrl`. **`devGrantStaff` must NOT be there** (it is emulator-only).
 - [ ] **Copy the webhook URL** printed as `Function URL (razorpayWebhook(asia-south1))`, or from Console → Functions → `razorpayWebhook` → Trigger. You need it in section 6.
 - [ ] If the CLI asks about **cleanup policy for container images**, answer yes (for example keep 1 day) so old builds do not accrue storage cost.
 

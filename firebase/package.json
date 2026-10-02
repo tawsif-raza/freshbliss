@@ -9,7 +9,7 @@
     "test:rules": "firebase emulators:exec --only firestore --project demo-freshbliss \"node --test tests/rules.test.js\"",
     "test:payments": "firebase emulators:exec --only firestore --project demo-freshbliss \"node --test tests/payments.test.js\"",
     "test:orders": "firebase emulators:exec --only firestore --project demo-freshbliss \"node --test tests/orderStatus.test.js tests/orderActions.test.js\"",
-    "test:unit": "node --test tests/s3Workbook.test.js tests/downloadUrl.test.js tests/preflight.test.js",
+    "test:unit": "node --test tests/s3Workbook.test.js tests/downloadUrl.test.js tests/preflight.test.js tests/regions.test.js",
     "test:excel": "firebase emulators:exec --only firestore --project demo-freshbliss \"node --test tests/excelSync.test.js tests/excelSyncUpdate.test.js\"",
     "test": "npm run test:rules && npm run test:payments && npm run test:orders && npm run test:unit && npm run test:excel",
     "preflight": "node scripts/preflight.js",

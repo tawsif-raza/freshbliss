@@ -1,6 +1,15 @@
 'use strict';
 
 const { initializeApp } = require('firebase-admin/app');
+const { setGlobalOptions } = require('firebase-functions/v2');
+
+// Every function runs in Mumbai (asia-south1), next to the Firestore database and the shoppers in
+// Bengaluru. Each function also names its region itself; this default is the safety net so a
+// function added later cannot quietly deploy to the default region (us-central1), where it would
+// be slow and, for Firestore triggers, would not match the database's location.
+// tests/regions.test.js fails if any function is anywhere else.
+// (It must run before the functions below are created, so it stays above them.)
+setGlobalOptions({ region: 'asia-south1' });
 
 // Start the Admin SDK once. Functions use it to write data that clients cannot.
 initializeApp();
