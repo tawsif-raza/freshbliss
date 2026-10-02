@@ -153,19 +153,35 @@ function ProductDetail({ product, products, status }) {
           </div>
 
           <div className="mt-4 flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={handleAdd}
-              disabled={room === 0}
-              className="min-h-12 rounded-pill bg-gold-bright px-7 text-nav-link text-on-gold motion-safe:transition-[filter] hover:brightness-95 disabled:cursor-not-allowed disabled:bg-surface-sunken disabled:text-ink-muted disabled:hover:brightness-100"
-            >
-              {soldOut ? 'Out of stock' : room === 0 ? 'Cannot add more' : `Add to Cart · ₹${price * quantity}`}
-            </button>
+            {/* The buy bar. On a phone it is fixed to the bottom of the screen (frosted glass), so Add to Cart is
+                always one tap away however far the visitor has scrolled; from tablet width up it is an ordinary
+                button in the page. (fb-sticky-cta makes the footer leave room for it: styles/globals.css.) */}
+            <div className="fb-no-print fb-sticky-cta fixed bottom-0 left-0 z-50 w-full border-t border-line/70 bg-surface-card/90 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-md md:relative md:z-auto md:w-auto md:border-none md:bg-transparent md:p-0 md:backdrop-blur-none">
+              <div className="mx-auto flex max-w-xl items-center gap-4 md:mx-0 md:max-w-none">
+                <div className="shrink-0 md:hidden" aria-live="polite">
+                  <p className="text-small text-ink-muted">{quantity > 1 ? `Total for ${quantity}` : 'Price'}</p>
+                  <p className="font-serif text-[26px] leading-none font-bold text-brand-text">₹{price * Math.max(1, quantity)}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAdd}
+                  disabled={room === 0}
+                  className="min-h-12 flex-1 rounded-full bg-gold-bright px-7 text-nav-link text-on-gold motion-safe:transition-all motion-safe:duration-200 hover:brightness-95 motion-safe:md:hover:scale-[1.03] disabled:cursor-not-allowed disabled:bg-surface-sunken disabled:text-ink-muted disabled:hover:brightness-100 md:flex-none"
+                >
+                  {soldOut ? 'Out of stock' : room === 0 ? 'Cannot add more' : (
+                    <>
+                      Add to Cart<span className="hidden md:inline"> · ₹{price * quantity}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
             <button
               type="button"
               onClick={() => wishlist.toggleWishlist(product.id)}
               aria-pressed={wishlisted}
-              className="min-h-12 rounded-pill border border-green-accent px-5 text-nav-link text-brand-text hover:bg-surface-cream aria-pressed:bg-brand aria-pressed:text-on-brand"
+              className="min-h-12 rounded-full border border-green-accent px-5 text-nav-link text-brand-text hover:bg-surface-cream aria-pressed:bg-brand aria-pressed:text-on-brand"
             >
               {wishlisted ? 'Saved to wishlist' : 'Save to wishlist'}
             </button>

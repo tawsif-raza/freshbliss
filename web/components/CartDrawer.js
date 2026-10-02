@@ -2,6 +2,9 @@
 // header (or "View cart" in a toast), so they can change quantities and head to checkout without ever
 // leaving the page they were on.
 //
+// It is frosted glass like the header (the page colour at 80% over a blurred, dimmed page), with heavily rounded
+// left corners and a wide soft shadow.
+//
 // It is a real <dialog>: the browser traps the keyboard inside it, Esc closes it, the page behind is
 // not reachable by keyboard or screen reader, and focus goes back to the button that opened it. We add
 // the slide animation, the backdrop click, and closing when the visitor navigates to another page.
@@ -118,7 +121,7 @@ export default function CartDrawer() {
           initial={false}
           animate={{ x: isOpen ? 0 : '100%' }}
           transition={{ type: 'tween', ease: 'easeOut', duration: SLIDE_SECONDS }}
-          className="ml-auto flex h-full w-full max-w-md flex-col bg-surface-card text-ink shadow-card"
+          className="ml-auto flex h-full w-full max-w-md flex-col overflow-hidden rounded-l-2xl border-l border-line/60 bg-surface-page/80 text-ink shadow-2xl backdrop-blur-xl"
         >
           <header className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
             <h2 id="cart-drawer-title" className="flex items-center gap-2 text-heading-3 text-ink">

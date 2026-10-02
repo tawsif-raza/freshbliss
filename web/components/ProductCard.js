@@ -7,14 +7,18 @@
 //   onToggleWishlist  (productId) => void
 //   onAdd             (product, { size }) => { ok, message }   (CartContext.addToCart)
 //
-// Shows a live stock badge, a size chip row (when there is more than one size) and the price for the
-// chosen size. The photo and the name open the product page.
+// The look: a cream-white card with a hairline border. On hover it lifts a little and its shadow deepens, and
+// the photo inside zooms slowly while the card keeps its shape (the photo sits in an overflow-hidden frame).
+// A floating gold badge sits on the photo. Shows a live stock badge, a size row (when there is more than one
+// size) and the price for the chosen size. The photo and the name open the product page. The motion stops for
+// visitors who asked their device for less motion.
 
 import Image from 'next/image';
 import Link from 'next/link';
 import { useId, useState } from 'react';
 import SizeSelector from '@/components/SizeSelector';
 import StockBadge from '@/components/StockBadge';
+import { badgeFor } from '@/lib/badges';
 import { unitPrice } from '@/lib/pricing';
 
 function HeartIcon({ filled }) {
@@ -37,9 +41,10 @@ function HeartIcon({ filled }) {
 }
 
 export default function ProductCard({ product, wishlisted = false, onToggleWishlist, onAdd }) {
-  const { id, name, description, badge, stock, images, sizes } = product;
+  const { id, name, description, stock, images, sizes } = product;
   const soldOut = stock <= 0;
   const image = images[0];
+  const badge = badgeFor(product);
   const href = `/products/${id}`;
 
   const [size, setSize] = useState(sizes[0].id);
@@ -54,22 +59,32 @@ export default function ProductCard({ product, wishlisted = false, onToggleWishl
   return (
     <article
       aria-labelledby={titleId}
-      className={`relative flex h-full flex-col overflow-hidden rounded-xl border border-line bg-surface-card shadow-card motion-safe:transition-transform motion-safe:duration-200 ${
-        soldOut ? '' : 'motion-safe:hover:-translate-y-1'
+      className={`group relative flex h-full flex-col overflow-hidden rounded-xl border border-line/60 bg-surface-card shadow-card motion-safe:transition-all motion-safe:duration-300 ${
+        soldOut ? '' : 'motion-safe:hover:-translate-y-1 hover:shadow-xl'
       }`}
     >
-      {/* Photo (opens the product page) */}
-      <div className="relative aspect-[4/3] bg-surface-cream">
+      {/* Photo: a 4:3 frame that clips the zoom, so only the picture grows */}
+      <div className="relative aspect-[4/3] overflow-hidden bg-surface-cream">
         <Link href={href} tabIndex={-1} aria-hidden="true" className="absolute inset-0 block">
           {image ? (
-            <Image src={image} alt="" fill sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw" unoptimized className="object-cover" />
+            <Image
+              src={image}
+              alt=""
+              fill
+              sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+              unoptimized
+              className="object-cover motion-safe:transition-transform motion-safe:duration-500 motion-safe:ease-out motion-safe:group-hover:scale-105"
+            />
           ) : (
             <span className="grid h-full place-items-center text-small text-ink-muted">Photo coming soon</span>
           )}
         </Link>
 
+        {/* A soft fade at the foot of the photo, so the card and the picture meet gently */}
+        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#173f2a]/15 to-transparent" />
+
         {badge && (
-          <span className="absolute top-3 left-3 z-10 rounded-pill bg-gold-bright px-2.5 py-1 text-[11px] leading-none font-bold text-on-gold">
+          <span className="absolute top-3 left-3 z-10 rounded-full bg-gold-bright px-3 py-1.5 text-[11px] leading-none font-bold tracking-[0.08em] text-[#173f2a] uppercase shadow-card">
             {badge}
           </span>
         )}
@@ -80,7 +95,7 @@ export default function ProductCard({ product, wishlisted = false, onToggleWishl
           onClick={() => onToggleWishlist?.(id)}
           aria-pressed={wishlisted}
           aria-label={`Save ${name} to wishlist`}
-          className="absolute top-3 right-3 z-10 grid size-11 place-items-center rounded-full bg-surface-card text-brand-text shadow-card motion-safe:transition-transform motion-safe:hover:scale-105 aria-pressed:bg-brand aria-pressed:text-on-brand"
+          className="absolute top-3 right-3 z-10 grid size-11 place-items-center rounded-full bg-surface-card/90 text-brand-text shadow-card backdrop-blur-sm motion-safe:transition-transform motion-safe:hover:scale-105 aria-pressed:bg-brand aria-pressed:text-on-brand"
         >
           <HeartIcon filled={wishlisted} />
         </button>
@@ -88,14 +103,14 @@ export default function ProductCard({ product, wishlisted = false, onToggleWishl
         {/* Out of stock: covers the photo but lets clicks through to the heart. */}
         {soldOut && (
           <div className="pointer-events-none absolute inset-0 z-[5] grid place-items-center bg-surface-card/90">
-            <span className="rounded-pill border border-danger bg-surface-danger px-4 py-2 text-nav-link text-danger">Out of stock</span>
+            <span className="rounded-full border border-danger bg-surface-danger px-4 py-2 text-nav-link text-danger">Out of stock</span>
           </div>
         )}
       </div>
 
       {/* Details */}
-      <div className="flex flex-1 flex-col gap-2 px-4.5 pt-4 pb-4.5">
-        <h3 id={titleId} className="text-heading-3 text-ink">
+      <div className="flex flex-1 flex-col gap-2 px-5 pt-4 pb-5">
+        <h3 id={titleId} className="text-[21px] leading-snug font-bold text-ink">
           <Link href={href} className="hover:underline">
             {name}
           </Link>
@@ -107,18 +122,17 @@ export default function ProductCard({ product, wishlisted = false, onToggleWishl
 
         {sizes.length > 1 && <SizeSelector sizes={sizes} basePrice={product.price} value={size} onChange={setSize} disabled={soldOut} />}
 
-        <div className="mt-auto flex items-center justify-between gap-2 pt-2">
-          <p className={`text-kpi ${soldOut ? 'text-ink-muted' : 'text-brand-text'}`}>₹{price}</p>
+        <div className="mt-auto flex items-center justify-between gap-2 pt-3">
+          <p className={`font-serif text-[30px] leading-none font-bold ${soldOut ? 'text-ink-muted' : 'text-brand-text'}`}>₹{price}</p>
           <button
             type="button"
             onClick={handleAdd}
             disabled={soldOut}
-            className="min-h-11 rounded-pill bg-gold-bright px-5 text-nav-link text-on-gold motion-safe:transition-[filter] hover:brightness-95 disabled:cursor-not-allowed disabled:bg-surface-sunken disabled:text-ink-muted disabled:hover:brightness-100"
+            className="min-h-11 rounded-full bg-gold-bright px-6 text-nav-link text-on-gold motion-safe:transition-all motion-safe:duration-200 hover:brightness-95 motion-safe:hover:scale-[1.03] disabled:cursor-not-allowed disabled:bg-surface-sunken disabled:text-ink-muted disabled:hover:brightness-100"
           >
             Add to Cart
           </button>
         </div>
-
       </div>
     </article>
   );

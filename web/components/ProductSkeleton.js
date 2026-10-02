@@ -92,8 +92,8 @@ export function ProductDetailSkeleton({ label = 'Loading this fruit box' }) {
           </div>
           <Bone className="h-11 w-40 rounded-pill" /> {/* quantity */}
           <div className="flex gap-3">
-            <Bone className="h-12 w-52 rounded-pill" /> {/* Add to Cart */}
-            <Bone className="h-12 w-40 rounded-pill" /> {/* wishlist */}
+            <Bone className="h-12 w-44 rounded-pill" /> {/* Add to Cart */}
+            <Bone className="h-12 w-32 rounded-pill" /> {/* wishlist (the two together fit a 390px phone) */}
           </div>
           <Bone className="mt-2 h-36 w-full rounded-xl" /> {/* delivery card */}
         </div>

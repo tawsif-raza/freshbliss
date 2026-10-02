@@ -1,17 +1,44 @@
 @import "tailwindcss";
 @import "./tokens.css";
 
-/* Inter is loaded by next/font (see pages/_app.js); the rest of the stack is the
-   design system's fallback. tokens.css provides every other colour, radius,
-   shadow and text style. */
+/* The brand typefaces are loaded by next/font (see pages/_app.js). Playfair Display is font-serif (headings)
+   and Plus Jakarta Sans is font-sans (everything else). tokens.css provides every other colour, radius,
+   shadow and text style. This project uses Tailwind v4, which has no tailwind.config.js: the theme is set in
+   CSS, here.
+
+   tokens.css clears Tailwind's default radii and shadows, so the larger ones the premium look needs are
+   defined here, with the brand's deep green in the shadows rather than neutral grey. */
 @theme inline {
-  --font-sans: var(--font-inter), Inter, "Segoe UI", Arial, sans-serif;
+  --font-serif: var(--font-playfair), "Playfair Display", Georgia, serif;
+  --font-sans: var(--font-jakarta), "Plus Jakarta Sans", "Segoe UI", Arial, sans-serif;
+
+  --radius-2xl: 24px;
+  --radius-3xl: 32px;
+
+  --shadow-xl: 0 22px 44px -14px rgba(23, 63, 42, 0.22);
+  --shadow-2xl: 0 32px 80px -20px rgba(23, 63, 42, 0.38);
 }
 
 @layer base {
   body {
     background: var(--fb-surface-page);
     color: var(--fb-ink);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Every heading is set in the serif, wherever it appears (home, product pages, the trust story...). The text
+     styles in tokens.css pick a size and weight, and the sans text-heading-3 would otherwise win, so this is
+     !important on purpose. A button INSIDE a heading (an accordion title) inherits it. Buttons and links that
+     merely use the heading text size, like Pay, are not headings and stay in the sans. */
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-serif) !important;
+    letter-spacing: -0.005em;
+  }
+  :is(h1, h2, h3) > button {
+    font-family: inherit !important;
   }
 
   /* Focus: 2px solid focus-ring with a 2px offset, on every interactive element. */
@@ -75,5 +102,13 @@
 
   dialog.fb-receipt-dialog::backdrop {
     background: transparent !important;
+  }
+}
+
+/* On a phone the product page has a buy bar fixed to the bottom of the screen (class fb-sticky-cta). Leave room
+   under the footer so the bar never covers its last line. */
+@media (max-width: 767px) {
+  body:has(.fb-sticky-cta) footer {
+    padding-bottom: 6rem;
   }
 }

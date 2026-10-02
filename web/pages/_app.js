@@ -1,5 +1,5 @@
 import '@/styles/globals.css';
-import { Inter } from 'next/font/google';
+import { Playfair_Display, Plus_Jakarta_Sans } from 'next/font/google';
 import CartDrawer from '@/components/CartDrawer';
 import Footer from '@/components/Footer';
 import SiteHeader from '@/components/SiteHeader';
@@ -8,12 +8,23 @@ import { CartDrawerProvider } from '@/context/CartDrawerContext';
 import { CartProvider } from '@/context/CartContext';
 import { WishlistProvider } from '@/context/WishlistContext';
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
+// The two brand typefaces. next/font downloads them at build time and serves them from this site, so there is no
+// request to Google when a visitor loads a page (faster, no flash of unstyled text, and no change needed to the
+// Content Security Policy). Playfair Display is for headings, Plus Jakarta Sans for everything else; styles/globals.css
+// makes them the font-serif and font-sans families.
+const playfair = Playfair_Display({ subsets: ['latin'], variable: '--font-playfair', display: 'swap' });
+const jakarta = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-jakarta', display: 'swap' });
+
+// next/font puts its font-family on the wrapper below, but the theme's font-serif and font-sans are declared on
+// :root (styles/globals.css), where that variable would not exist. So the two names are also declared on :root,
+// here, and every use of them (the heading rule, the display text styles) resolves.
+const fontRoot = `:root { --font-playfair: ${playfair.style.fontFamily}; --font-jakarta: ${jakarta.style.fontFamily}; }`;
 
 // Order matters: the cart shows toasts and opens the slide-out cart, so both of those wrap it.
 export default function App({ Component, pageProps }) {
   return (
-    <div className={`${inter.variable} flex min-h-screen flex-col bg-surface-page font-sans text-ink`}>
+    <div className={`${playfair.variable} ${jakarta.variable} flex min-h-screen flex-col bg-surface-page font-sans text-ink`}>
+      <style jsx global>{fontRoot}</style>
       <ToastProvider>
         <CartDrawerProvider>
           <CartProvider>
