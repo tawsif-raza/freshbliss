@@ -1,0 +1,12 @@
+{
+  "name": "freshbliss",
+  "private": true,
+  "description": "FreshBliss: Firebase backend (firebase/) and Next.js storefront (web/). This file only holds the one-command local startup.",
+  "scripts": {
+    "dev": "concurrently --names backend,seed,web --prefix-colors cyan,yellow,magenta \"cd firebase && npm run emulators\" \"wait-on tcp:127.0.0.1:8080 && cd firebase && npm run seed\" \"cd web && npm run dev\""
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5",
+    "wait-on": "^9.5.1"
+  }
+}
