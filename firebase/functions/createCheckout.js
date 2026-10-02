@@ -21,10 +21,16 @@ const { logger } = require('firebase-functions');
 const { defineSecret, defineString } = require('firebase-functions/params');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const Razorpay = require('razorpay');
+const { razorpayKeyProblem } = require('./shared/razorpayMode');
 
-// Test key id is a normal param; the key secret is a secret.
+// The key id is a normal param (it is public: the browser needs it); the key secret is a secret.
 // Local: functions/.env.local and functions/.secret.local (both git-ignored).
+// Deployed: functions/.env.<project> and Secret Manager (see docs/GO_LIVE.md).
+//
+// RAZORPAY_MODE says whether this deployment takes pretend money ("test", the default) or real
+// money ("live"). The key id must belong to that mode (see shared/razorpayMode.js).
 const RAZORPAY_KEY_ID = defineString('RAZORPAY_KEY_ID');
+const RAZORPAY_MODE = defineString('RAZORPAY_MODE', { default: 'test' });
 const RAZORPAY_KEY_SECRET = defineSecret('RAZORPAY_KEY_SECRET');
 
 const MAX_LINES = 30;
@@ -217,10 +223,12 @@ exports.createCheckout = onCall(
     const address = readAddress(request.data);
     const db = getFirestore();
 
-    // Safety guard: refuse to run with anything but a Razorpay TEST key.
+    // Safety guard: the key must belong to the mode this deployment was told to run in, so a
+    // live key can never be used by accident (and a test key can never reach production unnoticed).
     const keyId = RAZORPAY_KEY_ID.value();
-    if (!keyId.startsWith('rzp_test_')) {
-      logger.error('RAZORPAY_KEY_ID is not a test key; refusing to create an order.');
+    const keyProblem = razorpayKeyProblem(keyId, RAZORPAY_MODE.value().trim());
+    if (keyProblem) {
+      logger.error(`${keyProblem} Refusing to create an order.`);
       throw fail('internal', 'Payments are not available right now.');
     }
 

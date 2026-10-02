@@ -13,6 +13,18 @@ npm test                   # all automated tests (needs Java for the emulator)
 
 Settings live in `functions/.env.local` (not secret) and `functions/.secret.local` (secret). Both are git-ignored. `functions/.env.example` lists every setting. Only the Razorpay key is needed to start; the Excel (AWS) settings can stay empty.
 
+## Deploying to production
+
+The full launch checklist (Firebase, Vercel, Razorpay, AWS, rehearsal, rollback) is [../docs/GO_LIVE.md](../docs/GO_LIVE.md). The short version, from this folder, after `firebase use --add` has created a `production` alias and the settings file and secrets exist:
+
+```
+npm run preflight            # refuses to continue on a wrong or half-finished setup
+npm run deploy:rules         # Firestore rules and indexes
+npm run deploy:functions     # Cloud Functions
+```
+
+`npm run deploy:production` runs all three in that order. Razorpay stays in **test mode** until `RAZORPAY_MODE=live` is set together with a `rzp_live_` key (a mismatch is refused).
+
 ## Functions
 
 | Function | Kind | Who or what calls it | What it does |
@@ -51,5 +63,5 @@ The short version of the retry process: if AWS was unreachable, some rows or sta
 | `npm run test:rules` | Security rules: who can read or write what |
 | `npm run test:payments` | Payment confirmation, the webhook, stock races |
 | `npm run test:orders` | Moving, cancelling and refunding orders |
-| `npm run test:workbook` | The S3 workbook layer: version-checked saves, rushes of orders, retries, damaged files (no emulator or Java needed) |
+| `npm run test:unit` | The S3 workbook layer, the download link, the deployment preflight and the Razorpay mode guard (no emulator or Java needed) |
 | `npm run test:excel` | Excel rows, updates, retries, formula protection (with the Firestore emulator) |

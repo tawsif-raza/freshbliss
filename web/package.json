@@ -1,6 +1,7 @@
 {
   "name": "freshbliss-web",
   "private": true,
+  "engines": { "node": ">=22" },
   "description": "FreshBliss storefront (Next.js, Pages router, Tailwind v4).",
   "scripts": {
     "tokens": "node scripts/build-tokens.mjs",
