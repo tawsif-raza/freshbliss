@@ -9,9 +9,11 @@
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useState } from 'react';
 import Callout from '@/components/Callout';
+import { useToast } from '@/components/ToastProvider';
+import { OrderListSkeleton } from '@/components/CartSkeleton';
 import { useCart } from '@/context/CartContext';
+import { useCartDrawer } from '@/context/CartDrawerContext';
 import { useProducts } from '@/lib/catalog';
 import { useMyOrders } from '@/lib/orders';
 import { statusLabel } from '@/lib/orderStatus';
@@ -29,7 +31,7 @@ function statusText(order) {
   return statusLabel(order.status);
 }
 
-function OrderCard({ order, onReorder, reorderReady, message }) {
+function OrderCard({ order, onReorder, reorderReady }) {
   const placed = formatOrderDate(order.createdAt?.toDate?.());
   const items = Array.isArray(order.items) ? order.items : [];
   const total = order.pricing?.total;
@@ -85,16 +87,6 @@ function OrderCard({ order, onReorder, reorderReady, message }) {
         </div>
       </div>
 
-      {message && (
-        <p role="status" className={`mt-3 text-small ${message.ok ? 'text-brand-text' : 'text-danger'}`}>
-          {message.text}{' '}
-          {message.ok && (
-            <Link href="/cart" className="font-bold underline">
-              Go to cart
-            </Link>
-          )}
-        </p>
-      )}
     </li>
   );
 }
@@ -104,10 +96,12 @@ export default function AccountPage() {
   const { status, orders } = useMyOrders();
   const { products, status: catalogueStatus } = useProducts();
   const { addToCart } = useCart();
-  const [messages, setMessages] = useState({}); // orderId -> { ok, text }
+  const toast = useToast();
+  const drawer = useCartDrawer();
 
   // Put an old order's boxes back in the cart, as far as they can still be bought. Each box goes through
-  // the cart's own rules (stock, per-box limits), so nothing unavailable can slip in.
+  // the cart's own rules (stock, per-box limits), so nothing unavailable can slip in. The boxes are added
+  // quietly and ONE toast sums it up, with a button to open the cart.
   function reorder(order) {
     const lines = linesFromOrder(order);
     let added = 0;
@@ -119,20 +113,18 @@ export default function AccountPage() {
         notes.push(`${name} is no longer available.`);
         continue;
       }
-      const result = addToCart(product, { size: line.size, qty: line.qty });
+      const result = addToCart(product, { size: line.size, qty: line.qty, silent: true });
       if (result.ok) added += 1;
       else notes.push(`${name}: ${result.message}`);
     }
 
     if (added === 0) {
-      setMessages((m) => ({ ...m, [order.id]: { ok: false, text: notes.join(' ') || 'Nothing from this order could be added.' } }));
+      toast.error(notes.join(' ') || 'Nothing from this order could be added.');
       return;
     }
-    if (notes.length === 0) {
-      router.push('/cart'); // everything went in: take them to the cart
-      return;
-    }
-    setMessages((m) => ({ ...m, [order.id]: { ok: true, text: `Added ${added} to your cart. ${notes.join(' ')}` } }));
+    toast.success(notes.length === 0 ? `Order ${shortOrderNumber(order.id)} is back in your cart.` : `Added ${added} to your cart. ${notes.join(' ')}`, {
+      action: { label: 'View cart', onClick: drawer.open },
+    });
   }
 
   return (
@@ -147,14 +139,7 @@ export default function AccountPage() {
         <p className="mt-2 max-w-xl text-small text-ink-muted">Orders placed from this browser. Sign-in is coming; until then, clearing your browser data hides them.</p>
 
         <div className="mt-8.5">
-          {status === 'loading' && (
-            <>
-              <div aria-hidden="true" className="h-40 rounded-xl border border-line bg-surface-card shadow-card motion-safe:animate-pulse" />
-              <p role="status" className="sr-only">
-                Loading your orders
-              </p>
-            </>
-          )}
+          {status === 'loading' && <OrderListSkeleton />}
 
           {status === 'error' && (
             <Callout tone="danger" title="We could not load your orders.">
@@ -184,7 +169,7 @@ export default function AccountPage() {
               </p>
               <ul className="flex flex-col gap-4.5">
                 {orders.map((order) => (
-                  <OrderCard key={order.id} order={order} onReorder={reorder} reorderReady={catalogueStatus === 'ready'} message={messages[order.id]} />
+                  <OrderCard key={order.id} order={order} onReorder={reorder} reorderReady={catalogueStatus === 'ready'} />
                 ))}
               </ul>
             </>

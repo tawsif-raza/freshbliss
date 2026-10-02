@@ -1,5 +1,11 @@
-// Who the receipt says it is from. Fill in what applies to the business; anything left empty is simply
-// not printed.
+// Who the shop is. Used on the receipt, in the footer and on the privacy page. Fill in what applies;
+// anything left empty is simply not shown (nothing is made up).
+//
+// REVIEW BEFORE LAUNCH (docs/GO_LIVE.md, section 8.3):
+//   hours    shown in the footer when filled in, for example "Every day, 9 am to 9 pm". Left empty, the
+//            footer shows no opening hours rather than guessing them.
+//   contact  a phone number or email customers can reach. Also shown on the privacy page as the way to
+//            ask about their data.
 //
 // TAX: a customer's order does not store a tax breakdown, so the receipt prints the amounts the
 // customer was charged (items, delivery, tip, discount) and NO tax line. If the business is registered
@@ -10,6 +16,7 @@ export const BUSINESS = {
   name: 'FreshBliss',
   legalName: '', // for example "FreshBliss Foods Private Limited"
   address: '', // for example "Indiranagar, Bengaluru 560038"
-  gstin: '', // printed as "GSTIN: ..." when filled in
+  gstin: '', // printed on the receipt as "GSTIN: ..." when filled in
   contact: '', // a phone number or email customers can reach
+  hours: '', // for example "Every day, 9 am to 9 pm"
 };

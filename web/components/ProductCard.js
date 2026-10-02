@@ -12,7 +12,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useId, useState } from 'react';
+import { useId, useState } from 'react';
 import SizeSelector from '@/components/SizeSelector';
 import StockBadge from '@/components/StockBadge';
 import { unitPrice } from '@/lib/pricing';
@@ -46,19 +46,9 @@ export default function ProductCard({ product, wishlisted = false, onToggleWishl
   const price = unitPrice(product, size) ?? product.price;
 
   const titleId = useId();
-  const stateId = useId();
-
-  // A short message under the button ("Added to cart.", or why it could not be added).
-  const [feedback, setFeedback] = useState(null);
-  useEffect(() => {
-    if (!feedback) return undefined;
-    const timer = setTimeout(() => setFeedback(null), 2500);
-    return () => clearTimeout(timer);
-  }, [feedback]);
 
   function handleAdd() {
-    const result = onAdd?.(product, { size });
-    if (result) setFeedback(result);
+    onAdd?.(product, { size }); // the cart shows a toast: "added", or why it could not be
   }
 
   return (
@@ -123,17 +113,12 @@ export default function ProductCard({ product, wishlisted = false, onToggleWishl
             type="button"
             onClick={handleAdd}
             disabled={soldOut}
-            aria-describedby={stateId}
             className="min-h-11 rounded-pill bg-gold-bright px-5 text-nav-link text-on-gold motion-safe:transition-[filter] hover:brightness-95 disabled:cursor-not-allowed disabled:bg-surface-sunken disabled:text-ink-muted disabled:hover:brightness-100"
           >
             Add to Cart
           </button>
         </div>
 
-        {/* Always rendered so screen readers announce changes (live region). */}
-        <p id={stateId} role="status" className={`min-h-[1.5em] text-small ${feedback && !feedback.ok ? 'text-danger' : 'text-brand-text'}`}>
-          {feedback?.message ?? ''}
-        </p>
       </div>
     </article>
   );

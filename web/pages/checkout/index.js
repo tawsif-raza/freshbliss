@@ -13,6 +13,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import Callout from '@/components/Callout';
+import CartSkeleton from '@/components/CartSkeleton';
 import { Field, inputClass } from '@/components/Field';
 import SummaryRow from '@/components/SummaryRow';
 import ZoneStatus, { zoneOutcome } from '@/components/ZoneStatus';
@@ -351,14 +352,7 @@ export default function CheckoutPage() {
         <h1 className="mt-2 text-heading-2 text-brand-text">Checkout</h1>
 
         <div className="mt-8.5">
-          {!loaded && catalogStatus !== 'error' && (
-            <>
-              <div aria-hidden="true" className="h-40 rounded-xl border border-line bg-surface-card shadow-card motion-safe:animate-pulse" />
-              <p role="status" className="sr-only">
-                Loading your checkout
-              </p>
-            </>
-          )}
+          {!loaded && catalogStatus !== 'error' && <CartSkeleton label="Loading your checkout" />}
 
           {catalogStatus === 'error' && (
             <Callout tone="danger" title="We could not load your cart prices.">

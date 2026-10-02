@@ -7,21 +7,8 @@
 //   empty      what to show when status is ready and there are no boxes: { title, text }
 
 import ProductCard from '@/components/ProductCard';
+import { ProductGridSkeleton } from '@/components/ProductSkeleton';
 import { usingEmulators } from '@/lib/firebaseClient';
-
-// Grey placeholder shaped like a card, shown while products load.
-function SkeletonCard() {
-  return (
-    <div aria-hidden="true" className="overflow-hidden rounded-xl border border-line bg-surface-card shadow-card">
-      <div className="aspect-[4/3] bg-surface-sunken motion-safe:animate-pulse" />
-      <div className="flex flex-col gap-3 p-4.5">
-        <div className="h-5 w-2/3 rounded-sm bg-surface-sunken motion-safe:animate-pulse" />
-        <div className="h-4 w-full rounded-sm bg-surface-sunken motion-safe:animate-pulse" />
-        <div className="mt-4 h-11 w-full rounded-pill bg-surface-sunken motion-safe:animate-pulse" />
-      </div>
-    </div>
-  );
-}
 
 // A warning callout: danger rule on the danger surface.
 function LoadError({ onRetry }) {
@@ -47,20 +34,7 @@ const GRID = 'grid grid-cols-1 gap-4.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-col
 export default function ProductGrid({ products, status, onRetry, empty, wishlist, onAdd }) {
   if (status === 'error') return <LoadError onRetry={onRetry} />;
 
-  if (status === 'loading') {
-    return (
-      <>
-        <p role="status" className="sr-only">
-          Loading fruit boxes
-        </p>
-        <div className={GRID}>
-          {Array.from({ length: 4 }, (_, i) => (
-            <SkeletonCard key={i} />
-          ))}
-        </div>
-      </>
-    );
-  }
+  if (status === 'loading') return <ProductGridSkeleton />;
 
   if (products.length === 0) {
     return (

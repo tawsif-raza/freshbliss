@@ -7,6 +7,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import Callout from '@/components/Callout';
 import CartLineItem from '@/components/CartLineItem';
+import CartSkeleton from '@/components/CartSkeleton';
 import SummaryRow from '@/components/SummaryRow';
 import { useCart } from '@/context/CartContext';
 import { useProducts } from '@/lib/catalog';
@@ -29,15 +30,8 @@ export default function CartPage() {
         <h1 className="mt-2 text-heading-2 text-brand-text">Your Cart</h1>
 
         <div className="mt-8.5">
-          {/* loading */}
-          {!loaded && catalogStatus !== 'error' && (
-            <div aria-hidden="true" className="h-40 rounded-xl border border-line bg-surface-card shadow-card motion-safe:animate-pulse" />
-          )}
-          {!loaded && catalogStatus !== 'error' && (
-            <p role="status" className="sr-only">
-              Loading your cart
-            </p>
-          )}
+          {/* loading: grey shapes in the layout of the real cart */}
+          {!loaded && catalogStatus !== 'error' && <CartSkeleton />}
 
           {/* could not load prices */}
           {catalogStatus === 'error' && (

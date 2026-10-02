@@ -1,27 +1,8 @@
-// The lower sections of the home page: why FreshBliss, reviews, and questions.
+// The lower sections of the home page: reviews and questions.
 // The words come from content/storefront.js.
 
 import Accordion from '@/components/Accordion';
-import { TESTIMONIALS, VALUE_PROPS, buildFaq } from '@/content/storefront';
-
-export function ValueProps() {
-  return (
-    <section aria-labelledby="why-title" className="fb-container py-14.5">
-      <p className="text-label text-gold">Why FreshBliss</p>
-      <h2 id="why-title" className="mt-2 text-heading-2 text-brand-text">
-        Fresh is the whole point
-      </h2>
-      <ul className="mt-8.5 grid gap-4.5 md:grid-cols-3">
-        {VALUE_PROPS.map((prop) => (
-          <li key={prop.title} className="rounded-xl border border-line bg-surface-card p-6 shadow-card">
-            <h3 className="text-heading-3 text-ink">{prop.title}</h3>
-            <p className="mt-2 text-body text-ink-muted">{prop.text}</p>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
+import { TESTIMONIALS, buildFaq } from '@/content/storefront';
 
 // Reviews. Only REAL reviews are ever shown on a live shop: placeholder entries (`sample: true`) appear
 // while developing, labelled as samples, and never in production. With no real reviews the section is
@@ -59,7 +40,7 @@ export function Testimonials() {
 
 export function Faq({ zones }) {
   return (
-    <section aria-labelledby="faq-title" className="fb-container py-14.5">
+    <section id="faq" aria-labelledby="faq-title" className="fb-container scroll-mt-24 py-14.5">
       <p className="text-label text-gold">Good to know</p>
       <h2 id="faq-title" className="mt-2 text-heading-2 text-brand-text">
         Questions, answered

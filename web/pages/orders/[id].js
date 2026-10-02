@@ -13,6 +13,7 @@ import Callout from '@/components/Callout';
 import OrderReceipt from '@/components/OrderReceipt';
 import OrderTimeline from '@/components/OrderTimeline';
 import SummaryRow from '@/components/SummaryRow';
+import TrackingSkeleton from '@/components/TrackingSkeleton';
 import { auth, db } from '@/lib/firebaseClient';
 import { ORDER_FLOW, expectedBy, formatTime } from '@/lib/orderStatus';
 
@@ -194,10 +195,7 @@ export default function OrderTrackingPage() {
       <>
         {head}
         <div className="fb-container py-14.5">
-          <div aria-hidden="true" className="h-64 rounded-xl border border-line bg-surface-card shadow-card motion-safe:animate-pulse" />
-          <p role="status" className="sr-only">
-            Loading your order
-          </p>
+          <TrackingSkeleton />
         </div>
       </>
     );

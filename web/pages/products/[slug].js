@@ -13,6 +13,8 @@ import { useState } from 'react';
 import Accordion from '@/components/Accordion';
 import Callout from '@/components/Callout';
 import ProductGallery from '@/components/ProductGallery';
+import RelatedProducts from '@/components/RelatedProducts';
+import { ProductDetailSkeleton } from '@/components/ProductSkeleton';
 import QuantityStepper from '@/components/QuantityStepper';
 import SizeSelector from '@/components/SizeSelector';
 import StockBadge from '@/components/StockBadge';
@@ -41,22 +43,9 @@ function PageShell({ children, title = 'Fruit box' }) {
   );
 }
 
-function Skeleton() {
-  return (
-    <div aria-hidden="true" className="grid gap-8.5 md:grid-cols-2">
-      <div className="aspect-[4/3] rounded-xl bg-surface-sunken motion-safe:animate-pulse" />
-      <div className="flex flex-col gap-4">
-        <div className="h-8 w-2/3 rounded-sm bg-surface-sunken motion-safe:animate-pulse" />
-        <div className="h-5 w-full rounded-sm bg-surface-sunken motion-safe:animate-pulse" />
-        <div className="h-12 w-1/2 rounded-sm bg-surface-sunken motion-safe:animate-pulse" />
-      </div>
-    </div>
-  );
-}
-
 // The page for a box that has loaded. It is rendered with key={product.id}, so opening a different
 // box starts with a fresh size, quantity and message, with no reset code.
-function ProductDetail({ product }) {
+function ProductDetail({ product, products, status }) {
   const { lines, addToCart } = useCart();
   const wishlist = useWishlist();
   const { zones, status: zonesStatus } = useZones();
@@ -64,7 +53,6 @@ function ProductDetail({ product }) {
 
   const [chosenSize, setChosenSize] = useState(product.sizes[0].id);
   const [qty, setQty] = useState(1);
-  const [feedback, setFeedback] = useState(null);
   const [typedPincode, setTypedPincode] = useState(null); // null until they type: then the remembered one shows
 
   // If staff remove the chosen size while the page is open, fall back to the first one.
@@ -86,8 +74,7 @@ function ProductDetail({ product }) {
   const wishlisted = wishlist.isWishlisted(product.id);
 
   function handleAdd() {
-    const result = addToCart(product, { size, qty: quantity });
-    setFeedback(result);
+    const result = addToCart(product, { size, qty: quantity }); // shows a toast either way
     if (result.ok) setQty(1);
   }
 
@@ -184,19 +171,6 @@ function ProductDetail({ product }) {
             </button>
           </div>
 
-          <div role="status" className="mt-3 min-h-[1.5em] text-small">
-            {feedback && (
-              <p className={feedback.ok ? 'text-brand-text' : 'text-danger'}>
-                {feedback.message}{' '}
-                {feedback.ok && (
-                  <Link href="/cart" className="font-bold underline">
-                    View cart
-                  </Link>
-                )}
-              </p>
-            )}
-          </div>
-
           {/* Delivery estimate */}
           <section aria-labelledby="delivery-title" className="mt-6 rounded-xl border border-line bg-surface-card p-5 shadow-card">
             <h2 id="delivery-title" className="text-heading-3 text-ink">
@@ -229,6 +203,9 @@ function ProductDetail({ product }) {
           <Accordion items={accordionItems} defaultOpenId={accordionItems[0].id} />
         </div>
       </section>
+
+      {/* Cross-selling: other boxes that go with this one, each with a quick "+ Add" */}
+      <RelatedProducts product={product} products={products} status={status} onAdd={addToCart} />
     </PageShell>
   );
 }
@@ -242,10 +219,7 @@ export default function ProductPage() {
   if (status === 'loading' || !slug) {
     return (
       <PageShell>
-        <Skeleton />
-        <p role="status" className="sr-only">
-          Loading this fruit box
-        </p>
+        <ProductDetailSkeleton />
       </PageShell>
     );
   }
@@ -276,5 +250,5 @@ export default function ProductPage() {
     );
   }
 
-  return <ProductDetail key={product.id} product={product} />;
+  return <ProductDetail key={product.id} product={product} products={products} status={status} />;
 }

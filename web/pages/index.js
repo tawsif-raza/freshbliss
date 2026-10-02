@@ -4,11 +4,13 @@
 
 import Head from 'next/head';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { useMemo, useState } from 'react';
 import CategoryTabs from '@/components/CategoryTabs';
 import Hero from '@/components/Hero';
-import { Faq, Testimonials, ValueProps } from '@/components/HomeSections';
+import { Faq, Testimonials } from '@/components/HomeSections';
 import ProductGrid from '@/components/ProductGrid';
+import TrustStory from '@/components/TrustStory';
 import { CATEGORIES, FEATURED_LIMIT } from '@/content/storefront';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
@@ -22,7 +24,16 @@ export default function HomePage() {
   const { addToCart } = useCart();
   const wishlist = useWishlist();
   const { zones } = useZones();
-  const [categoryId, setCategoryId] = useState('all');
+  // Which tab is showing: what the visitor picked, else the one in the address (the footer links use
+  // /?category=fitness#shop), else All.
+  const router = useRouter();
+  const fromAddress = router.isReady && typeof router.query.category === 'string' && CATEGORIES.some((c) => c.id === router.query.category) ? router.query.category : null;
+  // A tab the visitor clicked counts only for the address it was clicked under, so following a footer
+  // link (a new address) always wins over an earlier click.
+  const [pick, setPick] = useState({ id: null, forAddress: null });
+  const picked = pick.forAddress === fromAddress ? pick.id : null;
+  const categoryId = picked ?? fromAddress ?? 'all';
+  const setCategoryId = (id) => setPick({ id, forAddress: fromAddress });
 
   // Buyable boxes first, sold-out last (stable, so each group keeps its order).
   const ordered = useMemo(() => [...products].sort((a, b) => Number(a.stock <= 0) - Number(b.stock <= 0)), [products]);
@@ -82,7 +93,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <ValueProps />
+      <TrustStory />
       <Testimonials />
       <Faq zones={zones} />
     </>

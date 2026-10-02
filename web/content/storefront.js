@@ -45,12 +45,20 @@ export const CATEGORIES = [
 
 export const FEATURED_LIMIT = 8; // boxes shown on the home page before "See all boxes"
 
-// ---------- why FreshBliss ----------
+// ---------- the three pillars (the "Farm-to-Table" story on the home page) ----------
 
-export const VALUE_PROPS = [
-  { title: 'Cut fresh', text: 'Your fruit is sliced for your order, not left sitting on a shelf.' },
-  { title: 'Zero preservatives', text: 'Just fruit. Nothing added to make it last longer.' },
-  { title: 'At your door fast', text: 'Delivered within the hour across our Bengaluru zones, with live tracking.' },
+// Each is a promise customers will hold the shop to, so check every one is true. The icons are chosen in
+// components/TrustStory.js by `id`.
+export const TRUST_STORY = {
+  eyebrow: 'Farm to table',
+  title: 'Fresh from the first pick to your door',
+  intro: 'Three promises we keep with every box.',
+};
+
+export const TRUST_PILLARS = [
+  { id: 'handpicked', title: 'Handpicked Daily', text: 'Our fruit is picked fresh every day, so only the best goes into your box.' },
+  { id: 'preservatives', title: 'Zero Preservatives', text: 'Just fruit. Nothing is added to make it last longer, so you taste the fruit itself.' },
+  { id: 'chilled', title: 'Chilled Delivery', text: 'Your box is delivered chilled, so it arrives crisp and ready to eat.' },
 ];
 
 // ---------- reviews ----------

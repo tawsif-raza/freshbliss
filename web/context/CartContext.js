@@ -9,6 +9,8 @@
 // be saved. The server still recalculates everything when the customer pays.
 
 import { createContext, useCallback, useContext, useMemo } from 'react';
+import { useToast } from '@/components/ToastProvider';
+import { useCartDrawer } from '@/context/CartDrawerContext';
 import { useProducts } from '@/lib/catalog';
 import { usePersistedList } from '@/lib/usePersistedList';
 
@@ -41,6 +43,8 @@ const CartContext = createContext(null);
 export function CartProvider({ children }) {
   const { list: lines, commit, current, hydrated } = usePersistedList(STORAGE_KEY, sanitizeLines);
   const { products, status: catalogStatus } = useProducts();
+  const toast = useToast();
+  const drawer = useCartDrawer();
 
   const productsById = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
 
@@ -90,9 +94,8 @@ export function CartProvider({ children }) {
   const subtotal = useMemo(() => items.reduce((sum, i) => sum + (i.available ? i.lineTotal : 0), 0), [items]);
   const itemCount = useMemo(() => lines.reduce((sum, l) => sum + l.qty, 0), [lines]);
 
-  // Add a box. `product` comes from useProducts(). Returns { ok, message } so the
-  // UI can tell the customer what happened.
-  const addToCart = useCallback(
+  // Add a box, with no message shown. `product` comes from useProducts(). Returns { ok, message }.
+  const tryAdd = useCallback(
     (product, { size, qty = 1 } = {}) => {
       const sizeId = size ?? product.sizes[0].id;
       if (!product.sizes.some((s) => s.id === sizeId)) {
@@ -132,6 +135,27 @@ export function CartProvider({ children }) {
       return { ok: true, message: add < want ? `Added ${add}. That is the most we can add.` : 'Added to cart.' };
     },
     [commit, current],
+  );
+
+  // Add a box and tell the customer what happened with a toast (a success with a "View cart" button, or
+  // the reason it could not be added). Pass { silent: true } to add without a toast: the Reorder button does
+  // that and shows ONE summary instead of a toast per box. Returns { ok, message } either way.
+  const addToCart = useCallback(
+    (product, options = {}) => {
+      const result = tryAdd(product, options);
+      if (!options.silent) {
+        if (result.ok) {
+          const plain = result.message === 'Added to cart.';
+          toast.success(plain ? `${product.name} added to your cart.` : `${product.name}: ${result.message}`, {
+            action: { label: 'View cart', onClick: drawer.open },
+          });
+        } else {
+          toast.error(result.message);
+        }
+      }
+      return result;
+    },
+    [tryAdd, toast, drawer.open],
   );
 
   // Remove one line. Leave `size` out to remove every size of that box.
