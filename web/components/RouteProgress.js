@@ -64,7 +64,7 @@ export default function RouteProgress() {
     <div
       aria-hidden="true"
       style={{ width: `${width}%`, opacity: visible ? 1 : 0 }}
-      className="fb-no-print pointer-events-none fixed top-0 left-0 z-50 h-1 bg-[#c99b3b] shadow-[0_0_8px_#c99b3b] transition-[width,opacity] duration-200 ease-out"
+      className="fb-no-print pointer-events-none fixed top-0 left-0 z-50 h-1 bg-gold-bright shadow-[0_0_8px_var(--fb-gold-bright)] transition-[width,opacity] duration-200 ease-out"
     />
   );
 }

@@ -5,170 +5,18 @@
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
-import { onAuthStateChanged } from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
 import Callout from '@/components/Callout';
 import OrderReceipt from '@/components/OrderReceipt';
 import OrderTimeline from '@/components/OrderTimeline';
-import SummaryRow from '@/components/SummaryRow';
 import TrackingSkeleton from '@/components/TrackingSkeleton';
-import { auth, db } from '@/lib/firebaseClient';
+import DeliveryCodeCard from '@/components/orders/DeliveryCodeCard';
+import InfoCard from '@/components/orders/InfoCard';
+import LivePill from '@/components/orders/LivePill';
+import OrderSummary from '@/components/orders/OrderSummary';
+import { useLiveOrder } from '@/lib/liveOrder';
 import { ORDER_FLOW, expectedBy, formatTime } from '@/lib/orderStatus';
-
-const capitalise = (s) => s.charAt(0).toUpperCase() + s.slice(1);
-
-// ---------- the live order ----------
-
-// Follows one order in real time.
-//   status: 'loading' | 'ready' | 'missing' | 'error'
-//   live:   true while the data is coming from the server (false = offline/cached)
-const LOADING = Object.freeze({ status: 'loading', order: null, live: false });
-
-function useLiveOrder(orderId) {
-  // Every answer is stored with the order id it is for, so when the page moves to another order the old
-  // answer is simply not used (it shows "loading" until the new one arrives), with no reset step.
-  const [answer, setAnswer] = useState({ forId: null, ...LOADING });
-
-  useEffect(() => {
-    if (!orderId) return undefined;
-    const setState = (next) => setAnswer({ forId: orderId, ...next });
-
-    let stopOrder = () => {};
-
-    // Firestore only answers once we know who is asking, so wait for sign-in
-    // state first. Security rules decide the rest: only the order's owner (or
-    // staff) can read it.
-    const stopAuth = onAuthStateChanged(auth, (user) => {
-      stopOrder();
-      if (!user) {
-        setState({ status: 'missing', order: null, live: false });
-        return;
-      }
-      stopOrder = onSnapshot(
-        doc(db, 'orders', orderId),
-        { includeMetadataChanges: true }, // so we also hear when the connection drops or returns
-        (snap) => {
-          if (!snap.exists()) {
-            setState({ status: 'missing', order: null, live: false });
-            return;
-          }
-          setState({ status: 'ready', order: { id: snap.id, ...snap.data() }, live: !snap.metadata.fromCache });
-        },
-        (err) => {
-          // "Not yours" and "does not exist" look the same on purpose: the rules
-          // refuse both, so a stranger cannot tell which order ids exist.
-          setState({ status: err.code === 'permission-denied' ? 'missing' : 'error', order: null, live: false });
-        },
-      );
-    });
-
-    // Cleanup: stop BOTH listeners when the customer leaves the page (or the id changes).
-    return () => {
-      stopAuth();
-      stopOrder();
-    };
-  }, [orderId]);
-
-  return answer.forId === orderId ? answer : LOADING;
-}
-
-// ---------- pieces ----------
-
-function LivePill({ live }) {
-  return (
-    <span className="inline-flex items-center gap-2 rounded-pill border border-line bg-surface-card px-3 py-1 text-small font-bold text-brand-text">
-      <span aria-hidden="true" className={`size-2 rounded-full ${live ? 'bg-brand' : 'bg-gold'}`} />
-      {live ? 'Live' : 'Reconnecting...'}
-    </span>
-  );
-}
-
-function Card({ title, children, className = '' }) {
-  return (
-    <section className={`rounded-xl border border-line bg-surface-card p-6 shadow-card ${className}`}>
-      <h2 className="text-heading-3 text-ink">{title}</h2>
-      <div className="mt-4">{children}</div>
-    </section>
-  );
-}
-
-// Shown only while the order is out for delivery.
-function DeliveryCodeCard({ order }) {
-  const { rider, pin } = order;
-  const telephone = rider?.phone ? rider.phone.replace(/[^0-9+]/g, '') : '';
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -8 }}
-      transition={{ duration: 0.35, ease: 'easeOut' }}
-    >
-      <section className="rounded-xl bg-gradient-to-br from-[var(--fb-hero-deep)] to-[var(--fb-hero-mid)] p-6 text-on-hero shadow-card">
-        <p className="text-label text-gold-bright">Delivery code</p>
-        <p className="mt-2 font-mono text-[40px] leading-none font-extrabold tracking-[0.3em] text-white" aria-label={`Delivery code ${pin ? pin.split('').join(' ') : 'not ready'}`}>
-          {pin ?? '----'}
-        </p>
-        <p className="mt-3 text-small text-on-hero">Tell this code to your rider when they arrive.</p>
-        {rider?.name && (
-          <div className="mt-4 border-t border-white/20 pt-4">
-            <p className="text-body font-bold text-white">{rider.name}</p>
-            {rider.vehicle && <p className="text-small text-on-hero">{rider.vehicle}</p>}
-            {telephone && (
-              <a
-                href={`tel:${telephone}`}
-                className="mt-3 inline-grid min-h-11 place-items-center rounded-pill bg-gold-bright px-5 text-nav-link text-on-gold hover:brightness-95"
-              >
-                Call rider
-              </a>
-            )}
-          </div>
-        )}
-      </section>
-    </motion.div>
-  );
-}
-
-function OrderSummary({ order }) {
-  const items = order.items ?? [];
-  const p = order.pricing ?? {};
-  const totalLabel = { REFUND_PENDING: 'Total (refund pending)', REFUNDED: 'Total refunded', PAID_MOCK: 'Total (test order)' }[order.paymentStatus] ?? 'Total paid';
-
-  return (
-    <Card title="Order summary">
-      <ul className="divide-y divide-line">
-        {items.map((i) => (
-          <li key={`${i.productId}:${i.size}`} className="flex justify-between gap-4 py-2 text-body text-ink first:pt-0">
-            <span>
-              {i.qty} × {i.name} <span className="text-ink-muted">({capitalise(i.size)})</span>
-            </span>
-            <span className="font-bold">₹{i.lineTotal}</span>
-          </li>
-        ))}
-      </ul>
-
-      <dl className="mt-3 flex flex-col gap-1 border-t border-line pt-3">
-        <SummaryRow label="Subtotal" value={`₹${p.subtotal}`} />
-        {p.discount > 0 && <SummaryRow label="Discount" value={`-₹${p.discount}`} />}
-        <SummaryRow label="Delivery" value={p.deliveryFee === 0 ? 'Free' : `₹${p.deliveryFee}`} />
-        {p.tip > 0 && <SummaryRow label="Rider tip" value={`₹${p.tip}`} />}
-        <div className="mt-2 border-t border-line pt-2">
-          <SummaryRow label={totalLabel} value={`₹${p.total}`} strong />
-        </div>
-      </dl>
-
-      <div className="mt-5 border-t border-line pt-4">
-        <h3 className="text-nav-link text-ink">Delivering to</h3>
-        <p className="mt-1 text-body text-ink">{order.address}</p>
-        <p className="text-small text-ink-muted">
-          {order.zone?.name ? `${order.zone.name}, ` : ''}Pincode {order.pincode}
-        </p>
-        {order.note && <p className="mt-2 text-small text-ink-muted">Instructions: {order.note}</p>}
-      </div>
-    </Card>
-  );
-}
 
 // ---------- the page ----------
 
@@ -278,9 +126,9 @@ export default function OrderTrackingPage() {
         <div className="mt-8.5 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <div className="flex flex-col gap-6">
             {!cancelled && (
-              <Card title="Order status">
+              <InfoCard title="Order status">
                 <OrderTimeline status={order.status} timestamps={order.timestamps} />
-              </Card>
+              </InfoCard>
             )}
             <AnimatePresence>{order.status === 'OUT_FOR_DELIVERY' && <DeliveryCodeCard order={order} />}</AnimatePresence>
           </div>

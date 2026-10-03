@@ -17,7 +17,7 @@ import { usePersistedList } from '@/lib/usePersistedList';
 const STORAGE_KEY = 'freshbliss:cart:v1';
 
 // Same limits the server enforces in createCheckout.
-export const MAX_LINES = 30;
+const MAX_LINES = 30;
 export const MAX_QTY_PER_LINE = 20;
 
 const SAFE_ID = /^[A-Za-z0-9_-]{1,100}$/;

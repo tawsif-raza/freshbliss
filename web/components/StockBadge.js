@@ -2,7 +2,7 @@
 // Stock comes from the shared live catalogue (lib/catalog.js), so this changes by itself when
 // someone buys the last box. The server still re-checks stock when the customer pays.
 
-export const LOW_STOCK_AT = 5; // "Only N left" at 5 or fewer, per the design system
+const LOW_STOCK_AT = 5; // "Only N left" at 5 or fewer, per the design system
 
 export default function StockBadge({ stock, className = '' }) {
   if (stock <= 0) {

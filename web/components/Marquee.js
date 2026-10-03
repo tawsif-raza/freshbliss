@@ -3,7 +3,8 @@
 // The list is drawn twice and the track slides left by exactly one copy, so the loop has no visible jump (the
 // keyframes are in styles/globals.css). The second copy is hidden from screen readers so each promise is read
 // once. The parent clips with overflow-hidden, so the moving track can never make the page scroll sideways.
-// It pauses while hovered, and for visitors who asked their device for less motion it stops and wraps into a
+// Like the hero, it is a dark band whose cream and deep green are fixed colours that do not change with the page
+// theme. It pauses while hovered, and for visitors who asked their device for less motion it stops and wraps into a
 // centred, static row (see .fb-marquee in globals.css).
 
 import { MARQUEE_ITEMS } from '@/content/storefront';

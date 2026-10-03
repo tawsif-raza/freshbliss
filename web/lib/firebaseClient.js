@@ -11,7 +11,7 @@ import { connectFunctionsEmulator, getFunctions } from 'firebase/functions';
 
 // Cloud Functions are deployed to Mumbai (see firebase/functions). The client
 // must ask the same region or calls will not find the function.
-export const FUNCTIONS_REGION = 'asia-south1';
+const FUNCTIONS_REGION = 'asia-south1';
 
 // Emulators ports match firebase/firebase.json.
 const EMULATOR_HOST = process.env.NEXT_PUBLIC_EMULATOR_HOST || '127.0.0.1';

@@ -13,7 +13,7 @@ function Stars() {
   return (
     <span role="img" aria-label="5 out of 5 stars" className="flex gap-0.5">
       {[0, 1, 2, 3, 4].map((i) => (
-        <Star key={i} size={18} fill="#c99b3b" stroke="#c99b3b" aria-hidden="true" />
+        <Star key={i} size={18} className="fill-gold-bright stroke-gold-bright" aria-hidden="true" />
       ))}
     </span>
   );
