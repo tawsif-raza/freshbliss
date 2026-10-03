@@ -1,10 +1,11 @@
-// "Chef's Notes & Pairings": a simple serving idea for a box, chosen by the box's page address (its slug).
+// "Chef's Notes & Pairings": a simple serving idea for a box, chosen by the box's page address (its slug), or
+// failing that its category (so a new box added later in the Immunity category still gets the citrus idea).
 // Pure function (no React, no Firebase), so it is easy to test.
 //
 // These are fixed suggestions written by hand, not generated from the box's contents, and they are
 // serving ideas only (no health claims). Check them against what is really in your boxes before launch.
 //
-//   getPairingSuggestion(slug) -> { title, blurb, time, ingredients: [3 strings], steps: [2 strings] }
+//   getPairingSuggestion(slug, category) -> { title, blurb, time, ingredients: [3 strings], steps: [2 strings] }
 
 const MANGO = {
   title: 'Mango Coconut Chia Pudding',
@@ -38,10 +39,14 @@ const DEFAULT = {
   steps: ['Toss the fruit gently with the lime juice in a large bowl.', 'Tear the mint over the top and serve straight away, or chilled.'],
 };
 
-export function getPairingSuggestion(slug) {
-  const key = String(slug ?? '').toLowerCase();
-  if (key.includes('mango')) return MANGO;
-  if (key.includes('citrus') || key.includes('immunity')) return CITRUS;
-  if (key.includes('berry') || key.includes('berries')) return BERRY;
-  return DEFAULT;
+const RULES = [
+  [MANGO, ['mango']],
+  [CITRUS, ['citrus', 'immunity']],
+  [BERRY, ['berry', 'berries']],
+];
+
+const pick = (text) => RULES.find(([, words]) => words.some((w) => text.includes(w)))?.[0] ?? null;
+
+export function getPairingSuggestion(slug, category) {
+  return pick(String(slug ?? '').toLowerCase()) ?? pick(String(category ?? '').toLowerCase()) ?? DEFAULT;
 }

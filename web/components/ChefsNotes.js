@@ -1,13 +1,13 @@
 // "Chef's Notes & Pairings": a small recipe card on the product page, with a serving idea for the box.
-// The idea comes from lib/pairings.js (chosen by the box's slug).
+// The idea comes from lib/pairings.js (chosen by the box's slug, else its category).
 //
 // Colours: cream card, deep-green headings and step numbers, gold accents (all from the design tokens).
 
 import { ChefHat, Clock } from 'lucide-react';
 import { getPairingSuggestion } from '@/lib/pairings';
 
-export default function ChefsNotes({ slug }) {
-  const recipe = getPairingSuggestion(slug);
+export default function ChefsNotes({ slug, category }) {
+  const recipe = getPairingSuggestion(slug, category);
 
   return (
     <section aria-labelledby="chefs-notes-title" className="mt-10">

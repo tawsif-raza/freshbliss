@@ -212,7 +212,7 @@ function ProductDetail({ product, products, status }) {
       {/* Where it grew, its energy and its benefits (only the facts the shop has added) */}
       <HarvestHealth product={product} />
 
-      <ChefsNotes slug={product.id} />
+      <ChefsNotes slug={product.id} category={product.category} />
 
       <section aria-labelledby="details-title" className="mt-10 max-w-3xl">
         <h2 id="details-title" className="text-heading-3 text-ink">

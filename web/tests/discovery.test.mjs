@@ -39,6 +39,9 @@ describe('pairings', () => {
     assert.equal(getPairingSuggestion('exotic-berry-medley').title, 'Antioxidant Acai Bowl');
     assert.equal(getPairingSuggestion('classic-fresh-mix').title, 'Fresh Artisanal Fruit Salad');
     assert.equal(getPairingSuggestion(undefined).title, 'Fresh Artisanal Fruit Salad');
+    assert.equal(getPairingSuggestion('new-box', 'Immunity').title, 'Morning Ginger Citrus Detox Shot');
+    assert.equal(getPairingSuggestion('mango-season-box', 'Immunity').title, 'Mango Coconut Chia Pudding'); // the slug wins
+    assert.equal(getPairingSuggestion('new-box', 'Fresh').title, 'Fresh Artisanal Fruit Salad');
     for (const slug of ['mango-x', 'citrus-x', 'berry-x', 'other']) {
       const r = getPairingSuggestion(slug);
       assert.equal(r.ingredients.length, 3);

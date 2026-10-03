@@ -155,7 +155,7 @@ export default function CommandPalette() {
       onClick={(event) => {
         if (event.target === dialogRef.current) close(); // a click on the dimmed area
       }}
-      className="fb-no-print m-0 h-full max-h-none w-full max-w-none bg-transparent p-0 backdrop:bg-ink/40 backdrop:backdrop-blur-sm"
+      className="fb-no-print m-0 h-full max-h-none w-full max-w-none bg-transparent p-0 backdrop:bg-black/40 backdrop:backdrop-blur-md"
     >
       <div className="mx-auto mt-[12vh] w-[calc(100%-2rem)] max-w-xl overflow-hidden rounded-2xl border border-line/60 bg-surface-page/80 text-ink shadow-2xl backdrop-blur-xl">
         {isOpen && <PaletteBody onChoose={choose} />}
