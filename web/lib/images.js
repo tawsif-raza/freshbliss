@@ -31,6 +31,10 @@ const PHOTO = {
   orangeBoard: '1580052614034-c55d20bfee3b', // a halved orange on a board
   orangePile: '1611080626919-7cf5a9dbab5b', // a pile of oranges
   avocado: '1523049673857-eb18f1d7b578', // a halved avocado
+  vanillaScoops: '1560008581-09826d1de69e', // cream-coloured ice cream scoops in a bowl
+  milkPour: '1550583724-b2692b85b150', // milk poured from a glass jug into a glass
+  orangeJuice: '1621506289937-a8e4df240d0b', // a bottle of orange juice among cut oranges, limes and passion fruit
+  watermelonCubes: '1563114773-84221bd62daa', // cubed watermelon
 };
 
 // The size is part of the address: the `w` and `q` in the link. Photos are stored at 800 pixels wide, and
@@ -54,6 +58,10 @@ const BY_PRODUCT = {
   'citrus-immunity-shield': [PHOTO.orangeSlices, PHOTO.orangeBoard, PHOTO.orangePile], // the supplied cherry photo was swapped for oranges
   'midnight-mango-indulgence': [PHOTO.mango, PHOTO.mangoHalves],
   'keto-green-pack': [PHOTO.avocado, PHOTO.kiwi],
+  'madagascar-vanilla-ice-cream': [PHOTO.vanillaScoops],
+  'a2-organic-farm-milk': [PHOTO.milkPour],
+  'cold-pressed-orange-juice': [PHOTO.orangeJuice, PHOTO.orangeSlices],
+  'chilled-watermelon-mint-bowl': [PHOTO.watermelonCubes, PHOTO.fruitBowl],
 };
 
 // By category, for a product added later that is not in the list above.
@@ -65,6 +73,10 @@ const BY_CATEGORY = {
   Exotics: [PHOTO.berryMix, PHOTO.mango],
   Immunity: [PHOTO.orangeSlices, PHOTO.orangePile],
   Combos: [PHOTO.fruitSpread, PHOTO.fruitBasket],
+  'Ice Cream': [PHOTO.vanillaScoops],
+  Dairy: [PHOTO.milkPour],
+  Beverages: [PHOTO.orangeJuice],
+  'Cut Fruits': [PHOTO.watermelonCubes, PHOTO.fruitBowl],
 };
 const FALLBACK = [PHOTO.fruitSpread, PHOTO.fruitBasket];
 

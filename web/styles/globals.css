@@ -12,6 +12,13 @@
   --font-serif: var(--font-playfair), "Playfair Display", Georgia, serif;
   --font-sans: var(--font-jakarta), "Plus Jakarta Sans", "Segoe UI", Arial, sans-serif;
 
+  /* The "chill" colours of the temperature badge (components/StorageBadge.js): pale blue, its border, the text on
+     it (about 8:1 contrast) and the snowflake. Fixed on purpose: the badge brings its own light background. */
+  --color-chill: #e3f0f7;
+  --color-chill-line: #b9d8ea;
+  --color-chill-text: #0f4a6b;
+  --color-chill-icon: #2a7fb0;
+
   --radius-2xl: 24px;
   --radius-3xl: 32px;
 

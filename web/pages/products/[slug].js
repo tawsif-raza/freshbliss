@@ -3,7 +3,7 @@
 // actually sell, a delivery estimate for the visitor's pincode, and expandable details (ingredients,
 // packaging), plus a "Harvest & Health" row (origin, calories, key benefits). Everything about the box is live: if the last one sells, the page says so.
 //
-// Origin, calories, benefits and packaging text appear only if the shop owner has added them to the product
+// Origin, calories, benefits, packaging and storage text appear only if the shop owner has added them to the product
 // in Firestore (see lib/catalog.js). A missing fact is left out, never made up.
 //
 // Below that: "Chef's Notes & Pairings" (a serving idea, lib/pairings.js), and search-engine structured data
@@ -23,6 +23,7 @@ import { ProductDetailSkeleton } from '@/components/ProductSkeleton';
 import QuantityStepper from '@/components/QuantityStepper';
 import SizeSelector from '@/components/SizeSelector';
 import StockBadge from '@/components/StockBadge';
+import StorageBadge from '@/components/StorageBadge';
 import ZoneStatus from '@/components/ZoneStatus';
 import { MAX_QTY_PER_LINE, useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
@@ -135,6 +136,9 @@ function ProductDetail({ product, products, status }) {
           <p className="mt-4 text-kpi text-brand-text" aria-live="polite">
             ₹{price}
           </p>
+
+          {/* How to keep it (chilled and frozen products only; nothing is drawn without a storage note) */}
+          <StorageBadge storage={product.storage} className="mt-3" />
 
           <div className="mt-5">
             <SizeSelector sizes={product.sizes} basePrice={product.price} value={size} onChange={setChosenSize} disabled={soldOut} />

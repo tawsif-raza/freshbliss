@@ -40,15 +40,41 @@ describe('seed catalogue', () => {
     // a page (no photo, a bad benefits list, a category with no home-page tab) fails here first.
     const { normaliseProduct } = await import('../../web/lib/product.js');
     const { CATEGORIES } = await import('../../web/content/storefront.js');
-    const tabs = new Set(CATEGORIES.map((c) => c.category).filter(Boolean));
+    const { inTab } = await import('../../web/lib/categories.js');
+    const realTabs = CATEGORIES.filter((t) => t.categories.length > 0);
     for (const p of buildProducts()) {
       const n = normaliseProduct(p.slug, p);
       assert.ok(n, `${p.slug} could not be normalised`);
       assert.ok(n.images.length > 0 && n.images.every((u) => /^https:\/\//.test(u)), `${p.slug} needs at least one photo`);
       assert.ok(Array.isArray(n.keyBenefits), p.slug);
-      assert.ok(tabs.has(n.category), `${p.slug} is in category "${n.category}", which has no home-page tab`);
+      assert.ok(realTabs.some((t) => inTab(n, t)), `${p.slug} is in category "${n.category}", which has no home-page tab`);
       assert.ok(Array.isArray(p.images), `${p.slug}: images must be a list (empty is fine: placeholders are used)`);
     }
+  });
+
+  it('adds the four Chilled & Dairy products, each with a storage note and the harvest facts', () => {
+    const expected = {
+      'madagascar-vanilla-ice-cream': ['Madagascar Vanilla Bean Ice Cream', 'Ice Cream', 'Keep Frozen at -18°C'],
+      'a2-organic-farm-milk': ['A2 Organic Farm Milk', 'Dairy', 'Keep Refrigerated below 4°C'],
+      'cold-pressed-orange-juice': ['Cold-Pressed Valencia Orange Juice', 'Beverages', 'Keep Refrigerated'],
+      'chilled-watermelon-mint-bowl': ['Chilled Watermelon & Mint Bowl', 'Cut Fruits', 'Keep Refrigerated'],
+    };
+    for (const [slug, [name, category, storage]] of Object.entries(expected)) {
+      const p = bySlug[slug];
+      assert.ok(p, `${slug} is missing`);
+      assert.equal(p.name, name);
+      assert.equal(p.category, category);
+      assert.equal(p.storage, storage);
+      assert.ok(typeof p.origin === 'string' && p.origin.length > 0, slug);
+      assert.ok(typeof p.calories === 'string' && p.calories.length > 0, slug);
+      assert.ok(Array.isArray(p.keyBenefits) && p.keyBenefits.length >= 2, slug);
+      assert.ok(p.stock > 0 && p.active === true, slug);
+    }
+  });
+
+  it('only the chilled and frozen products have a storage note', () => {
+    const withStorage = buildProducts().filter((p) => p.storage !== undefined).map((p) => p.slug).sort();
+    assert.deepEqual(withStorage, ['a2-organic-farm-milk', 'chilled-watermelon-mint-bowl', 'cold-pressed-orange-juice', 'madagascar-vanilla-ice-cream']);
   });
 
   it('leaves the launch boxes without the new fields (the page then hides the section)', () => {

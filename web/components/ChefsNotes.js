@@ -8,6 +8,7 @@ import { getPairingSuggestion } from '@/lib/pairings';
 
 export default function ChefsNotes({ slug, category }) {
   const recipe = getPairingSuggestion(slug, category);
+  if (!recipe) return null; // nothing sensible to suggest: leave the section out
 
   return (
     <section aria-labelledby="chefs-notes-title" className="mt-10">

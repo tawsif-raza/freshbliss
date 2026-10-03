@@ -26,13 +26,15 @@ const SIZES = [
 ];
 
 // The first four are the launch boxes from the storefront design. The fifth is
-// extra test data with stock 0, so you can see the "Out of stock" state. The last four are the premium
-// range, the only ones with "Harvest & Health" facts (the product page leaves that section out when a
-// product has none):
+// extra test data with stock 0, so you can see the "Out of stock" state. The next four are the premium
+// range, and the last four the "Chilled & Dairy" range. Both have "Harvest & Health" facts (the product page
+// leaves that section out when a product has none):
 //   origin       where it was grown (text)
 //   calories     energy, as text ("About 45 kcal per 100 g": standard reference values for the fruit, not a
 //                lab measurement of the box)
 //   keyBenefits  short phrases
+//   storage      only on the chilled and frozen products: how to keep it (text). The product page shows it as a
+//                temperature badge, and leaves it out when there is none.
 // PLACEHOLDER CONTENT: check every origin, calorie figure and benefit against your real suppliers and
 // boxes before launch (docs/GO_LIVE.md, section 8.3).
 function buildProducts() {
@@ -76,6 +78,30 @@ function buildProducts() {
       origin: 'Sourced from the hills of Coorg',
       calories: 'About 90 kcal per 100 g',
       keyBenefits: ['Healthy fats', 'Low in sugar', 'High in fibre'],
+    }),
+    box('madagascar-vanilla-ice-cream', 'Madagascar Vanilla Bean Ice Cream', ['Fresh Cream', 'Milk', 'Madagascar Vanilla Beans', 'Cane Sugar'], 349, 15, 'Ice Cream', 'New', {
+      origin: 'Vanilla beans from Madagascar, churned in small batches in Bengaluru',
+      calories: 'About 207 kcal per 100 g',
+      keyBenefits: ['Real vanilla bean', 'Made with fresh cream', 'No artificial colours'],
+      storage: 'Keep Frozen at -18°C',
+    }),
+    box('a2-organic-farm-milk', 'A2 Organic Farm Milk', ['A2 Organic Cow Milk'], 99, 30, 'Dairy', 'New', {
+      origin: 'Sourced from a partner dairy farm near Bengaluru',
+      calories: 'About 62 kcal per 100 ml',
+      keyBenefits: ['A2 beta-casein milk', 'Good source of calcium', 'Farm fresh'],
+      storage: 'Keep Refrigerated below 4°C',
+    }),
+    box('cold-pressed-orange-juice', 'Cold-Pressed Valencia Orange Juice', ['Valencia Oranges'], 179, 18, 'Beverages', 'New', {
+      origin: 'Valencia oranges from the orchards of Nagpur',
+      calories: 'About 45 kcal per 100 ml',
+      keyBenefits: ['Cold-pressed, never from concentrate', 'Rich in vitamin C', 'No added sugar'],
+      storage: 'Keep Refrigerated',
+    }),
+    box('chilled-watermelon-mint-bowl', 'Chilled Watermelon & Mint Bowl', ['Watermelon', 'Fresh Mint'], 129, 12, 'Cut Fruits', 'New', {
+      origin: 'Sourced from partner farms in Karnataka',
+      calories: 'About 30 kcal per 100 g',
+      keyBenefits: ['Naturally hydrating', 'Low in calories', 'Cut fresh every morning'],
+      storage: 'Keep Refrigerated',
     }),
   ];
 }

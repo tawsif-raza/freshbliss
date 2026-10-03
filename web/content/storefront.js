@@ -33,17 +33,20 @@ export const TRUST_BADGES = ['1-Hour Delivery in Bengaluru', 'Fresh & Hygienic',
 
 // ---------- the category tabs ----------
 
-// `category` is the value of a product's `category` field in Firestore. A tab with no products shows
-// a friendly message instead of an empty grid.
+// `categories` lists the values of a product's `category` field in Firestore that the tab shows (one tab can
+// cover several: see lib/categories.js). "All" has none. A tab with no products shows a friendly message
+// instead of an empty grid.
 export const CATEGORIES = [
-  { id: 'all', label: 'All', category: null },
-  { id: 'fresh', label: 'Fresh Boxes', category: 'Fresh' },
-  { id: 'fitness', label: 'Fitness Packs', category: 'Fitness' },
-  { id: 'ramadan', label: 'Ramadan Specials', category: 'Ramadan' },
-  { id: 'exotics', label: 'Exotics', category: 'Exotics' },
-  { id: 'immunity', label: 'Immunity', category: 'Immunity' },
-  { id: 'seasonal', label: 'Seasonal', category: 'Seasonal' },
-  { id: 'combos', label: 'Combos', category: 'Combos' },
+  { id: 'all', label: 'All', categories: [] },
+  { id: 'fresh', label: 'Fresh Boxes', categories: ['Fresh'] },
+  { id: 'fitness', label: 'Fitness Packs', categories: ['Fitness'] },
+  { id: 'ramadan', label: 'Ramadan Specials', categories: ['Ramadan'] },
+  { id: 'exotics', label: 'Exotics', categories: ['Exotics'] },
+  { id: 'immunity', label: 'Immunity', categories: ['Immunity'] },
+  { id: 'seasonal', label: 'Seasonal', categories: ['Seasonal'] },
+  { id: 'chilled', label: 'Chilled & Dairy', categories: ['Ice Cream', 'Dairy', 'Cut Fruits'] },
+  { id: 'beverages', label: 'Beverages', categories: ['Beverages'] },
+  { id: 'combos', label: 'Combos', categories: ['Combos'] },
 ];
 
 export const FEATURED_LIMIT = 8; // boxes shown on the home page before "See all boxes"

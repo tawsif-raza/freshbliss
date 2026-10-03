@@ -18,6 +18,7 @@ import { CATEGORIES, FEATURED_LIMIT } from '@/content/storefront';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
 import { useProducts } from '@/lib/catalog';
+import { countByTab, productsInTab } from '@/lib/categories';
 import { useZones } from '@/lib/zones';
 
 const PANEL_ID = 'shop-panel';
@@ -42,14 +43,11 @@ export default function HomePage() {
   const ordered = useMemo(() => [...products].sort((a, b) => Number(a.stock <= 0) - Number(b.stock <= 0)), [products]);
 
   const category = CATEGORIES.find((c) => c.id === categoryId) ?? CATEGORIES[0];
-  const inCategory = useMemo(() => (category.category ? ordered.filter((p) => p.category === category.category) : ordered), [ordered, category]);
+  const inCategory = useMemo(() => productsInTab(ordered, category), [ordered, category]);
   const shown = inCategory.slice(0, FEATURED_LIMIT);
 
   // How many boxes each tab holds, so a tab is never a surprise.
-  const counts = useMemo(
-    () => Object.fromEntries(CATEGORIES.map((c) => [c.id, c.category ? ordered.filter((p) => p.category === c.category).length : ordered.length])),
-    [ordered],
-  );
+  const counts = useMemo(() => countByTab(ordered, CATEGORIES), [ordered]);
 
   return (
     <>

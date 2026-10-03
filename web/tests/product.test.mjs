@@ -46,6 +46,12 @@ describe('normaliseProduct', () => {
     assert.deepEqual(normaliseProduct('x', { ...base, keyBenefits: [' Rich in vitamin C ', 'rich in vitamin c', 'Low sugar'] }).keyBenefits, ['Rich in vitamin C', 'Low sugar']);
   });
 
+  it('reads the storage note, and treats a missing or odd one as none', () => {
+    assert.equal(normaliseProduct('x', { ...base, storage: '  Keep Frozen at -18°C ' }).storage, 'Keep Frozen at -18°C');
+    for (const storage of [undefined, null, '', '   ', 5, {}, []]) assert.equal(normaliseProduct('x', { ...base, storage }).storage, null);
+    assert.equal(normaliseProduct('x', { ...base, storage: 'x'.repeat(200) }).storage.length, 60);
+  });
+
   it('wrong-typed text fields fall back instead of leaking through', () => {
     const p = normaliseProduct('x', { price: 50, name: 12, description: {}, badge: 5, category: [], deliveryTime: 9, origin: 1, calories: [] });
     assert.equal(p.name, 'x');

@@ -23,7 +23,7 @@ export default function CategoryTabs({ tabs, value, onChange, counts = {}, panel
   }
 
   return (
-    <div role="tablist" aria-label={label} className="flex flex-wrap gap-2">
+    <div role="tablist" aria-label={label} className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
       {tabs.map((tab, i) => {
         const selected = tab.id === value;
         return (
@@ -40,7 +40,7 @@ export default function CategoryTabs({ tabs, value, onChange, counts = {}, panel
             tabIndex={selected ? 0 : -1}
             onClick={() => onChange(tab.id)}
             onKeyDown={(e) => onKeyDown(e, i)}
-            className={`min-h-11 rounded-pill border px-5 text-nav-link motion-safe:transition-colors ${
+            className={`min-h-11 shrink-0 rounded-pill border px-5 text-nav-link whitespace-nowrap motion-safe:transition-colors ${
               selected ? 'border-brand bg-brand text-on-brand' : 'border-green-accent bg-surface-card text-brand-text hover:bg-surface-cream'
             }`}
           >

@@ -5,7 +5,7 @@
 // list, description, badge and so on falls back to a safe default, and only a product that cannot be priced is
 // refused.
 
-import { normaliseBenefits, normaliseCalories, normaliseOrigin } from './harvest.js';
+import { normaliseBenefits, normaliseCalories, normaliseOrigin, normaliseStorage } from './harvest.js';
 import { placeholderImagesFor } from './images.js';
 
 // Same fallback the server uses when a product has no sizes.
@@ -28,6 +28,8 @@ const isImageUrl = (u) => typeof u === 'string' && /^https?:\/\/\S+$/i.test(u.tr
 //   keyBenefits   up to 6 short phrases, for example ["High in vitamin C"]
 //   nutritionNote short text under the calories, for example "Per Regular box"
 //   packaging     short text about how the box is packed
+//   storage       how a chilled or frozen product must be kept, for example "Keep Frozen at -18°C". It is
+//                 shown as a temperature badge on the product page (lib/harvest.js)
 export function normaliseProduct(id, data) {
   if (!Number.isInteger(data.price) || data.price < 0) return null;
 
@@ -58,6 +60,7 @@ export function normaliseProduct(id, data) {
     origin: normaliseOrigin(data.origin),
     calories: normaliseCalories(data.calories),
     keyBenefits: normaliseBenefits(data.keyBenefits),
+    storage: normaliseStorage(data.storage),
     nutritionNote: typeof data.nutritionNote === 'string' ? data.nutritionNote : '',
     packaging: typeof data.packaging === 'string' ? data.packaging : '',
     sizes,
