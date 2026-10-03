@@ -4,6 +4,7 @@
 // REVIEW BEFORE LAUNCH (docs/GO_LIVE.md, section 8.3):
 //   hours    shown in the footer when filled in, for example "Every day, 9 am to 9 pm". Left empty, the
 //            footer shows no opening hours rather than guessing them.
+//   supportEmail  where the "Still have questions?" button on the FAQ page sends email.
 //   contact  a phone number or email customers can reach. Also shown on the privacy page as the way to
 //            ask about their data.
 //
@@ -17,6 +18,7 @@ export const BUSINESS = {
   legalName: '', // for example "FreshBliss Foods Private Limited"
   address: '', // for example "Indiranagar, Bengaluru 560038"
   gstin: '', // printed on the receipt as "GSTIN: ..." when filled in
+  supportEmail: 'support@freshbliss.in', // make sure this mailbox exists and is read
   contact: '', // a phone number or email customers can reach
   hours: '', // for example "Every day, 9 am to 9 pm"
 };

@@ -53,14 +53,14 @@ function Count({ label, value, icon: Icon, href, onClick }) {
 }
 
 // A main-menu link. The page you are on is marked for screen readers (aria-current) and underlined.
-function NavLink({ href, children }) {
+function NavLink({ href, children, className = '' }) {
   const { pathname } = useRouter();
   const here = href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`);
   return (
     <Link
       href={href}
       aria-current={here ? 'page' : undefined}
-      className={`inline-flex min-h-11 items-center text-nav-link text-brand-text hover:underline ${here ? 'underline underline-offset-4' : ''}`}
+      className={`inline-flex min-h-11 items-center text-nav-link text-brand-text hover:underline ${here ? 'underline underline-offset-4' : ''} ${className}`}
     >
       {children}
     </Link>
@@ -103,6 +103,10 @@ export default function SiteHeader() {
             <nav aria-label="Main" className="flex items-center gap-4 sm:gap-6">
               <NavLink href="/products">Shop</NavLink>
               <NavLink href="/account">My orders</NavLink>
+              {/* hidden on the smallest phones, where it would wrap the header onto a third line (the footer has the link) */}
+              <NavLink href="/faq" className="max-sm:hidden">
+                FAQ
+              </NavLink>
             </nav>
             <nav aria-label="Your lists" className="flex items-center gap-1 sm:gap-3">
               <button
