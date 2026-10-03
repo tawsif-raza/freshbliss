@@ -42,6 +42,7 @@ export const CATEGORIES = [
   { id: 'ramadan', label: 'Ramadan Specials', category: 'Ramadan' },
   { id: 'exotics', label: 'Exotics', category: 'Exotics' },
   { id: 'immunity', label: 'Immunity', category: 'Immunity' },
+  { id: 'seasonal', label: 'Seasonal', category: 'Seasonal' },
   { id: 'combos', label: 'Combos', category: 'Combos' },
 ];
 

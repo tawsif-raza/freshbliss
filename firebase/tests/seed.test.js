@@ -35,6 +35,22 @@ describe('seed catalogue', () => {
     }
   });
 
+  it('every seeded product turns into a complete, safe storefront product (images, benefits, tab)', async () => {
+    // Runs the seed through the SAME normaliser the storefront uses, so a seed change that would crash or blank
+    // a page (no photo, a bad benefits list, a category with no home-page tab) fails here first.
+    const { normaliseProduct } = await import('../../web/lib/product.js');
+    const { CATEGORIES } = await import('../../web/content/storefront.js');
+    const tabs = new Set(CATEGORIES.map((c) => c.category).filter(Boolean));
+    for (const p of buildProducts()) {
+      const n = normaliseProduct(p.slug, p);
+      assert.ok(n, `${p.slug} could not be normalised`);
+      assert.ok(n.images.length > 0 && n.images.every((u) => /^https:\/\//.test(u)), `${p.slug} needs at least one photo`);
+      assert.ok(Array.isArray(n.keyBenefits), p.slug);
+      assert.ok(tabs.has(n.category), `${p.slug} is in category "${n.category}", which has no home-page tab`);
+      assert.ok(Array.isArray(p.images), `${p.slug}: images must be a list (empty is fine: placeholders are used)`);
+    }
+  });
+
   it('leaves the launch boxes without the new fields (the page then hides the section)', () => {
     for (const slug of ['classic-fresh-mix', 'tropical-bliss', 'gym-fuel-pack', 'ramadan-special-box', 'mango-season-box']) {
       assert.equal(bySlug[slug].origin, undefined, slug);

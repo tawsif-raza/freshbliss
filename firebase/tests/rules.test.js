@@ -21,6 +21,8 @@ const {
   collection,
   query,
   where,
+  orderBy,
+  limit,
   getDoc,
   getDocs,
   setDoc,
@@ -79,6 +81,7 @@ function orderFor(uid, status) {
     status,
     paymentStatus: 'PAID',
     pricing: { subtotal: 149, discount: 0, deliveryFee: 30, tip: 0, total: 179 },
+    createdAt: new Date('2026-10-01T10:00:00Z'), // real orders always have one (the My orders query sorts on it)
   };
 }
 
@@ -272,6 +275,18 @@ describe('order privacy', () => {
     const q = query(collection(asUser('alice'), 'orders'), where('uid', '==', 'alice'));
     const snap = await assertSucceeds(getDocs(q));
     assert.equal(snap.size, 2);
+  });
+
+  it('lets the owner run the exact query the My orders page uses (uid filter, newest first, limited)', async () => {
+    const q = query(collection(asUser('alice'), 'orders'), where('uid', '==', 'alice'), orderBy('createdAt', 'desc'), limit(50));
+    const snap = await assertSucceeds(getDocs(q));
+    assert.equal(snap.size, 2);
+    assert.ok(snap.docs.every((d) => d.data().uid === 'alice'));
+  });
+
+  it("blocks that same query when it asks for someone else's orders", async () => {
+    const q = query(collection(asUser('bob'), 'orders'), where('uid', '==', 'alice'), orderBy('createdAt', 'desc'), limit(50));
+    await assertFails(getDocs(q));
   });
 
   it("blocks another signed-in user from reading someone else's order", async () => {
