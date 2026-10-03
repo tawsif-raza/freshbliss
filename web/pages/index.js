@@ -8,7 +8,10 @@ import { useRouter } from 'next/router';
 import { useMemo, useState } from 'react';
 import CategoryTabs from '@/components/CategoryTabs';
 import Hero from '@/components/Hero';
-import { Faq, Testimonials } from '@/components/HomeSections';
+import CustomerReviews from '@/components/CustomerReviews';
+import { Faq } from '@/components/HomeSections';
+import Marquee from '@/components/Marquee';
+import OurRoots from '@/components/OurRoots';
 import ProductGrid from '@/components/ProductGrid';
 import TrustStory from '@/components/TrustStory';
 import { CATEGORIES, FEATURED_LIMIT } from '@/content/storefront';
@@ -56,6 +59,7 @@ export default function HomePage() {
       </Head>
 
       <Hero onPickCategory={setCategoryId} />
+      <Marquee />
 
       <section id="shop" aria-labelledby="shop-title" className="fb-container scroll-mt-24 py-14.5">
         <p className="text-label text-gold">Fresh today</p>
@@ -94,8 +98,9 @@ export default function HomePage() {
       </section>
 
       <TrustStory />
-      <Testimonials />
+      <CustomerReviews />
       <Faq zones={zones} />
+      <OurRoots />
     </>
   );
 }

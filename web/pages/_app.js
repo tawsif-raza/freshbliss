@@ -2,6 +2,7 @@ import '@/styles/globals.css';
 import { Playfair_Display, Plus_Jakarta_Sans } from 'next/font/google';
 import CartDrawer from '@/components/CartDrawer';
 import Footer from '@/components/Footer';
+import RouteProgress from '@/components/RouteProgress';
 import SiteHeader from '@/components/SiteHeader';
 import { ToastProvider } from '@/components/ToastProvider';
 import { CartDrawerProvider } from '@/context/CartDrawerContext';
@@ -36,6 +37,7 @@ export default function App({ Component, pageProps }) {
               >
                 Skip to content
               </a>
+              <RouteProgress />
               <SiteHeader />
               <main id="fbs-main" className="flex-1">
                 <Component {...pageProps} />

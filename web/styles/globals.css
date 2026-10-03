@@ -48,8 +48,41 @@
   }
 }
 
+/* The ticker under the banner (components/Marquee.js): the track holds two identical copies, so sliding it left by
+   half its width (one copy) and starting over is seamless. It pauses while hovered. */
+@keyframes fb-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.fb-marquee {
+  animation: fb-marquee 40s linear infinite;
+}
+
+.fb-marquee:hover {
+  animation-play-state: paused;
+}
+
 /* Motion is optional: honour the visitor's setting everywhere. */
 @media (prefers-reduced-motion: reduce) {
+  /* No scrolling ticker: show one copy of the promises as a centred, wrapping row. */
+  .fb-marquee {
+    animation: none !important;
+    width: 100%;
+    justify-content: center;
+  }
+  .fb-marquee-group {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .fb-marquee-group[aria-hidden="true"] {
+    display: none;
+  }
+
   *,
   *::before,
   *::after {

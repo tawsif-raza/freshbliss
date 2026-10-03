@@ -66,16 +66,55 @@ export const TRUST_PILLARS = [
 // ---------- reviews ----------
 
 // Real customer reviews go here, with the customer's permission. Each entry:
-//   { name: 'Asha R.', area: 'Indiranagar', quote: 'What they actually said.' }
+//   { name: 'Asha R.', area: 'Indiranagar', quote: 'What they actually said.', avatar: 'photo link (optional)' }
 //
 // NEVER put invented reviews on a live shop. The entries below are PLACEHOLDERS, marked `sample: true`
 // so the layout can be seen while developing. In production a sample is never shown, and when there
 // are no real reviews the whole section is hidden.
 export const TESTIMONIALS = [
-  { name: 'Customer name', area: 'Area', quote: 'A real customer review goes here.', sample: true },
-  { name: 'Customer name', area: 'Area', quote: 'A real customer review goes here.', sample: true },
-  { name: 'Customer name', area: 'Area', quote: 'A real customer review goes here.', sample: true },
+  {
+    name: 'Ananya R.',
+    area: 'Indiranagar',
+    quote: 'Tastes like the fruit stall I grew up next to. The mango was unreal.',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
+    sample: true,
+  },
+  {
+    name: 'Rohan M.',
+    area: 'Koramangala',
+    quote: 'Arrived chilled, cut fresh, and on time. My gym-bag staple now.',
+    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=150&q=80',
+    sample: true,
+  },
+  {
+    name: 'Priya S.',
+    area: 'HSR Layout',
+    quote: 'Finally a fruit box my kids finish. We have ordered every week since.',
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80',
+    sample: true,
+  },
 ];
+
+// ---------- the ticker under the banner ----------
+
+// REVIEW BEFORE LAUNCH: each line is a promise, so make sure it is true. In particular, check the free
+// delivery line against the delivery zones (Zone B charges a fee today) and the rating against real reviews.
+export const MARQUEE_ITEMS = [
+  '🌿 100% Organic & Pesticide-Free',
+  '🚚 Free Bengaluru Delivery over ₹500',
+  '👨‍🌾 Farm to Doorstep in 12 Hours',
+  '⭐ 4.9/5 Average Rating',
+];
+
+// ---------- our roots ----------
+
+export const OUR_ROOTS = {
+  eyebrow: 'Our roots',
+  title: 'Sourced with Purpose',
+  text: 'We partner directly with independent farmers across Karnataka and Maharashtra to bring you produce that actually tastes like nature intended.',
+  image: 'https://images.unsplash.com/photo-1595841696677-6489ff3f8cd1?auto=format&fit=crop&w=1200&q=80',
+  imageAlt: 'Fresh produce from one of our partner farms',
+};
 
 // ---------- questions ----------
 
