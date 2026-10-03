@@ -6,7 +6,7 @@
 // records are kept, who the delivery partners are, a grievance contact). See docs/GO_LIVE.md, section 8.3.
 // If any of the system changes (an analytics tool, a new payment provider), change this at the same time.
 
-export const PRIVACY_UPDATED = '2 October 2026';
+export const PRIVACY_UPDATED = '3 October 2026';
 
 // `sections` is rendered in order. Each has a title and a list of paragraphs or bullet lists.
 export const PRIVACY_SECTIONS = [
@@ -23,6 +23,16 @@ export const PRIVACY_SECTIONS = [
           'A payment reference (an ID from Razorpay, our payment provider). We do not see or store your card, UPI or bank details.',
           'An anonymous account ID. Your browser creates it the first time you start a checkout, so that your cart and your orders belong to you. There is no name, email or password yet.',
         ],
+      },
+    ],
+  },
+  {
+    id: 'location',
+    title: 'Your location (only if you choose)',
+    items: [
+      {
+        type: 'p',
+        text: 'On the checkout page, "Use Current Location" is optional. If you press it, your browser asks your permission, and then your position is sent from your browser to OpenStreetMap (the free Nominatim service) to look up the nearest road, area and pincode. Those are put into the address boxes for you to check and change. We do not receive, store or keep your coordinates. OpenStreetMap handles that request under its own privacy policy. If you do not press the button, nothing is sent.',
       },
     ],
   },

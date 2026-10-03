@@ -1,5 +1,6 @@
 // Checkout: /checkout
-// Where the customer says where to deliver, applies a promo code, picks a rider tip, sees the full
+// Where the customer says where to deliver (pincode, house/flat, road/area, an optional landmark and a
+// Home/Work/Other tag, with a "Use Current Location" button), applies a promo code, picks a rider tip, sees the full
 // itemised total, and pays. The cart page only holds the cart.
 //
 // Every figure is checked by the SERVER before it is shown as final (previewCheckout) and again when
@@ -19,11 +20,14 @@ import CartSkeleton from '@/components/CartSkeleton';
 import { Field, inputClass } from '@/components/Field';
 import SummaryRow from '@/components/SummaryRow';
 import ZoneStatus, { zoneOutcome } from '@/components/ZoneStatus';
+import AddressFields from '@/components/checkout/AddressFields';
 import CheckoutSummary from '@/components/checkout/CheckoutSummary';
+import LocationButton from '@/components/checkout/LocationButton';
 import OrderResult from '@/components/checkout/OrderResult';
 import PromoCode from '@/components/checkout/PromoCode';
 import TipSelector from '@/components/checkout/TipSelector';
 import { useCart } from '@/context/CartContext';
+import { ADDRESS_LIMITS, DEFAULT_ADDRESS_TYPE, addressErrors, formatAddress } from '@/lib/address';
 import { usingEmulators } from '@/lib/firebaseClient';
 import { previewTotals } from '@/lib/pricing';
 import { CheckoutError, friendlyError, loadRazorpay, previewPricing, runCheckout, runMockCheckout, verifyPayment } from '@/lib/razorpayCheckout';
@@ -45,7 +49,8 @@ export default function CheckoutPage() {
   const { pincode: savedPincode, setPincode: savePincode } = useSavedPincode();
 
   const [typedPincode, setTypedPincode] = useState(null); // null until they type: then the remembered one shows
-  const [form, setForm] = useState({ address: '', note: '' });
+  const [form, setForm] = useState({ flat: '', area: '', landmark: '', note: '' });
+  const [addressType, setAddressType] = useState(DEFAULT_ADDRESS_TYPE); // home | work | other
   const [tip, setTip] = useState(0);
   const [promoCode, setPromoCode] = useState(null); // only a code the server has accepted
   const [promoNote, setPromoNote] = useState(''); // why a code was refused
@@ -59,7 +64,8 @@ export default function CheckoutPage() {
   const [unconfirmed, setUnconfirmed] = useState(null); // paid, but not yet confirmed: { pending, quote }
   const [settled, setSettled] = useState(null); // the server's last answer: { key, data, error, promoError }
   const pincodeRef = useRef(null);
-  const addressRef = useRef(null);
+  const flatRef = useRef(null);
+  const areaRef = useRef(null);
 
   // Start with the pincode remembered from the product page or an earlier visit, until they type their own.
   const pincode = typedPincode ?? savedPincode;
@@ -138,8 +144,11 @@ export default function CheckoutPage() {
 
   const fieldErrors = {
     pincode: !PINCODE.test(pincode) ? 'Enter your 6-digit pincode.' : area.kind === 'outside' ? 'We do not deliver here yet.' : null,
-    address: form.address.trim() ? null : 'Enter your delivery address.',
+    ...addressErrors(form), // flat and area
   };
+
+  // The one line the order stores, for example "Home: Flat 4B, MG Road, near Metro. Pincode: 560041".
+  const address = formatAddress({ type: addressType, flat: form.flat, area: form.area, landmark: form.landmark, pincode });
 
   const canPay = loaded && items.length > 0 && problems.length === 0 && !busy && !promoBusy && !quoting && !current?.error && promoStatus !== 'error' && area.kind !== 'outside';
 
@@ -147,6 +156,12 @@ export default function CheckoutPage() {
     const digits = value.replace(/\D/g, '').slice(0, 6);
     setTypedPincode(digits);
     if (PINCODE.test(digits)) savePincode(digits);
+  }
+
+  // "Use Current Location" found something: fill the pincode and the road/area (never the house or flat number).
+  function handleLocation({ pincode: foundPincode, area: foundArea }) {
+    if (foundPincode) handlePincode(foundPincode);
+    if (foundArea) setForm((f) => ({ ...f, area: foundArea.slice(0, ADDRESS_LIMITS.area) }));
   }
 
   // Apply a promo code: only keep it if the server accepts it.
@@ -186,9 +201,9 @@ export default function CheckoutPage() {
     setError(null);
     setNotice(null);
 
-    if (fieldErrors.pincode || fieldErrors.address) {
+    if (fieldErrors.pincode || fieldErrors.flat || fieldErrors.area) {
       setShowErrors(true);
-      (fieldErrors.pincode ? pincodeRef : addressRef).current?.focus();
+      (fieldErrors.pincode ? pincodeRef : fieldErrors.flat ? flatRef : areaRef).current?.focus();
       return;
     }
 
@@ -198,7 +213,7 @@ export default function CheckoutPage() {
     if (usingEmulators) {
       setStage('paying');
       try {
-        const order = await runMockCheckout({ lines, details: { pincode, address: form.address.trim(), note: form.note.trim(), tip, promoCode } });
+        const order = await runMockCheckout({ lines, details: { pincode, address, note: form.note.trim(), tip, promoCode } });
         await router.push(`/orders/${order.orderId}`);
         clearCart(); // after leaving: emptying it first would flash "Your cart is empty" on this page for a moment
       } catch (err) {
@@ -211,7 +226,7 @@ export default function CheckoutPage() {
     try {
       const { result, quote } = await runCheckout({
         lines,
-        details: { pincode, address: form.address.trim(), note: form.note.trim(), tip, promoCode },
+        details: { pincode, address, note: form.note.trim(), tip, promoCode },
         hooks: { onStage: setStage, onPaymentFailed: (message) => setNotice(`${message} You can try again in the payment window.`) },
       });
       finish(result, quote);
@@ -351,23 +366,19 @@ export default function CheckoutPage() {
                     </Field>
                     <ZoneStatus pincode={pincode} zones={zones} zonesStatus={zonesStatus} subtotal={subtotal} />
 
-                    <Field label="Delivery address" error={showErrors ? fieldErrors.address : null}>
-                      {({ id, invalid, describedBy }) => (
-                        <textarea
-                          ref={addressRef}
-                          id={id}
-                          value={form.address}
-                          onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-                          maxLength={200}
-                          rows={3}
-                          autoComplete="street-address"
-                          aria-invalid={invalid}
-                          aria-describedby={describedBy}
-                          disabled={busy}
-                          className={`${inputClass(invalid)} py-2`}
-                        />
-                      )}
-                    </Field>
+                    <LocationButton onFound={handleLocation} disabled={busy} />
+
+                    <AddressFields
+                      value={{ ...form, addressType }}
+                      onChange={({ addressType: nextType, ...rest }) => {
+                        if (nextType) setAddressType(nextType);
+                        if (Object.keys(rest).length > 0) setForm((f) => ({ ...f, ...rest }));
+                      }}
+                      errors={showErrors ? fieldErrors : {}}
+                      flatRef={flatRef}
+                      areaRef={areaRef}
+                      disabled={busy}
+                    />
 
                     <Field label="Delivery instructions" optional>
                       {({ id }) => (
