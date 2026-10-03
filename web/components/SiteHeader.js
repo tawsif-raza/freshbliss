@@ -5,15 +5,18 @@
 // and it gains a soft shadow once the page has moved, so it reads as floating above the content. (The shadow is switched by an observer
 // watching a 1px marker at the very top of the page: cheaper than listening to every scroll.)
 //
+// The Search button (or Ctrl+K / Cmd+K) opens the search palette (components/CommandPalette.js).
+//
 // The cart button opens the slide-out cart (components/CartDrawer.js). On the cart and checkout pages,
 // where the cart is already on screen, it simply links to the cart instead.
 
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useEffect, useRef, useState } from 'react';
-import { Heart, ShoppingBag } from 'lucide-react';
+import { Heart, Search, ShoppingBag } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { useCartDrawer } from '@/context/CartDrawerContext';
+import { useCommandPalette } from '@/context/CommandPaletteContext';
 import { useWishlist } from '@/context/WishlistContext';
 
 // A button-like item with an icon, a label (hidden on the smallest screens) and a count badge.
@@ -68,6 +71,7 @@ export default function SiteHeader() {
   const { itemCount } = useCart();
   const { count: wishlistCount } = useWishlist();
   const { open: openCart } = useCartDrawer();
+  const { open: openSearch } = useCommandPalette();
   const { pathname } = useRouter();
   const cartIsOnScreen = pathname === '/cart' || pathname === '/checkout';
 
@@ -101,6 +105,16 @@ export default function SiteHeader() {
               <NavLink href="/account">My orders</NavLink>
             </nav>
             <nav aria-label="Your lists" className="flex items-center gap-1 sm:gap-3">
+              <button
+                type="button"
+                onClick={openSearch}
+                aria-haspopup="dialog"
+                aria-keyshortcuts="Control+K Meta+K"
+                className="inline-flex min-h-11 items-center gap-2 rounded-pill px-2 text-nav-link text-brand-text hover:bg-surface-cream"
+              >
+                <Search size={20} aria-hidden="true" />
+                <span className="hidden sm:inline">Search</span>
+              </button>
               <Count label="Wishlist" value={wishlistCount} icon={Heart} />
               {cartIsOnScreen ? <Count label="Cart" value={itemCount} icon={ShoppingBag} href="/cart" /> : <Count label="Cart" value={itemCount} icon={ShoppingBag} onClick={openCart} />}
             </nav>

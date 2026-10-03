@@ -1,11 +1,13 @@
 import '@/styles/globals.css';
 import { Playfair_Display, Plus_Jakarta_Sans } from 'next/font/google';
 import CartDrawer from '@/components/CartDrawer';
+import CommandPalette from '@/components/CommandPalette';
 import Footer from '@/components/Footer';
 import RouteProgress from '@/components/RouteProgress';
 import SiteHeader from '@/components/SiteHeader';
 import { ToastProvider } from '@/components/ToastProvider';
 import { CartDrawerProvider } from '@/context/CartDrawerContext';
+import { CommandPaletteProvider } from '@/context/CommandPaletteContext';
 import { CartProvider } from '@/context/CartContext';
 import { WishlistProvider } from '@/context/WishlistContext';
 
@@ -28,6 +30,7 @@ export default function App({ Component, pageProps }) {
       <style jsx global>{fontRoot}</style>
       <ToastProvider>
         <CartDrawerProvider>
+          <CommandPaletteProvider>
           <CartProvider>
             <WishlistProvider>
               {/* Skip link: first thing a keyboard user tabs to. */}
@@ -44,8 +47,10 @@ export default function App({ Component, pageProps }) {
               </main>
               <Footer />
               <CartDrawer />
+              <CommandPalette />
             </WishlistProvider>
           </CartProvider>
+          </CommandPaletteProvider>
         </CartDrawerProvider>
       </ToastProvider>
     </div>

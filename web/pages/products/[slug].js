@@ -5,6 +5,9 @@
 //
 // Origin, calories, benefits and packaging text appear only if the shop owner has added them to the product
 // in Firestore (see lib/catalog.js). A missing fact is left out, never made up.
+//
+// Below that: "Chef's Notes & Pairings" (a serving idea, lib/pairings.js), and search-engine structured data
+// (JSON-LD, lib/seo.js) in the page head, built from the same live product.
 
 import Head from 'next/head';
 import Link from 'next/link';
@@ -12,6 +15,7 @@ import { useRouter } from 'next/router';
 import { useState } from 'react';
 import Accordion from '@/components/Accordion';
 import Callout from '@/components/Callout';
+import ChefsNotes from '@/components/ChefsNotes';
 import HarvestHealth from '@/components/HarvestHealth';
 import ProductGallery from '@/components/ProductGallery';
 import RelatedProducts from '@/components/RelatedProducts';
@@ -24,6 +28,7 @@ import { MAX_QTY_PER_LINE, useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
 import { useProducts } from '@/lib/catalog';
 import { unitPrice } from '@/lib/pricing';
+import { buildProductJsonLd, jsonLdString } from '@/lib/seo';
 import { PINCODE, useSavedPincode, useZones } from '@/lib/zones';
 
 const DEFAULT_PACKAGING = 'Freshly cut and packed hygienically, with zero preservatives.';
@@ -111,6 +116,8 @@ function ProductDetail({ product, products, status }) {
     <PageShell title={product.name}>
       <Head>
         <meta name="description" content={product.description || `${product.name} from FreshBliss`} />
+        {/* Structured data for search engines. The text is escaped (lib/seo.js), so it cannot close the tag early. */}
+        <script key="product-jsonld" type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(buildProductJsonLd(product)) }} />
       </Head>
 
       <div className="grid items-start gap-8.5 md:grid-cols-2">
@@ -204,6 +211,8 @@ function ProductDetail({ product, products, status }) {
 
       {/* Where it grew, its energy and its benefits (only the facts the shop has added) */}
       <HarvestHealth product={product} />
+
+      <ChefsNotes slug={product.id} />
 
       <section aria-labelledby="details-title" className="mt-10 max-w-3xl">
         <h2 id="details-title" className="text-heading-3 text-ink">
