@@ -77,6 +77,54 @@ describe('seed catalogue', () => {
     assert.deepEqual(withStorage, ['a2-organic-farm-milk', 'chilled-watermelon-mint-bowl', 'cold-pressed-orange-juice', 'madagascar-vanilla-ice-cream']);
   });
 
+  it('gives EVERY product the four specification fields (shelf life, story, ingredients text, nutrition)', async () => {
+    const { normaliseProduct } = await import('../../web/lib/product.js');
+    const { specRows } = await import('../../web/lib/specs.js');
+    for (const p of buildProducts()) {
+      const n = normaliseProduct(p.slug, p);
+      assert.ok(n.shelfLife, `${p.slug} has no shelfLife`);
+      assert.ok(n.brandStory && n.brandStory.length > 40, `${p.slug} has no brandStory`);
+      assert.ok(n.ingredientsText, `${p.slug} has no ingredientsText`);
+      assert.ok(n.nutrition && n.nutrition.rows.length >= 5, `${p.slug} has no nutrition table`);
+      assert.deepEqual(specRows(n), { ingredients: true, nutrition: true, sourcing: true, shelfLife: true }, p.slug);
+      // the plain list of ingredient names is still a list, as the rest of the app expects
+      assert.ok(Array.isArray(p.ingredients) && p.ingredients.every((i) => typeof i === 'string'), p.slug);
+      assert.equal(typeof p.ingredientsText, 'string', p.slug);
+    }
+  });
+
+  it('nutrition starts with Energy, and Energy agrees with the calories text where a product has one', () => {
+    for (const p of buildProducts()) {
+      assert.equal(p.nutrition.rows[0].label, 'Energy', p.slug);
+      const kcal = Number(/(\d+)\s*kcal/.exec(p.nutrition.rows[0].value)?.[1]);
+      assert.ok(Number.isFinite(kcal) && kcal > 0, p.slug);
+      if (p.calories) assert.equal(Number(/(\d+)\s*kcal/.exec(p.calories)?.[1]), kcal, `${p.slug}: calories text and nutrition Energy disagree`);
+    }
+  });
+
+  it('tells you about the real allergens: milk products say so, and so does the box with nuts', () => {
+    assert.match(bySlug['a2-organic-farm-milk'].allergens, /milk/i);
+    assert.match(bySlug['madagascar-vanilla-ice-cream'].allergens, /milk/i);
+    assert.match(bySlug['gym-fuel-pack'].allergens, /nuts/i);
+    // and no product that lists nuts or milk as an ingredient is missing the warning
+    for (const p of buildProducts()) {
+      if (p.ingredients.some((i) => /nut|milk|cream/i.test(i))) assert.ok(p.allergens, `${p.slug} lists nuts or milk but has no allergen note`);
+    }
+  });
+
+  it('the stories match what the shop promised: Gir cows for the milk, 4 days refrigerated, 3 months frozen', () => {
+    assert.match(bySlug['a2-organic-farm-milk'].brandStory, /Gir/);
+    assert.match(bySlug['a2-organic-farm-milk'].brandStory, /graze freely/);
+    assert.match(bySlug['a2-organic-farm-milk'].shelfLife, /4 days/);
+    assert.match(bySlug['madagascar-vanilla-ice-cream'].shelfLife, /3 months/);
+    assert.match(bySlug['madagascar-vanilla-ice-cream'].ingredientsText, /cream/i);
+    assert.match(bySlug['madagascar-vanilla-ice-cream'].ingredientsText, /vanilla bean/i);
+    assert.equal(bySlug['a2-organic-farm-milk'].ingredientsText, '100% Organic A2 Cow Milk');
+    for (const p of buildProducts().filter((x) => ['Fresh', 'Fitness', 'Ramadan', 'Seasonal', 'Exotics', 'Immunity'].includes(x.category))) {
+      assert.match(p.shelfLife, /within 3 days/i, p.slug);
+    }
+  });
+
   it('leaves the launch boxes without the new fields (the page then hides the section)', () => {
     for (const slug of ['classic-fresh-mix', 'tropical-bliss', 'gym-fuel-pack', 'ramadan-special-box', 'mango-season-box']) {
       assert.equal(bySlug[slug].origin, undefined, slug);

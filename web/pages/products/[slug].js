@@ -3,6 +3,7 @@
 // actually sell, a delivery estimate for the visitor's pincode, and expandable details (ingredients,
 // packaging), plus a "Harvest & Health" row (origin, calories, key benefits). Everything about the box is live: if the last one sells, the page says so.
 //
+// Ingredients, nutrition, the farm story and shelf life are in the "Product Specifications" rows (components/ProductSpecifications.js).
 // Origin, calories, benefits, packaging and storage text appear only if the shop owner has added them to the product
 // in Firestore (see lib/catalog.js). A missing fact is left out, never made up.
 //
@@ -18,6 +19,7 @@ import Callout from '@/components/Callout';
 import ChefsNotes from '@/components/ChefsNotes';
 import HarvestHealth from '@/components/HarvestHealth';
 import ProductGallery from '@/components/ProductGallery';
+import ProductSpecifications from '@/components/ProductSpecifications';
 import RelatedProducts from '@/components/RelatedProducts';
 import { ProductDetailSkeleton } from '@/components/ProductSkeleton';
 import QuantityStepper from '@/components/QuantityStepper';
@@ -92,19 +94,6 @@ function ProductDetail({ product, products, status }) {
   }
 
   const accordionItems = [
-    product.ingredients.length > 0 && {
-      id: 'ingredients',
-      title: 'Ingredients',
-      content: (
-        <ul className="flex flex-wrap gap-2">
-          {product.ingredients.map((ingredient) => (
-            <li key={ingredient} className="rounded-pill border border-line bg-surface-tag px-3 py-1 text-small text-brand-text">
-              {ingredient}
-            </li>
-          ))}
-        </ul>
-      ),
-    },
     { id: 'packaging', title: 'Packaging', content: <p>{product.packaging || DEFAULT_PACKAGING}</p> },
   ].filter(Boolean);
 
@@ -215,6 +204,9 @@ function ProductDetail({ product, products, status }) {
 
       {/* Where it grew, its energy and its benefits (only the facts the shop has added) */}
       <HarvestHealth product={product} />
+
+      {/* Ingredients and allergens, nutrition, sourcing and shelf life (only the rows the shop has filled in) */}
+      <ProductSpecifications product={product} />
 
       <ChefsNotes slug={product.id} category={product.category} />
 

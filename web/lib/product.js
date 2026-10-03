@@ -7,6 +7,7 @@
 
 import { normaliseBenefits, normaliseCalories, normaliseOrigin, normaliseStorage } from './harvest.js';
 import { placeholderImagesFor } from './images.js';
+import { normaliseNutrition, normaliseSpecText } from './specs.js';
 
 // Same fallback the server uses when a product has no sizes.
 const DEFAULT_SIZES = [{ id: 'regular', label: 'Regular', extra: 0 }];
@@ -28,6 +29,9 @@ const isImageUrl = (u) => typeof u === 'string' && /^https?:\/\/\S+$/i.test(u.tr
 //   keyBenefits   up to 6 short phrases, for example ["High in vitamin C"]
 //   nutritionNote short text under the calories, for example "Per Regular box"
 //   packaging     short text about how the box is packed
+//   ingredientsText, allergens, nutrition, brandStory, shelfLife
+//                 the "Product Specifications" accordion on the product page (lib/specs.js). `ingredients` stays the
+//                 LIST of item names; `ingredientsText` is the full declaration as one line of text
 //   storage       how a chilled or frozen product must be kept, for example "Keep Frozen at -18°C". It is
 //                 shown as a temperature badge on the product page (lib/harvest.js)
 export function normaliseProduct(id, data) {
@@ -61,6 +65,11 @@ export function normaliseProduct(id, data) {
     calories: normaliseCalories(data.calories),
     keyBenefits: normaliseBenefits(data.keyBenefits),
     storage: normaliseStorage(data.storage),
+    ingredientsText: normaliseSpecText(data.ingredientsText, 'ingredientsText'),
+    allergens: normaliseSpecText(data.allergens, 'allergens'),
+    nutrition: normaliseNutrition(data.nutrition),
+    brandStory: normaliseSpecText(data.brandStory, 'brandStory'),
+    shelfLife: normaliseSpecText(data.shelfLife, 'shelfLife'),
     nutritionNote: typeof data.nutritionNote === 'string' ? data.nutritionNote : '',
     packaging: typeof data.packaging === 'string' ? data.packaging : '',
     sizes,
