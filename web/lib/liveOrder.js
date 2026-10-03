@@ -38,7 +38,7 @@ export function useLiveOrder(orderId) {
             setState({ status: 'missing', order: null, live: false });
             return;
           }
-          setState({ status: 'ready', order: { id: snap.id, ...snap.data() }, live: !snap.metadata.fromCache });
+          setState({ status: 'ready', order: { ...snap.data(), id: snap.id }, live: !snap.metadata.fromCache });
         },
         (err) => {
           // "Not yours" and "does not exist" look the same on purpose: the rules

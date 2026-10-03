@@ -9,7 +9,7 @@ import { useState } from 'react';
 import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
 import Callout from '@/components/Callout';
 import OrderReceipt from '@/components/OrderReceipt';
-import OrderTimeline from '@/components/OrderTimeline';
+import OrderStepper from '@/components/OrderStepper';
 import TrackingSkeleton from '@/components/TrackingSkeleton';
 import DeliveryCodeCard from '@/components/orders/DeliveryCodeCard';
 import InfoCard from '@/components/orders/InfoCard';
@@ -123,15 +123,14 @@ export default function OrderTrackingPage() {
           </Callout>
         )}
 
-        <div className="mt-8.5 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-          <div className="flex flex-col gap-6">
-            {!cancelled && (
-              <InfoCard title="Order status">
-                <OrderTimeline status={order.status} timestamps={order.timestamps} />
-              </InfoCard>
-            )}
-            <AnimatePresence>{order.status === 'OUT_FOR_DELIVERY' && <DeliveryCodeCard order={order} />}</AnimatePresence>
-          </div>
+        {/* One column, so the stepper has the whole width to spread across. */}
+        <div className="mt-8.5 flex max-w-3xl flex-col gap-6">
+          {!cancelled && (
+            <InfoCard title="Order status">
+              <OrderStepper status={order.status} timestamps={order.timestamps} />
+            </InfoCard>
+          )}
+          <AnimatePresence>{order.status === 'OUT_FOR_DELIVERY' && <DeliveryCodeCard order={order} />}</AnimatePresence>
           <OrderSummary order={order} />
         </div>
 

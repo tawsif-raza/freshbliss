@@ -1,7 +1,7 @@
 // My orders: /account
-// The customer's own past orders, live from Firestore, newest first. Each has its status, date, items
-// and total, links to track it or print its receipt, and a one-click Reorder that puts the same boxes
-// back in the cart.
+// The customer's own past orders, live from Firestore, newest first. Filter chips (All Orders, In Progress,
+// Past 30 Days, Delivered, Cancelled) narrow the list. Each order has its status, date, items and total,
+// links to track it or print its receipt, and a one-click Reorder that puts the same boxes back in the cart.
 //
 // There is no login yet (see lib/auth.js): "my orders" means the orders placed from THIS browser.
 // Visiting this page never creates an account.
@@ -9,13 +9,16 @@
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import { useMemo, useState } from 'react';
 import Callout from '@/components/Callout';
+import OrderFilterChips from '@/components/orders/OrderFilterChips';
 import OrderHistoryCard from '@/components/orders/OrderHistoryCard';
 import { useToast } from '@/components/ToastProvider';
 import { OrderListSkeleton } from '@/components/CartSkeleton';
 import { useCart } from '@/context/CartContext';
 import { useCartDrawer } from '@/context/CartDrawerContext';
 import { useProducts } from '@/lib/catalog';
+import { ORDER_FILTERS, countByFilter, filterOrders } from '@/lib/orderFilters';
 import { useMyOrders } from '@/lib/orders';
 import { linesFromOrder, shortOrderNumber } from '@/lib/pricing';
 
@@ -26,6 +29,13 @@ export default function AccountPage() {
   const { addToCart } = useCart();
   const toast = useToast();
   const drawer = useCartDrawer();
+
+  // Which chip is chosen. "Now" is read once per visit so the 30-day window does not shift while the page is open.
+  const [filterId, setFilterId] = useState('all');
+  const [now] = useState(() => Date.now());
+  const counts = useMemo(() => countByFilter(orders, now), [orders, now]);
+  const shown = useMemo(() => filterOrders(orders, filterId, now), [orders, filterId, now]);
+  const filter = ORDER_FILTERS.find((f) => f.id === filterId) ?? ORDER_FILTERS[0];
 
   // Put an old order's boxes back in the cart, as far as they can still be bought. Each box goes through
   // the cart's own rules (stock, per-box limits), so nothing unavailable can slip in. The boxes are added
@@ -92,14 +102,26 @@ export default function AccountPage() {
 
           {status === 'ready' && orders.length > 0 && (
             <>
-              <p className="mb-4.5 text-small text-ink-muted">
-                {orders.length} {orders.length === 1 ? 'order' : 'orders'}, newest first
+              <OrderFilterChips filters={ORDER_FILTERS} counts={counts} value={filterId} onChange={setFilterId} />
+              <p role="status" className="mt-4.5 mb-4.5 text-small text-ink-muted">
+                {shown.length} {shown.length === 1 ? 'order' : 'orders'}
+                {filterId === 'all' ? ', newest first' : `: ${filter.label.toLowerCase()}`}
               </p>
-              <ul className="flex flex-col gap-4.5">
-                {orders.map((order) => (
-                  <OrderHistoryCard key={order.id} order={order} onReorder={reorder} reorderReady={catalogueStatus === 'ready'} />
-                ))}
-              </ul>
+              {shown.length === 0 ? (
+                <div className="rounded-xl border border-line bg-surface-card p-8 shadow-card">
+                  <h2 className="text-heading-3 text-ink">No orders here</h2>
+                  <p className="mt-1 text-body text-ink-muted">None of your orders match &quot;{filter.label}&quot;.</p>
+                  <button type="button" onClick={() => setFilterId('all')} className="mt-4 min-h-11 rounded-pill bg-brand px-6 text-nav-link text-on-brand hover:brightness-110">
+                    Show all orders
+                  </button>
+                </div>
+              ) : (
+                <ul className="flex flex-col gap-4.5">
+                  {shown.map((order) => (
+                    <OrderHistoryCard key={order.id} order={order} onReorder={reorder} reorderReady={catalogueStatus === 'ready'} />
+                  ))}
+                </ul>
+              )}
             </>
           )}
         </div>

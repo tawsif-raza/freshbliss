@@ -47,7 +47,7 @@ function useLiveOrders(enabled, makeQuery, sorter) {
     if (!enabled) return undefined;
     const stop = onSnapshot(
       makeQuery(),
-      (snap) => setResult({ docs: snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort(sorter), state: 'ready' }),
+      (snap) => setResult({ docs: snap.docs.map((d) => ({ ...d.data(), id: d.id })).sort(sorter), state: 'ready' }),
       (err) => {
         console.error('Orders listener failed:', err);
         setResult({ docs: [], state: 'error' });
