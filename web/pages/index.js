@@ -9,6 +9,7 @@ import { useMemo, useState } from 'react';
 import CategoryTabs from '@/components/CategoryTabs';
 import Hero from '@/components/Hero';
 import CustomerReviews from '@/components/CustomerReviews';
+import FeaturedPromo from '@/components/FeaturedPromo';
 import { Faq } from '@/components/HomeSections';
 import Marquee from '@/components/Marquee';
 import OurRoots from '@/components/OurRoots';
@@ -95,6 +96,7 @@ export default function HomePage() {
         </div>
       </section>
 
+      <FeaturedPromo />
       <TrustStory />
       <CustomerReviews />
       <Faq zones={zones} />

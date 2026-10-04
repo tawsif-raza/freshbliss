@@ -47,6 +47,9 @@ export const HERO_IMAGES = {
   ramadan: photo(PHOTO.fruitBasket, 1600),
 };
 
+// The Featured Product Promo banner on the home page (components/FeaturedPromo.js): a halved kiwi.
+export const PROMO_IMAGE = photo(PHOTO.kiwi, 800);
+
 // By product id: the seeded boxes, each with photos of what is in it.
 const BY_PRODUCT = {
   'classic-fresh-mix': [PHOTO.fruitBowl, PHOTO.fruitBasket, PHOTO.kiwi],

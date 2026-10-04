@@ -74,6 +74,17 @@
   animation-play-state: paused;
 }
 
+/* The fruit on the home page promo banner (components/FeaturedPromo.js) drifts up and down. */
+@keyframes fb-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-14px);
+  }
+}
+
 /* Motion is optional: honour the visitor's setting everywhere. */
 @media (prefers-reduced-motion: reduce) {
   /* No scrolling ticker: show one copy of the promises as a centred, wrapping row. */
