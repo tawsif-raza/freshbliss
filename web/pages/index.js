@@ -2,7 +2,6 @@
 // Products and their stock come live from the shared catalogue; the zones (for the delivery answer
 // in the questions) come live from Firestore too. The words are in content/storefront.js.
 
-import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useMemo, useState } from 'react';
@@ -14,18 +13,34 @@ import { Faq } from '@/components/HomeSections';
 import Marquee from '@/components/Marquee';
 import OurRoots from '@/components/OurRoots';
 import ProductGrid from '@/components/ProductGrid';
+import Seo from '@/components/Seo';
 import TrustStory from '@/components/TrustStory';
+import { BUSINESS } from '@/content/business';
 import { CATEGORIES, FEATURED_LIMIT } from '@/content/storefront';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
-import { useProducts } from '@/lib/catalog';
+import { useCatalog } from '@/lib/catalog';
 import { countByTab, productsInTab } from '@/lib/categories';
+import { HERO_IMAGES } from '@/lib/images';
+import { buildOrganizationJsonLd, jsonLdString } from '@/lib/seo';
+import { fetchActiveProducts } from '@/lib/serverCatalog';
 import { useZones } from '@/lib/zones';
 
 const PANEL_ID = 'shop-panel';
+const TITLE = 'FreshBliss | Fresh fruit boxes delivered in Bengaluru';
+const DESCRIPTION = 'Freshly sliced. Perfectly packed. Always. Fruit boxes delivered across Bengaluru within the hour.';
 
-export default function HomePage() {
-  const { products, status, reload } = useProducts();
+// Built on the server and refreshed at most once a minute (incremental static regeneration), so the first HTML already
+// holds the boxes: search engines and share cards see them, and there is no skeleton flash. The browser then switches
+// to the live catalogue (lib/catalog.js) for stock and prices. If Firestore cannot be reached when the page is built
+// the page is still fine (it fills in in the browser, as before) and is rebuilt after 10 seconds instead of 60.
+export async function getStaticProps() {
+  const initialProducts = await fetchActiveProducts();
+  return { props: { initialProducts }, revalidate: initialProducts ? 60 : 10 };
+}
+
+export default function HomePage({ initialProducts }) {
+  const { products, status, reload } = useCatalog(initialProducts);
   const { addToCart } = useCart();
   const wishlist = useWishlist();
   const { zones } = useZones();
@@ -52,10 +67,9 @@ export default function HomePage() {
 
   return (
     <>
-      <Head>
-        <title>FreshBliss | Fresh fruit boxes delivered in Bengaluru</title>
-        <meta name="description" content="Freshly sliced. Perfectly packed. Always. Fruit boxes delivered across Bengaluru within the hour." />
-      </Head>
+      <Seo title={TITLE} description={DESCRIPTION} path="/" image={HERO_IMAGES.everyday}>
+        <script key="organization-jsonld" type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(buildOrganizationJsonLd(BUSINESS)) }} />
+      </Seo>
 
       <Hero onPickCategory={setCategoryId} />
       <Marquee />

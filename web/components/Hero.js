@@ -11,7 +11,7 @@
 //
 //   onPickCategory  (categoryId) => void   called when a button is pressed
 
-import Image from 'next/image';
+import OptimizedImage from '@/components/OptimizedImage';
 import { useState } from 'react';
 import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
 import { Check } from 'lucide-react';
@@ -30,7 +30,7 @@ export default function Hero({ onPickCategory }) {
           <AnimatePresence initial={false}>
             <motion.div key={modeId} className="absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.8 }}>
               <motion.div className="absolute inset-0" initial={{ scale: 1 }} animate={{ scale: 1.07 }} transition={{ duration: 16, ease: 'linear' }}>
-                <Image src={HERO_IMAGES[modeId]} alt="" fill priority sizes="100vw" unoptimized className="object-cover" />
+                <OptimizedImage src={HERO_IMAGES[modeId]} alt="" fill priority sizes="100vw" className="object-cover" />
               </motion.div>
             </motion.div>
           </AnimatePresence>

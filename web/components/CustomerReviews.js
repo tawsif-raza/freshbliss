@@ -5,7 +5,7 @@
 // developing, labelled as samples, and never in production. With no real reviews the section is hidden, so a
 // launch is never held up by (or tempted to fake) a review. See docs/GO_LIVE.md.
 
-import Image from 'next/image';
+import OptimizedImage from '@/components/OptimizedImage';
 import { Star } from 'lucide-react';
 import { TESTIMONIALS } from '@/content/storefront';
 
@@ -40,7 +40,7 @@ export default function CustomerReviews() {
                 <blockquote className="mt-4 flex-1 text-body text-ink">“{t.quote}”</blockquote>
                 <figcaption className="mt-5 flex items-center gap-3">
                   {t.avatar ? (
-                    <Image src={t.avatar} alt="" width={48} height={48} unoptimized className="size-12 rounded-full object-cover ring-2 ring-gold-bright" />
+                    <OptimizedImage src={t.avatar} alt="" width={48} height={48} className="size-12 rounded-full object-cover ring-2 ring-gold-bright" />
                   ) : (
                     <span aria-hidden="true" className="grid size-12 place-items-center rounded-full bg-gold-bright font-serif text-lg font-bold text-on-gold">
                       {t.name.charAt(0)}

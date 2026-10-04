@@ -22,6 +22,8 @@ const { defineSecret, defineString } = require('firebase-functions/params');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const Razorpay = require('razorpay');
 const { razorpayKeyProblem } = require('./shared/razorpayMode');
+const { callableOptions } = require('./shared/hardening');
+const { enforce } = require('./shared/rateLimit');
 
 // The key id is a normal param (it is public: the browser needs it); the key secret is a secret.
 // Local: functions/.env.local and functions/.secret.local (both git-ignored).
@@ -215,13 +217,15 @@ function readAddress(data) {
 
 exports.createCheckout = onCall(
   // Mumbai is the closest region to Bengaluru. The client must call the same region.
-  { region: 'asia-south1', secrets: [RAZORPAY_KEY_SECRET] },
+  callableOptions({ secrets: [RAZORPAY_KEY_SECRET] }),
   async (request) => {
     // Only signed-in customers can check out. We trust request.auth, nothing else.
     if (!request.auth) throw fail('unauthenticated', 'Please sign in to check out.');
     const uid = request.auth.uid;
     const address = readAddress(request.data);
     const db = getFirestore();
+    // Every call here can create a real Razorpay order, so it is rate limited (shared/rateLimit.js).
+    await enforce(db, request, 'createCheckout');
 
     // Safety guard: the key must belong to the mode this deployment was told to run in, so a
     // live key can never be used by accident (and a test key can never reach production unnoticed).

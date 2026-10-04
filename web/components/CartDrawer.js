@@ -10,7 +10,7 @@
 // the slide animation, the backdrop click, and closing when the visitor navigates to another page.
 // Prices and stock are live, from the same cart the cart page uses.
 
-import Image from 'next/image';
+import OptimizedImage from '@/components/OptimizedImage';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useEffect, useRef } from 'react';
@@ -20,7 +20,6 @@ import { CartLinesSkeleton } from '@/components/CartSkeleton';
 import QuantityStepper from '@/components/QuantityStepper';
 import { useCart } from '@/context/CartContext';
 import { useCartDrawer } from '@/context/CartDrawerContext';
-import { resizeImage } from '@/lib/images';
 
 const SLIDE_SECONDS = 0.28;
 const CLOSE_AFTER_MS = 340; // just after the slide-out finishes
@@ -33,7 +32,7 @@ function DrawerLine({ item, maxQty, onChangeQty, onRemove }) {
   return (
     <li className="flex gap-3 border-b border-line py-4 last:border-b-0">
       <div className="relative size-16 shrink-0 overflow-hidden rounded-md bg-surface-cream">
-        {image ? <Image src={resizeImage(image, 160)} alt="" fill sizes="64px" unoptimized className="object-cover" /> : <span className="grid h-full place-items-center px-1 text-center text-[11px] text-ink-muted">No photo</span>}
+        {image ? <OptimizedImage src={image} alt="" fill sizes="64px" className="object-cover" /> : <span className="grid h-full place-items-center px-1 text-center text-[11px] text-ink-muted">No photo</span>}
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col gap-1">

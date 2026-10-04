@@ -16,6 +16,7 @@
 
 const crypto = require('node:crypto');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { callableOptions } = require('./shared/hardening');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { ORDER_FLOW, nextStatus, cleanRider } = require('./shared/orderStatus');
 const { requireStaff } = require('./shared/staff');
@@ -64,7 +65,7 @@ async function advanceOrder(db, { orderId, status, rider, staffUid }) {
   });
 }
 
-exports.updateOrderStatus = onCall({ region: 'asia-south1' }, async (request) => {
+exports.updateOrderStatus = onCall(callableOptions(), async (request) => {
   const staffUid = requireStaff(request); // signed in AND carries the server-set `staff` claim
 
   const { orderId, status, rider } = request.data || {};

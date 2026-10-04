@@ -39,6 +39,7 @@
 
 const { onDocumentUpdated } = require('firebase-functions/v2/firestore');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { callableOptions } = require('./shared/hardening');
 const { logger } = require('firebase-functions');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { requireStaff } = require('./shared/staff');
@@ -234,7 +235,7 @@ exports.excelSyncUpdate = onDocumentUpdated(
 //   1. adds rows that are missing (orders whose first copy failed)
 //   2. fixes rows that are out of date (status changes that failed to reach Excel)
 // Never creates duplicate rows: an order already in the sheet is recognised by its ID.
-exports.retryExcelSync = onCall({ region: REGION, secrets: [EXCEL_AWS_SECRET_ACCESS_KEY], timeoutSeconds: 300 }, async (request) => {
+exports.retryExcelSync = onCall(callableOptions({ secrets: [EXCEL_AWS_SECRET_ACCESS_KEY], timeoutSeconds: 300 }), async (request) => {
   requireStaff(request);
   if (missingSettings(readConfig()).length > 0) {
     throw new HttpsError('failed-precondition', 'Excel sync is not set up yet. See docs/AWS_SETUP.md.');

@@ -5,6 +5,7 @@
 // emulators are never used, no matter what the env says.
 
 import { getApp, getApps, initializeApp } from 'firebase/app';
+import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 import { connectAuthEmulator, getAuth } from 'firebase/auth';
 import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
 import { connectFunctionsEmulator, getFunctions } from 'firebase/functions';
@@ -49,6 +50,24 @@ function readConfig() {
 // Next's hot reload re-runs this file. Reuse the existing app instead of
 // creating a second one.
 export const app = getApps().length > 0 ? getApp() : initializeApp(readConfig());
+
+// App Check: proves to the Cloud Functions that a request comes from this site and not from a script (reCAPTCHA v3,
+// invisible to the customer). The functions only REQUIRE it once ENFORCE_APP_CHECK is on (docs/GO_LIVE.md, section
+// 5.5), so a site without the key still works until then. It must be set up before any other Firebase service is
+// used, and only in the browser. The emulators never check it.
+//
+// To try it from `next dev` against a real project, set NEXT_PUBLIC_USE_FIREBASE_EMULATORS=false: the browser console
+// then prints a debug token to register under Firebase console > App Check > Apps > Manage debug tokens.
+const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+if (typeof window !== 'undefined' && !usingEmulators && !globalThis.__freshblissAppCheck) {
+  globalThis.__freshblissAppCheck = true;
+  if (RECAPTCHA_SITE_KEY) {
+    if (process.env.NODE_ENV === 'development') self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+    initializeAppCheck(app, { provider: new ReCaptchaV3Provider(RECAPTCHA_SITE_KEY), isTokenAutoRefreshEnabled: true });
+  } else if (process.env.NODE_ENV === 'production') {
+    console.warn('App Check is not set up: NEXT_PUBLIC_RECAPTCHA_SITE_KEY is empty. Checkout will fail once the functions enforce App Check.');
+  }
+}
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);

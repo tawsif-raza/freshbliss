@@ -67,6 +67,7 @@ beforeEach(async () => {
     await setDoc(doc(db, 'checkouts/c1'), { uid: 'alice', status: 'CREATED' });
     await setDoc(doc(db, 'promoCodes/WELCOME'), { type: 'percent', value: 10, active: true });
     await setDoc(doc(db, 'paymentEvents/evt1'), { processedAt: 1 });
+    await setDoc(doc(db, 'rateLimits/createCheckout__uid__alice'), { count: 1, windowStart: 1 });
     await setDoc(doc(db, 'orders/order-alice'), orderFor('alice', 'PREPARING'));
     await setDoc(doc(db, 'orders/order-alice-delivered'), orderFor('alice', 'DELIVERED'));
     await setDoc(doc(db, 'orders/order-bob'), orderFor('bob', 'DELIVERED'));
@@ -136,6 +137,7 @@ describe('default deny', () => {
     'checkouts/c2',
     'promoCodes/FREE100',
     'paymentEvents/evt2',
+    'rateLimits/createCheckout__uid__alice', // the rate-limit counters: a customer must not be able to reset their own
     'excelSync/order-1', // the Excel copy ledger
     'some-unknown-collection/x', // a collection the rules never mention
   ];
@@ -149,7 +151,7 @@ describe('default deny', () => {
   }
 
   it('blocks all reads of server-only data, even for staff', async () => {
-    for (const p of ['checkouts/c1', 'promoCodes/WELCOME', 'paymentEvents/evt1', 'excelSync/order-1', 'some-unknown-collection/x']) {
+    for (const p of ['checkouts/c1', 'promoCodes/WELCOME', 'paymentEvents/evt1', 'rateLimits/createCheckout__uid__alice', 'excelSync/order-1', 'some-unknown-collection/x']) {
       await assertFails(getDoc(doc(asUser('alice'), p)));
       await assertFails(getDoc(doc(asStaff(), p)));
     }

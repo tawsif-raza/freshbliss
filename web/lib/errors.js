@@ -8,6 +8,10 @@ export function friendlyError(err) {
   if (err?.name === 'CheckoutError') return err.message;
 
   const code = typeof err?.code === 'string' ? err.code : '';
+  // App Check refusing the request comes back as a bare "Unauthenticated" (our own sign-in messages are longer).
+  if (code === 'functions/unauthenticated' && /^unauthenticated$/i.test(String(err.message ?? '').replace(/\s*\[\d{3}\]$/, '').trim())) {
+    return 'We could not confirm this request came from FreshBliss. Please reload the page and try again.';
+  }
   if (code.startsWith('functions/') && !['functions/internal', 'functions/unknown'].includes(code) && err.message) {
     // The Firebase SDK adds the HTTP status to the end ("... yet. [400]"). Drop it.
     return err.message.replace(/\s*\[\d{3}\]$/, '');

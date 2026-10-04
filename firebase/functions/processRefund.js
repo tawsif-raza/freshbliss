@@ -12,6 +12,7 @@
 // rules block all client writes to orders.
 
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { callableOptions } = require('./shared/hardening');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { requireStaff } = require('./shared/staff');
 
@@ -47,7 +48,7 @@ async function refundOrderTx(db, { orderId, note, staffUid }) {
   });
 }
 
-exports.processRefund = onCall({ region: 'asia-south1' }, async (request) => {
+exports.processRefund = onCall(callableOptions(), async (request) => {
   const staffUid = requireStaff(request);
 
   const { orderId } = request.data || {};

@@ -128,6 +128,13 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // rateLimits: the call counters behind the rate limits (functions/shared/rateLimit.js). Server-only, so a
+    // customer can neither read nor reset their own count. Old counters are deleted by a TTL policy on
+    // `expiresAt` (firestore.indexes.json).
+    match /rateLimits/{key} {
+      allow read, write: if false;
+    }
+
     // paymentEvents (webhook dedupe ledger) and excelSync (the Excel copy ledger) are
     // server-only too. They are covered by the default deny below.
 

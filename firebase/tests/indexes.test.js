@@ -34,6 +34,11 @@ describe('firestore indexes', () => {
     assert.ok(found, 'missing the orders uid + createdAt index that the My orders page needs');
   });
 
+  it('deletes old rate-limit counters automatically (a TTL policy on rateLimits.expiresAt)', () => {
+    const ttl = config.fieldOverrides.find((o) => o.collectionGroup === 'rateLimits' && o.fieldPath === 'expiresAt');
+    assert.ok(ttl && ttl.ttl === true, 'without the TTL policy the counters pile up forever');
+  });
+
   it('has no duplicate indexes', () => {
     const keys = config.indexes.map((ix) => `${ix.collectionGroup}:${ix.queryScope}:${ix.fields.map((f) => `${f.fieldPath}/${f.order}`).join(',')}`);
     assert.equal(new Set(keys).size, keys.length);

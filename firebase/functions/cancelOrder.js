@@ -14,6 +14,7 @@
 // staff can override either way with `restock`.
 
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { callableOptions } = require('./shared/hardening');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { ORDER_FLOW } = require('./shared/orderStatus');
 const { requireStaff } = require('./shared/staff');
@@ -72,7 +73,7 @@ async function cancelOrderTx(db, { orderId, reason, restock, staffUid }) {
   });
 }
 
-exports.cancelOrder = onCall({ region: 'asia-south1' }, async (request) => {
+exports.cancelOrder = onCall(callableOptions(), async (request) => {
   const staffUid = requireStaff(request);
 
   const { orderId, restock } = request.data || {};

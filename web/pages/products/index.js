@@ -1,14 +1,21 @@
 // The shop: every active fruit box from Firestore, in a responsive grid.
 
-import Head from 'next/head';
 import { useMemo } from 'react';
 import ProductGrid from '@/components/ProductGrid';
+import Seo from '@/components/Seo';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
-import { useProducts } from '@/lib/catalog';
+import { useCatalog } from '@/lib/catalog';
+import { fetchActiveProducts } from '@/lib/serverCatalog';
 
-export default function ProductsPage() {
-  const { products, status, reload } = useProducts();
+// Built on the server and refreshed at most once a minute, like the home page (pages/index.js).
+export async function getStaticProps() {
+  const initialProducts = await fetchActiveProducts();
+  return { props: { initialProducts }, revalidate: initialProducts ? 60 : 10 };
+}
+
+export default function ProductsPage({ initialProducts }) {
+  const { products, status, reload } = useCatalog(initialProducts);
   const { addToCart } = useCart();
   const wishlist = useWishlist();
 
@@ -18,10 +25,12 @@ export default function ProductsPage() {
 
   return (
     <>
-      <Head>
-        <title>Our Fruit Boxes | FreshBliss</title>
-        <meta name="description" content="Freshly sliced. Perfectly packed. Always. Premium fruit boxes delivered in Bengaluru." />
-      </Head>
+      <Seo
+        title="Our Fruit Boxes | FreshBliss"
+        description="Freshly sliced. Perfectly packed. Always. Premium fruit boxes delivered in Bengaluru."
+        path="/products"
+        image={ordered[0]?.images[0]}
+      />
 
       <div className="fb-container py-14.5">
         <p className="text-label text-gold">Freshness delivered</p>

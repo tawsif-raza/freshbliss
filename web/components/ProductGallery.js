@@ -6,9 +6,8 @@
 // Thumbnails are real buttons (keyboard and screen reader friendly); the large photo fades between
 // pictures unless the visitor has asked their device for less motion.
 
-import Image from 'next/image';
+import OptimizedImage from '@/components/OptimizedImage';
 import { useState } from 'react';
-import { resizeImage } from '@/lib/images';
 import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
 
 export default function ProductGallery({ images, name, illustrative = false }) {
@@ -40,8 +39,8 @@ export default function ProductGallery({ images, name, illustrative = false }) {
               transition={{ duration: 0.25 }}
               className="absolute inset-0"
             >
-              {/* Photos live at addresses we do not control, so they are shown as they are. */}
-              <Image src={current} alt={`${name}, photo ${index + 1} of ${images.length}`} fill sizes="(min-width: 768px) 50vw, 100vw" unoptimized className="object-cover" priority={index === 0} />
+              {/* Photos are resized and converted by the image optimiser; one on a host it may not fetch from is shown as it is (components/OptimizedImage.js). */}
+              <OptimizedImage src={current} alt={`${name}, photo ${index + 1} of ${images.length}`} fill sizes="(min-width: 768px) 50vw, 100vw" className="object-cover" priority={index === 0} />
             </motion.div>
           </AnimatePresence>
         </div>
@@ -59,7 +58,7 @@ export default function ProductGallery({ images, name, illustrative = false }) {
                   aria-current={i === index}
                   className={`relative block aspect-[4/3] w-full overflow-hidden rounded-md border-2 bg-surface-cream ${i === index ? 'border-brand' : 'border-line hover:border-green-accent'}`}
                 >
-                  <Image src={resizeImage(src, 240)} alt="" fill sizes="120px" unoptimized className="object-cover" />
+                  <OptimizedImage src={src} alt="" fill sizes="120px" className="object-cover" />
                 </button>
               </li>
             ))}

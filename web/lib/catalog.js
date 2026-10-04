@@ -68,3 +68,15 @@ export function useProducts() {
   const { products, status, error } = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   return { products, status, error, reload };
 }
+
+// useProducts, but starting from the catalogue the SERVER already put in the page (lib/serverCatalog.js, via
+// getStaticProps). Until the live listener has its first answer, `initial` is shown as if it were ready, so the page is
+// complete in the very first HTML (search engines, share cards, no skeleton flash). Once the live data arrives it takes
+// over, so stock and prices stay live. If the live listener fails, the server's copy stays on screen rather than an
+// error (checkout re-checks price and stock on the server anyway). With no `initial` this is exactly useProducts().
+// The server render and the first browser render both see LOADING from the live side, so they agree (no hydration mismatch).
+export function useCatalog(initial) {
+  const live = useProducts();
+  if (!initial || live.status === 'ready') return live;
+  return { ...live, products: initial, status: 'ready', error: null };
+}

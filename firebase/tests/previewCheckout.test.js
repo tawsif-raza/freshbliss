@@ -189,3 +189,23 @@ describe('previewCheckout: it changes nothing', () => {
     await ask(cart({ promoCode: 'WELCOME10' }), db);
   });
 });
+
+// ============================================================
+describe('previewCheckout: wrong promo codes are reported to the rate limiter', () => {
+  const guess = async (promoCode) => {
+    let wrong = 0;
+    const result = await quoteCart({ auth: staff, data: cart({ promoCode }) }, { db: world(), onBadPromo: () => (wrong += 1) }).catch((e) => e);
+    return { wrong, result };
+  };
+
+  it('counts a made-up, switched-off, expired or malformed code as one wrong guess each', async () => {
+    for (const code of ['NOPE', 'OFF', 'OLD', 'has spaces!']) assert.equal((await guess(code)).wrong, 1, code);
+  });
+
+  it('does not count a right code, no code, or a right code that needs a bigger order', async () => {
+    assert.equal((await guess('WELCOME10')).wrong, 0);
+    assert.equal((await guess(null)).wrong, 0);
+    const small = await quoteCart({ auth: staff, data: cart({ items: [{ productId: 'classic-fresh-mix', size: 'regular', qty: 1 }], promoCode: 'WELCOME10' }) }, { db: world(), onBadPromo: () => assert.fail('a valid code is not a wrong guess') }).catch((e) => e);
+    assert.match(small.message, /Add ₹50 more/);
+  });
+});
