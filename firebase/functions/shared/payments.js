@@ -110,6 +110,7 @@ async function confirmPayment(db, { checkoutId, razorpayPaymentId, uid }) {
       pincode: checkout.pincode,
       address: checkout.address,
       note: checkout.note,
+      slot: checkout.slot ?? null, // the delivery window the customer chose (null = as soon as possible)
       payment: { ...checkout.payment, razorpayPaymentId },
       createdAt: now,
       updatedAt: now,

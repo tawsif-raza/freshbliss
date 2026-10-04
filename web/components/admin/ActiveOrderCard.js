@@ -5,6 +5,7 @@
 // an order, so both go through staff-only Cloud Functions. The card itself updates
 // when the live list (onSnapshot in the page) hears the change.
 
+import { slotText } from '@/lib/slots';
 import Link from 'next/link';
 import { useState } from 'react';
 import { httpsCallable } from 'firebase/functions';
@@ -98,6 +99,7 @@ export default function ActiveOrderCard({ order }) {
           {order.pincode}
         </span>
       </p>
+      {order.slot && <p className="mt-1 text-small font-bold text-brand-text">Scheduled: {slotText(order.slot)}</p>}
       {order.note && <p className="text-small text-ink-muted">Note: {order.note}</p>}
       <p className="mt-2 text-body font-bold text-brand-text">₹{order.pricing?.total}</p>
 

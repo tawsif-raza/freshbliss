@@ -182,3 +182,10 @@ describe('sitemap.xml and robots.txt', () => {
     assert.ok(!/Disallow/i.test(buildRobotsTxt(BASE)));
   });
 });
+
+describe('policy pages', () => {
+  it('terms and refunds are in the sitemap', () => {
+    assert.ok(STATIC_PAGES.includes('/terms'));
+    assert.ok(STATIC_PAGES.includes('/refunds'));
+  });
+});

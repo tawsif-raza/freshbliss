@@ -114,6 +114,16 @@ export default function Footer() {
               </Link>
             </li>
             <li>
+              <Link href="/terms" className={linkClass}>
+                Terms of Service
+              </Link>
+            </li>
+            <li>
+              <Link href="/refunds" className={linkClass}>
+                Cancellation &amp; Refunds
+              </Link>
+            </li>
+            <li>
               <Link href="/faq" className={linkClass}>
                 FAQ
               </Link>
@@ -177,7 +187,10 @@ export default function Footer() {
 
       <div className="border-t border-on-hero/15">
         <div className="fb-container flex flex-col gap-1 py-5 text-small text-on-hero sm:flex-row sm:items-center sm:justify-between">
-          <p>© {BUSINESS.legalName || BUSINESS.name}. All rights reserved.</p>
+          <p>
+            © {BUSINESS.legalName || BUSINESS.name}. All rights reserved.
+            {BUSINESS.fssai && <span className="block sm:inline sm:ml-3">FSSAI Lic. No. {BUSINESS.fssai}</span>}
+          </p>
           <p>Fresh fruit boxes, delivered in Bengaluru.</p>
         </div>
       </div>

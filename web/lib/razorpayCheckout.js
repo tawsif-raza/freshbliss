@@ -72,13 +72,14 @@ export function loadRazorpay() {
 // Writes carts/{uid} in exactly the shape the security rules allow. The
 // guest's localStorage cart is the source of truth, so this REPLACES whatever
 // was saved before. Only productId / size / qty go up, never prices.
-async function saveCart(uid, lines, { note, pincode, tip = 0, promoCode = null }) {
+async function saveCart(uid, lines, { note, pincode, tip = 0, promoCode = null, slot = null }) {
   await setDoc(doc(db, 'carts', uid), {
     items: lines.map(({ productId, size, qty }) => ({ productId, size, qty })),
     note,
     tip, // 0, 10, 20 or 30: the rules and the server both check
     promoCode: promoCode || null, // only ever a code the customer typed; the server validates it
     pincode,
+    slot, // null = as soon as possible, else { date, id }; the server checks it is real and still open
     updatedAt: serverTimestamp(),
   });
 }
@@ -89,10 +90,10 @@ async function saveCart(uid, lines, { note, pincode, tip = 0, promoCode = null }
 // discount for a promo code and the total. It charges nothing and saves nothing. Resolves with
 //   { items, pricing: { subtotal, discount, deliveryFee, tip, total }, zone, promo }
 // or rejects with a server error (use friendlyError() to show it, for example "Only 2 left of ...").
-export async function previewPricing({ lines, pincode, tip = 0, promoCode = null }) {
+export async function previewPricing({ lines, pincode, tip = 0, promoCode = null, slot = null }) {
   await ensureSignedIn(); // the server only answers signed-in visitors
   const items = lines.map(({ productId, size, qty }) => ({ productId, size, qty }));
-  const { data } = await httpsCallable(functions, 'previewCheckout')({ items, pincode, tip, promoCode });
+  const { data } = await httpsCallable(functions, 'previewCheckout')({ items, pincode, tip, promoCode, slot });
   return data;
 }
 
@@ -117,6 +118,7 @@ export async function runMockCheckout({ lines, details, minimumMs = 1500 }) {
     note: details.note,
     tip: details.tip ?? 0,
     promoCode: details.promoCode ?? null,
+    slot: details.slot ?? null,
   });
   const remaining = minimumMs - (Date.now() - started);
   if (remaining > 0) await wait(remaining);
@@ -198,7 +200,7 @@ export async function runCheckout({ lines, details, hooks = {} }) {
 
   onStage?.('preparing');
   const user = await ensureSignedIn();
-  await saveCart(user.uid, lines, { note: details.note, pincode: details.pincode, tip: details.tip ?? 0, promoCode: details.promoCode ?? null });
+  await saveCart(user.uid, lines, { note: details.note, pincode: details.pincode, tip: details.tip ?? 0, promoCode: details.promoCode ?? null, slot: details.slot ?? null });
 
   const { data: quote } = await httpsCallable(functions, 'createCheckout')({ address: details.address });
   const Razorpay = await loadRazorpay();

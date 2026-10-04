@@ -9,10 +9,12 @@ import Callout from '@/components/Callout';
 import CartLineItem from '@/components/CartLineItem';
 import CartSkeleton from '@/components/CartSkeleton';
 import SummaryRow from '@/components/SummaryRow';
+import { useCheckoutHref } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
 import { useProducts } from '@/lib/catalog';
 
 export default function CartPage() {
+  const checkoutHref = useCheckoutHref();
   const { items, subtotal, hydrated, catalogStatus, updateQuantity, removeFromCart, getMaxQuantity } = useCart();
   const { reload: reloadCatalogue } = useProducts();
 
@@ -99,7 +101,7 @@ export default function CartPage() {
                   </span>
                 ) : (
                   <Link
-                    href="/checkout"
+                    href={checkoutHref}
                     className="mt-5 grid min-h-13 w-full place-items-center rounded-pill bg-gold-bright px-6 text-heading-3 text-on-gold motion-safe:transition-[filter] hover:brightness-95"
                   >
                     Proceed to Checkout

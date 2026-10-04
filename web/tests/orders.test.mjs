@@ -1,6 +1,7 @@
+import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { TRACKER_STEPS, trackerStates } from '../lib/orderStatus.js';
+import { CUSTOMER_CANCEL_REASONS, TRACKER_STEPS, customerCancelState, trackerStates } from '../lib/orderStatus.js';
 import { ORDER_FILTERS, countByFilter, filterOrders, placedAt } from '../lib/orderFilters.js';
 
 describe('order tracker steps', () => {
@@ -69,5 +70,32 @@ describe('account order filters', () => {
     assert.equal(placedAt({ createdAt: new Date(NOW) }).getTime(), NOW);
     assert.equal(placedAt({ createdAt: { seconds: NOW / 1000 } }).getTime(), NOW);
     for (const bad of [{}, { createdAt: null }, { createdAt: 'yesterday' }, { createdAt: { toDate: () => new Date('x') } }, null]) assert.equal(placedAt(bad), null);
+  });
+});
+
+describe('customer cancel state', () => {
+  const paid = (status) => ({ status, paymentStatus: 'PAID' });
+
+  it('offers the button until the order is packed', () => {
+    assert.equal(customerCancelState(paid('PAYMENT_CONFIRMED')), 'yes');
+    assert.equal(customerCancelState(paid('PREPARING')), 'yes');
+  });
+
+  it('explains instead once it is packed or on its way', () => {
+    assert.equal(customerCancelState(paid('PACKED')), 'locked');
+    assert.equal(customerCancelState(paid('OUT_FOR_DELIVERY')), 'locked');
+  });
+
+  it('shows nothing for delivered, cancelled, unpaid or missing orders', () => {
+    assert.equal(customerCancelState(paid('DELIVERED')), 'no');
+    assert.equal(customerCancelState({ status: 'CANCELLED', paymentStatus: 'REFUND_PENDING' }), 'no');
+    assert.equal(customerCancelState({ status: 'PREPARING', paymentStatus: 'REFUND_PENDING' }), 'no');
+    assert.equal(customerCancelState(null), 'no');
+  });
+
+  it('keeps the reasons the server accepts (firebase/functions/cancelOrder.js)', () => {
+    const server = readFileSync(new URL('../../firebase/functions/cancelOrder.js', import.meta.url), 'utf8');
+    const listed = server.match(/CUSTOMER_REASONS = \[(.*?)\];/s)?.[1] ?? '';
+    for (const reason of CUSTOMER_CANCEL_REASONS) assert.ok(listed.includes(`'${reason}'`), `server does not accept "${reason}"`);
   });
 });

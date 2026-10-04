@@ -28,7 +28,7 @@ const FAQ_GROUPS = [
       {
         question: 'Can I modify or cancel my order after placing it?',
         answer:
-          'Because our fulfillment process begins immediately to ensure fast delivery, orders cannot be modified or canceled once the status changes to "Preparing".',
+          'You can cancel from the My orders page until your order is packed (that is, while it still says "Payment confirmed" or "Preparing"). Once it is packed or out for delivery it can no longer be cancelled online, so please contact support. Orders cannot be edited after payment. See our Cancellation & Refunds page for how refunds work.',
       },
       {
         question: 'Is there a minimum order value for free delivery?',

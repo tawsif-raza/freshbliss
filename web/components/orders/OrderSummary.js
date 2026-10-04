@@ -3,6 +3,7 @@
 import InfoCard from '@/components/orders/InfoCard';
 import OrderLines from '@/components/orders/OrderLines';
 import SummaryRow from '@/components/SummaryRow';
+import { slotText } from '@/lib/slots';
 
 export default function OrderSummary({ order }) {
   const items = order.items ?? [];
@@ -29,6 +30,7 @@ export default function OrderSummary({ order }) {
         <p className="text-small text-ink-muted">
           {order.zone?.name ? `${order.zone.name}, ` : ''}Pincode {order.pincode}
         </p>
+        {order.slot && <p className="mt-2 text-small text-ink">Delivery time: {slotText(order.slot)}</p>}
         {order.note && <p className="mt-2 text-small text-ink-muted">Instructions: {order.note}</p>}
       </div>
     </InfoCard>

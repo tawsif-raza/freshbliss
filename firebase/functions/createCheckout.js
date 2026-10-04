@@ -24,6 +24,7 @@ const Razorpay = require('razorpay');
 const { razorpayKeyProblem } = require('./shared/razorpayMode');
 const { callableOptions } = require('./shared/hardening');
 const { enforce } = require('./shared/rateLimit');
+const { validateSlot } = require('./shared/slots');
 
 // The key id is a normal param (it is public: the browser needs it); the key secret is a secret.
 // Local: functions/.env.local and functions/.secret.local (both git-ignored).
@@ -205,6 +206,18 @@ async function loadProducts(db, lines) {
   return products;
 }
 
+// The delivery slot the customer chose: null means "as soon as possible". Checked with the SERVER's clock,
+// so a slot that was open when the page loaded but has since closed is refused with a clear message.
+function readSlot(raw, now = new Date()) {
+  try {
+    return validateSlot(raw, now);
+  } catch (err) {
+    if (err && err.code === 'invalid') throw fail('invalid-argument', err.message);
+    if (err && err.code === 'gone') throw fail('failed-precondition', err.message);
+    throw err;
+  }
+}
+
 function readAddress(data) {
   const address = data && typeof data.address === 'string' ? data.address.trim() : '';
   if (!address || address.length > MAX_ADDRESS_LENGTH) {
@@ -249,6 +262,7 @@ exports.createCheckout = onCall(
       throw fail('failed-precondition', 'Enter your delivery pincode first.');
     }
     const note = typeof cart.note === 'string' ? cart.note.slice(0, 200) : '';
+    const slot = readSlot(cart.slot);
 
     // 2. Read live data: products (with stock), zone for the pincode, promo.
     const [products, zone, promo] = await Promise.all([
@@ -298,6 +312,7 @@ exports.createCheckout = onCall(
       pincode,
       address,
       note,
+      slot, // null = as soon as possible, else { date, id, label, startsAt }
       payment: {
         razorpayOrderId: razorpayOrder.id,
         amountPaise,
@@ -323,6 +338,7 @@ exports.createCheckout = onCall(
 // Exported so the pricing rules can be unit tested without Firebase, and so previewCheckout.js
 // can price a cart with exactly the same code (it must never disagree with what is charged).
 exports.normaliseLines = normaliseLines;
+exports.readSlot = readSlot;
 exports.priceCart = priceCart;
 exports.findZone = findZone;
 exports.loadPromo = loadPromo;

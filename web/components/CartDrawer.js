@@ -18,6 +18,7 @@ import { MotionConfig, motion } from 'framer-motion';
 import { ShoppingBag, Trash2, X } from 'lucide-react';
 import { CartLinesSkeleton } from '@/components/CartSkeleton';
 import QuantityStepper from '@/components/QuantityStepper';
+import { useCheckoutHref } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
 import { useCartDrawer } from '@/context/CartDrawerContext';
 
@@ -63,6 +64,7 @@ function DrawerLine({ item, maxQty, onChangeQty, onRemove }) {
 }
 
 export default function CartDrawer() {
+  const checkoutHref = useCheckoutHref();
   const { isOpen, close } = useCartDrawer();
   const { items, itemCount, subtotal, hydrated, catalogStatus, updateQuantity, removeFromCart, getMaxQuantity } = useCart();
   const router = useRouter();
@@ -187,7 +189,7 @@ export default function CartDrawer() {
                   Proceed to Checkout
                 </span>
               ) : (
-                <Link href="/checkout" className="mt-4 grid min-h-13 w-full place-items-center rounded-pill bg-gold-bright px-6 text-heading-3 text-on-gold motion-safe:transition-[filter] hover:brightness-95">
+                <Link href={checkoutHref} className="mt-4 grid min-h-13 w-full place-items-center rounded-pill bg-gold-bright px-6 text-heading-3 text-on-gold motion-safe:transition-[filter] hover:brightness-95">
                   Proceed to Checkout
                 </Link>
               )}

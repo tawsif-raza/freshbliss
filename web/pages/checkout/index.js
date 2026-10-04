@@ -25,11 +25,13 @@ import CheckoutSummary from '@/components/checkout/CheckoutSummary';
 import LocationButton from '@/components/checkout/LocationButton';
 import OrderResult from '@/components/checkout/OrderResult';
 import PromoCode from '@/components/checkout/PromoCode';
+import SlotPicker from '@/components/checkout/SlotPicker';
 import TipSelector from '@/components/checkout/TipSelector';
 import { useCart } from '@/context/CartContext';
 import { ADDRESS_LIMITS, DEFAULT_ADDRESS_TYPE, addressErrors, formatAddress } from '@/lib/address';
 import { usingEmulators } from '@/lib/firebaseClient';
 import { previewTotals } from '@/lib/pricing';
+import { slotChoice } from '@/lib/slots';
 import { CheckoutError, friendlyError, loadRazorpay, previewPricing, runCheckout, runMockCheckout, verifyPayment } from '@/lib/razorpayCheckout';
 import { PINCODE, deliveryFeeFor, feeLabel, useSavedPincode, useZones } from '@/lib/zones';
 
@@ -52,6 +54,7 @@ export default function CheckoutPage() {
   const [form, setForm] = useState({ flat: '', area: '', landmark: '', note: '' });
   const [addressType, setAddressType] = useState(DEFAULT_ADDRESS_TYPE); // home | work | other
   const [tip, setTip] = useState(0);
+  const [slot, setSlot] = useState(null); // null = as soon as possible, else a slot from lib/slots.js
   const [promoCode, setPromoCode] = useState(null); // only a code the server has accepted
   const [promoNote, setPromoNote] = useState(''); // why a code was refused
   const [promoBusy, setPromoBusy] = useState(false);
@@ -87,14 +90,14 @@ export default function CheckoutPage() {
   // in which case the server is the judge). The answer is stored WITH the inputs it was for; anything that
   // changes the inputs makes the stored answer stale, so a stale price is never shown as final.
   const canQuote = loaded && items.length > 0 && problems.length === 0 && (area.kind === 'ok' || area.kind === 'unknown');
-  const inputKey = canQuote ? JSON.stringify([lines, pincode, tip, promoCode]) : null;
+  const inputKey = canQuote ? JSON.stringify([lines, pincode, tip, promoCode, slotChoice(slot)]) : null;
 
   useEffect(() => {
     if (!inputKey) return undefined;
     let cancelled = false;
     const timer = setTimeout(async () => {
       try {
-        const data = await previewPricing({ lines, pincode, tip, promoCode });
+        const data = await previewPricing({ lines, pincode, tip, promoCode, slot: slotChoice(slot) });
         if (!cancelled) setSettled({ key: inputKey, data, error: '', promoError: '' });
       } catch (err) {
         let promoError = '';
@@ -102,7 +105,7 @@ export default function CheckoutPage() {
         if (promoCode) {
           // Is the code the problem, or the cart? Ask again without it.
           try {
-            data = await previewPricing({ lines, pincode, tip, promoCode: null });
+            data = await previewPricing({ lines, pincode, tip, promoCode: null, slot: slotChoice(slot) });
             promoError = friendlyError(err);
           } catch {
             data = null;
@@ -115,7 +118,7 @@ export default function CheckoutPage() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [inputKey, lines, pincode, tip, promoCode]);
+  }, [inputKey, lines, pincode, tip, promoCode, slot]);
 
   const current = settled && settled.key === inputKey ? settled : null; // the answer for what is on screen now
   const quoting = Boolean(inputKey) && !current;
@@ -173,7 +176,7 @@ export default function CheckoutPage() {
     }
     setPromoBusy(true);
     try {
-      await previewPricing({ lines, pincode, tip, promoCode: code });
+      await previewPricing({ lines, pincode, tip, promoCode: code, slot: slotChoice(slot) });
       setPromoCode(code);
     } catch (err) {
       setPromoNote(friendlyError(err));
@@ -213,7 +216,7 @@ export default function CheckoutPage() {
     if (usingEmulators) {
       setStage('paying');
       try {
-        const order = await runMockCheckout({ lines, details: { pincode, address, note: form.note.trim(), tip, promoCode } });
+        const order = await runMockCheckout({ lines, details: { pincode, address, note: form.note.trim(), tip, promoCode, slot: slotChoice(slot) } });
         await router.push(`/orders/${order.orderId}`);
         clearCart(); // after leaving: emptying it first would flash "Your cart is empty" on this page for a moment
       } catch (err) {
@@ -226,7 +229,7 @@ export default function CheckoutPage() {
     try {
       const { result, quote } = await runCheckout({
         lines,
-        details: { pincode, address, note: form.note.trim(), tip, promoCode },
+        details: { pincode, address, note: form.note.trim(), tip, promoCode, slot: slotChoice(slot) },
         hooks: { onStage: setStage, onPaymentFailed: (message) => setNotice(`${message} You can try again in the payment window.`) },
       });
       finish(result, quote);
@@ -397,6 +400,18 @@ export default function CheckoutPage() {
                   </div>
                 </section>
 
+                <section aria-labelledby="slot-title" className="rounded-xl border border-line bg-surface-card p-6 shadow-card">
+                  <h2 id="slot-title" className="sr-only">
+                    Delivery time
+                  </h2>
+                  <SlotPicker
+                    value={slot}
+                    onChange={setSlot}
+                    disabled={busy}
+                    etaText={area.kind === 'ok' && area.zone?.etaMin && area.zone?.etaMax ? `about ${area.zone.etaMin} to ${area.zone.etaMax} min` : ''}
+                  />
+                </section>
+
                 <section aria-labelledby="extras-title" className="rounded-xl border border-line bg-surface-card p-6 shadow-card">
                   <h2 id="extras-title" className="text-heading-3 text-ink">
                     Tip and promo
@@ -455,6 +470,17 @@ export default function CheckoutPage() {
                 ) : (
                   <p className="mt-2 text-small text-ink-muted">You pay in Razorpay&apos;s secure window. Your total is confirmed before it opens.</p>
                 )}
+                <p className="mt-2 text-small text-ink-muted">
+                  By paying you agree to our{' '}
+                  <Link href="/terms" className="font-bold text-brand-text underline">
+                    Terms
+                  </Link>{' '}
+                  and{' '}
+                  <Link href="/refunds" className="font-bold text-brand-text underline">
+                    Cancellation &amp; Refunds
+                  </Link>
+                  .
+                </p>
                 <p role="status" className="sr-only">
                   {busy ? STAGE_TEXT[stage] : ''}
                 </p>

@@ -60,6 +60,7 @@ async function buildMockOrder(request, deps = {}) {
     pincode: data.pincode,
     address,
     note,
+    slot: quote.slot,
     payment: { razorpayOrderId: null, razorpayPaymentId: null, amountPaise: pricing.total * 100, currency: 'INR', mock: true },
     status: 'PREPARING',
     paymentStatus: 'PAID_MOCK',

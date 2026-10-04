@@ -468,6 +468,18 @@ describe('carts', () => {
   it('rejects a client-made updatedAt', async () => {
     await assertFails(setDoc(doc(asUser('alice'), 'carts/alice'), validCart({ updatedAt: new Date() })));
   });
+
+  it('accepts a delivery slot (or null for as-soon-as-possible) and nothing else in its place', async () => {
+    const ref = doc(asUser('alice'), 'carts/alice');
+    await assertSucceeds(setDoc(ref, validCart({ slot: { date: '2026-10-05', id: '1900-2100' } })));
+    await assertSucceeds(setDoc(ref, validCart({ slot: null })));
+    await assertFails(setDoc(ref, validCart({ slot: 'evening' })));
+    await assertFails(setDoc(ref, validCart({ slot: { date: '5 Oct', id: '1900-2100' } })));
+    await assertFails(setDoc(ref, validCart({ slot: { date: '2026-10-05', id: 'x' } })));
+    await assertFails(setDoc(ref, validCart({ slot: { date: '2026-10-05' } })));
+    await assertFails(setDoc(ref, validCart({ slot: { date: '2026-10-05', id: '1900-2100', fee: 0 } })));
+    await assertFails(setDoc(ref, validCart({ slot: [] })));
+  });
 });
 
 describe('wishlists', () => {

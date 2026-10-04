@@ -124,7 +124,7 @@ export function requestBase(headers, configured = siteUrl()) {
 }
 
 // The pages worth listing. The cart, checkout, account, order and staff pages are left out on purpose.
-export const STATIC_PAGES = ['/', '/products', '/faq', '/privacy'];
+export const STATIC_PAGES = ['/', '/products', '/faq', '/privacy', '/terms', '/refunds'];
 
 const xml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 

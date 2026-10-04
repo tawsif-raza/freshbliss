@@ -49,7 +49,7 @@ service cloud.firestore {
     // stock and uses just productId / size / qty. Rules cannot loop over array
     // items, so we limit the top-level shape and the list size here.
     function validCart(d) {
-      return d.keys().hasOnly(['items', 'note', 'tip', 'promoCode', 'pincode', 'updatedAt'])
+      return d.keys().hasOnly(['items', 'note', 'tip', 'promoCode', 'pincode', 'slot', 'updatedAt'])
         && d.keys().hasAll(['items', 'updatedAt'])
         && d.items is list
         && d.items.size() <= 30
@@ -59,7 +59,19 @@ service cloud.firestore {
               || (d.promoCode is string && d.promoCode.size() <= 32))
         && (!('pincode' in d) || d.pincode == null
               || (d.pincode is string && d.pincode.matches('^[0-9]{6}$')))
+        && (!('slot' in d) || validSlot(d.slot))
         && d.updatedAt == request.time;
+    }
+
+    // A delivery slot is just a date and a window id. null means "as soon as possible". Whether that slot
+    // is real and still open is decided by the server (functions/shared/slots.js) when the customer pays.
+    function validSlot(s) {
+      return s == null
+        || (s is map
+            && s.keys().hasOnly(['date', 'id'])
+            && s.keys().hasAll(['date', 'id'])
+            && s.date is string && s.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+            && s.id is string && s.id.matches('^[0-9]{4}-[0-9]{4}$'));
     }
 
     match /carts/{uid} {

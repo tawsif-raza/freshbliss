@@ -209,3 +209,27 @@ describe('previewCheckout: wrong promo codes are reported to the rate limiter', 
     assert.match(small.message, /Add ₹50 more/);
   });
 });
+
+// ============================================================
+describe('previewCheckout: delivery slot', () => {
+  const NOW = new Date('2026-10-05T15:30:00+05:30');
+  const withSlot = (slot) => quoteCart({ auth: staff, data: cart({ slot }) }, { db: world(), now: NOW });
+
+  it('returns null for "as soon as possible" (no slot sent)', async () => {
+    const q = await quoteCart({ auth: staff, data: cart() }, { db: world(), now: NOW });
+    assert.equal(q.slot, null);
+  });
+
+  it('returns the full slot for an open one, and does not change the price', async () => {
+    const q = await withSlot({ date: '2026-10-05', id: '1900-2100' });
+    assert.equal(q.slot.label, '7 pm to 9 pm');
+    const plain = await quoteCart({ auth: staff, data: cart() }, { db: world(), now: NOW });
+    assert.deepEqual(q.pricing, plain.pricing);
+  });
+
+  it('says so plainly when the slot has closed, and rejects a made-up one', async () => {
+    await rejects(withSlot({ date: '2026-10-05', id: '1500-1700' }), 'failed-precondition', /no longer available/);
+    await rejects(withSlot({ date: '2026-10-05', id: 'free-delivery' }), 'invalid-argument', /not valid/);
+    await rejects(withSlot('later'), 'invalid-argument', /not valid/);
+  });
+});

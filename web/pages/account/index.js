@@ -3,13 +3,15 @@
 // Past 30 Days, Delivered, Cancelled) narrow the list. Each order has its status, date, items and total,
 // links to track it or print its receipt, and a one-click Reorder that puts the same boxes back in the cart.
 //
-// There is no login yet (see lib/auth.js): "my orders" means the orders placed from THIS browser.
-// Visiting this page never creates an account.
+// Above the orders sits the account card (components/auth/AccountCard.js): who is signed in, or a note to a guest. Orders
+// belong to an account. A signed-in customer sees them on every device; a guest sees the ones placed from THIS browser,
+// and signing in later keeps them (lib/auth.js). Visiting this page never creates an account.
 
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useMemo, useState } from 'react';
+import AccountCard from '@/components/auth/AccountCard';
 import Callout from '@/components/Callout';
 import OrderFilterChips from '@/components/orders/OrderFilterChips';
 import OrderHistoryCard from '@/components/orders/OrderHistoryCard';
@@ -74,7 +76,7 @@ export default function AccountPage() {
       <div className="fb-container py-14.5">
         <p className="text-label text-gold">Your account</p>
         <h1 className="mt-2 text-heading-2 text-brand-text">My orders</h1>
-        <p className="mt-2 max-w-xl text-small text-ink-muted">Orders placed from this browser. Sign-in is coming; until then, clearing your browser data hides them.</p>
+        <AccountCard />
 
         <div className="mt-8.5">
           {status === 'loading' && <OrderListSkeleton />}

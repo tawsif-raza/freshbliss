@@ -6,9 +6,16 @@
 //     device;
 //   - a CUSTOMER who signed in on /login with Google, Microsoft or a phone number (one-time code).
 //
-// A guest who then signs in is LINKED rather than replaced: the provider is attached to the same account, so their
-// cart and orders carry over. Only if that Google/Microsoft/phone identity already belongs to a different, older
-// account is the visitor signed in to that account instead (the guest account's orders stay with the guest account).
+// A guest who then signs in keeps their orders, one of two ways:
+//   - LINKED (the usual case): the provider is attached to the same account, so the uid does not change and the cart and
+//     orders are simply still theirs;
+//   - MOVED: if that Google/Microsoft/phone identity already belongs to a different, older account, the visitor is signed
+//     in to THAT account, and the guest's orders are moved over by the claimGuestOrders function (firebase/functions).
+//     The guest's own ID token goes with the request as proof that the guest account is theirs; it has to be fetched
+//     BEFORE signing in as the other account, because afterwards the guest session is gone.
+//
+// Every sign-in below resolves to { user, claimed }: `claimed` is how many guest orders were moved (0 when linked, or when
+// there was nothing to move). A failed move never fails the sign-in; the orders stay safe under the guest account.
 //
 // In a real Firebase project switch these on under Console > Authentication > Sign-in method: Anonymous, Google,
 // Microsoft (needs an Azure app registration) and Phone, and add the shop's domain under Settings > Authorized
@@ -25,8 +32,10 @@ import {
   signInWithCredential,
   signInWithPhoneNumber,
   signInWithPopup,
+  signOut,
 } from 'firebase/auth';
-import { auth, usingEmulators } from './firebaseClient';
+import { httpsCallable } from 'firebase/functions';
+import { auth, functions, usingEmulators } from './firebaseClient';
 
 // Resolves to the current user, signing in anonymously if there is none.
 export async function ensureSignedIn() {
@@ -36,6 +45,28 @@ export async function ensureSignedIn() {
   return credential.user;
 }
 
+// Signs out. The next checkout will start a new guest session.
+export const signOutUser = () => signOut(auth);
+
+// Asks the server to move the guest's orders to the account we are now signed in to. Returns how many moved; 0 on any
+// failure (logged), because the sign-in itself has already worked.
+async function claimGuestOrders(guestToken) {
+  try {
+    const result = await httpsCallable(functions, 'claimGuestOrders')({ guestToken });
+    return Number.isInteger(result.data?.moved) ? result.data.moved : 0;
+  } catch (err) {
+    console.error('Could not move guest orders to the account:', err);
+    return 0;
+  }
+}
+
+// Sign in to the account that already owns this identity, then bring the guest's orders along.
+async function signInToExisting(guest, credential) {
+  const guestToken = guest ? await guest.getIdToken().catch(() => null) : null;
+  const { user } = await signInWithCredential(auth, credential);
+  return { user, claimed: guestToken ? await claimGuestOrders(guestToken) : 0 };
+}
+
 // Open the provider's pop-up. A guest is linked; if the identity is already taken by another account, sign in to
 // that account with the credential Firebase hands back in the error.
 //
@@ -43,13 +74,13 @@ export async function ensureSignedIn() {
 // The login page already waited for the saved session to load (authStateReady) before showing the buttons.
 async function popupSignIn(provider, credentialFromError) {
   const guest = auth.currentUser?.isAnonymous ? auth.currentUser : null;
-  if (!guest) return (await signInWithPopup(auth, provider)).user;
+  if (!guest) return { user: (await signInWithPopup(auth, provider)).user, claimed: 0 };
   try {
-    return (await linkWithPopup(guest, provider)).user;
+    return { user: (await linkWithPopup(guest, provider)).user, claimed: 0 };
   } catch (err) {
     const credential = err?.code === 'auth/credential-already-in-use' ? credentialFromError(err) : null;
     if (!credential) throw err;
-    return (await signInWithCredential(auth, credential)).user;
+    return signInToExisting(guest, credential);
   }
 }
 
@@ -81,12 +112,14 @@ export async function sendPhoneCode(e164, verifier) {
 }
 
 export async function confirmPhoneCode(confirmation, code) {
+  // Still the guest at this point, even if the number turns out to belong to someone else: a failed link changes nothing.
+  const guest = auth.currentUser?.isAnonymous ? auth.currentUser : null;
   try {
-    return (await confirmation.confirm(code)).user;
+    return { user: (await confirmation.confirm(code)).user, claimed: 0 };
   } catch (err) {
     // The number already belongs to another account: sign in to that one instead of linking.
     const credential = err?.code === 'auth/credential-already-in-use' ? PhoneAuthProvider.credentialFromError(err) : null;
     if (!credential) throw err;
-    return (await signInWithCredential(auth, credential)).user;
+    return signInToExisting(guest, credential);
   }
 }

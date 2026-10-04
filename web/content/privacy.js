@@ -6,7 +6,7 @@
 // records are kept, who the delivery partners are, a grievance contact). See docs/GO_LIVE.md, section 8.3.
 // If any of the system changes (an analytics tool, a new payment provider), change this at the same time.
 
-export const PRIVACY_UPDATED = '3 October 2026';
+export const PRIVACY_UPDATED = '4 October 2026';
 
 // `sections` is rendered in order. Each has a title and a list of paragraphs or bullet lists.
 export const PRIVACY_SECTIONS = [
@@ -21,9 +21,26 @@ export const PRIVACY_SECTIONS = [
           'Your delivery address, pincode and any delivery instructions you type.',
           'What you ordered, the prices, the delivery fee, any tip and promo code, and when you ordered.',
           'A payment reference (an ID from Razorpay, our payment provider). We do not see or store your card, UPI or bank details.',
-          'An anonymous account ID. Your browser creates it the first time you start a checkout, so that your cart and your orders belong to you. There is no name, email or password yet.',
+          'An account ID, so that your cart and your orders belong to you. If you check out as a guest, your browser creates an anonymous ID with no name, email or password. If you sign in, the ID belongs to your account (see "Signing in" below).',
         ],
       },
+    ],
+  },
+  {
+    id: 'signin',
+    title: 'Signing in',
+    items: [
+      { type: 'p', text: 'You can sign in with Google, Microsoft or your mobile number. Signing in is optional: you can browse and check out as a guest.' },
+      {
+        type: 'ul',
+        items: [
+          'With Google or Microsoft, they tell us your name and email address, and your profile photo if you have one. We never see your Google or Microsoft password.',
+          'With your mobile number, we receive the number, and a text message with a one-time code is sent to it. We never see the code before you type it.',
+          'We use these details to identify your account and show you your orders on any device. Your name and mobile number, if your account has them, are also written next to your order in the shop’s order spreadsheet (see below) so that staff can deliver it. We do not use any of these details for advertising, and we do not sell them.',
+          'If you sign in after ordering as a guest, the orders you placed as a guest are added to your account.',
+        ],
+      },
+      { type: 'p', text: 'Sign-in is run by Firebase Authentication, a Google service, and by Google and Microsoft themselves when you choose them. Each handles your details under its own privacy policy. Phone sign-in also uses Google’s reCAPTCHA to tell people from robots, which receives some information about your browser. You can sign out at any time from the header or your account page.' },
     ],
   },
   {
@@ -40,7 +57,7 @@ export const PRIVACY_SECTIONS = [
     id: 'browser',
     title: 'What stays in your browser',
     items: [
-      { type: 'p', text: 'Your cart, your wishlist and the pincode you checked are saved in your own browser so they are still there when you come back. Clearing your browser data removes them, and also hides your past orders, because they are tied to that browser.' },
+      { type: 'p', text: 'Your cart, your wishlist and the pincode you checked are saved in your own browser so they are still there when you come back. Clearing your browser data removes them. If you checked out as a guest, it also hides your past orders, because a guest’s orders are tied to that browser. Orders in a signed-in account stay with the account.' },
       { type: 'p', text: 'This site does not load analytics or advertising scripts. When you open the payment window, it is run by Razorpay and is covered by Razorpay’s own privacy policy.' },
     ],
   },
@@ -67,8 +84,9 @@ export const PRIVACY_SECTIONS = [
         type: 'ul',
         items: [
           'Orders and carts are stored in Google’s Firebase (Cloud Firestore), in Mumbai, India. The database rules let you read only your own orders.',
+          'Your sign-in details (name, email or mobile number, and how you signed in) are kept by Firebase Authentication, a Google service.',
           'Our staff can see orders so that they can prepare and deliver them.',
-          'A copy of each order (items, totals, address, status) is kept in a private spreadsheet in Amazon Web Services storage, for the shop’s reporting. It is not public, and only staff can download it.',
+          'A copy of each order (items, totals, address, status, and the name and mobile number on your account if you signed in) is kept in a private spreadsheet in Amazon Web Services storage, for the shop’s reporting. It is not public, and only staff can download it.',
           'Razorpay processes your payment under its own terms.',
         ],
       },

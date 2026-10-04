@@ -94,6 +94,18 @@ describe('hmacMatches', () => {
 
 // ============================================================
 describe('finalizeCheckout (shared by verifyPayment and the webhook)', () => {
+  it('copies the chosen delivery slot onto the order (and null when there is none)', async () => {
+    await product(ids('p'), 5);
+    const slot = { date: '2026-10-05', id: '1900-2100', label: '7 pm to 9 pm', startsAt: '2026-10-05T13:30:00.000Z' };
+    await db.doc(`checkouts/${ids('c')}`).set(checkout('alice', ids('p'), 1, 'order_slot', { slot }));
+    await finalizeCheckout(db, { checkoutId: ids('c'), razorpayPaymentId: 'pay_slot', uid: 'alice' });
+    assert.deepEqual((await db.doc(`orders/${ids('c')}`).get()).get('slot'), slot);
+
+    await db.doc(`checkouts/${ids('d')}`).set(checkout('alice', ids('p'), 1, 'order_noslot'));
+    await finalizeCheckout(db, { checkoutId: ids('d'), razorpayPaymentId: 'pay_noslot', uid: 'alice' });
+    assert.equal((await db.doc(`orders/${ids('d')}`).get()).get('slot'), null);
+  });
+
   it('confirms a paid order: decrements stock, marks the checkout PAID, creates the order, clears the cart', async () => {
     await product(ids('p'), 3);
     await db.doc(`checkouts/${ids('c')}`).set(checkout('alice', ids('p'), 2, 'order_1'));

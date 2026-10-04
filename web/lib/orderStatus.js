@@ -72,3 +72,20 @@ export const CANCEL_REASONS = [
 // Cancelling BEFORE packing puts the boxes back in stock by default; after
 // packing the fruit already exists, so it does not. Staff can change either way.
 export const restockByDefault = (status) => status === 'PAYMENT_CONFIRMED' || status === 'PREPARING';
+
+// ---------- customer cancel ----------
+// A customer can cancel their own order only while the boxes are not packed yet. The server enforces the
+// same rule (firebase/functions/cancelOrder.js, cancelMyOrder); this only decides what to SHOW.
+export const CUSTOMER_CANCEL_REASONS = ['Changed my mind', 'Ordered by mistake', 'Delivery is taking too long', 'Other'];
+
+const CUSTOMER_CANCELLABLE = ['PAYMENT_CONFIRMED', 'PREPARING'];
+
+// 'yes'    show the Cancel button
+// 'locked' the order is paid but already packed (or on its way): explain, and point to support
+// 'no'     nothing to show (delivered, cancelled, or not a paid order)
+export function customerCancelState(order) {
+  if (!order || order.paymentStatus !== 'PAID') return 'no';
+  if (CUSTOMER_CANCELLABLE.includes(order.status)) return 'yes';
+  if (order.status === 'PACKED' || order.status === 'OUT_FOR_DELIVERY') return 'locked';
+  return 'no';
+}

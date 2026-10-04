@@ -24,6 +24,10 @@ const LIMITS = {
   previewCheckout: { uid: { limit: 40, windowSec: 60 }, ip: { limit: 240, windowSec: 60 } },
   // Each call creates a real Razorpay order, so this is tighter.
   createCheckout: { uid: { limit: 8, windowSec: 600 }, ip: { limit: 40, windowSec: 600 } },
+  // A customer cancelling their own order. Generous (people mis-tap), but not unlimited.
+  cancelMyOrder: { uid: { limit: 10, windowSec: 600 }, ip: { limit: 60, windowSec: 600 } },
+  // Moving a guest's orders to the account they just signed in to. Needed once per sign-in.
+  claimGuestOrders: { uid: { limit: 10, windowSec: 600 }, ip: { limit: 60, windowSec: 600 } },
   // Counted only for promo codes that were WRONG. This is what stops code guessing.
   badPromo: { uid: { limit: 6, windowSec: 900 }, ip: { limit: 30, windowSec: 900 } },
 };

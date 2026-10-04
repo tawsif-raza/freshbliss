@@ -1,6 +1,8 @@
 // The sign-in form on /login: Google, Microsoft, or a mobile number with a one-time code.
 //
-//   onSuccess(user)   called once, after ANY method has signed the customer in. The page decides where to go next.
+//   onSuccess({ user, claimed })   called once, after ANY method has signed the customer in. `claimed` is how many orders
+//                                  from their guest session were moved to the account (lib/auth.js). The page decides where
+//                                  to go next.
 //
 // The phone method has two steps that swap with a short fade: the number, then the 6-digit code that was texted to it.
 // Every failure (a closed pop-up, a wrong code, too many tries...) is shown as a red-tinted message at the top of the
@@ -97,8 +99,8 @@ export default function LoginForm({ onSuccess }) {
     setBusy(label);
     setError('');
     try {
-      const user = await work();
-      if (user) onSuccess(user);
+      const result = await work(); // { user, claimed }, or null when only a code was sent
+      if (result) onSuccess(result);
       return true;
     } catch (err) {
       if (mounted.current) setError(authErrorMessage(err));

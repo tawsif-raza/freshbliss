@@ -14,6 +14,48 @@ export function safeNextPath(raw, fallback = DEFAULT_AFTER_LOGIN) {
   return value;
 }
 
+// The pages that ask a visitor to sign in first (components/auth/SignInGate.js). Checkout only: the cart, the shop and
+// the product pages stay open to everyone. A visitor can still check out as a GUEST (see below).
+export const GATED_PATHS = ['/checkout'];
+export const needsSignIn = (pathname) => GATED_PATHS.includes(pathname);
+
+// The path part of a "next" address: "/checkout?x=1#y" -> "/checkout".
+const pathOf = (next) => String(next).split(/[?#]/)[0];
+
+// True when signing in is being asked for because of a gated page, i.e. when "Continue as guest" makes sense.
+export const isGatedTarget = (next) => needsSignIn(pathOf(safeNextPath(next)));
+
+// The address of the login page that brings the visitor back to `next`. A `next` that is not a path on this site, or
+// is just the default, gives plain "/login".
+export function loginHref(next) {
+  const target = safeNextPath(next, null);
+  return target && target !== DEFAULT_AFTER_LOGIN ? `/login?next=${encodeURIComponent(target)}` : '/login';
+}
+
+// "Continue as guest": the visitor chose to check out without an account. Remembered for this browser tab only, so the
+// checkout gate does not send them straight back to the login page. A stricter browser can block sessionStorage, so the
+// answer is also kept in memory (it lasts until the page is reloaded).
+const GUEST_KEY = 'fb-guest-checkout';
+let guestInMemory = false;
+
+export function allowGuestCheckout() {
+  guestInMemory = true;
+  try {
+    sessionStorage.setItem(GUEST_KEY, '1');
+  } catch {
+    // blocked: the in-memory answer is enough for now
+  }
+}
+
+export function guestCheckoutAllowed() {
+  if (guestInMemory) return true;
+  try {
+    return sessionStorage.getItem(GUEST_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
 // An Indian mobile number as the customer types or pastes it ("98765 43210", "+91 98765-43210", "098765 43210").
 // Returns { ok: true, e164: '+919876543210' } or { ok: false, message }. Mobile numbers start with 6, 7, 8 or 9.
 export function normalizeIndianMobile(input) {
@@ -23,6 +65,31 @@ export function normalizeIndianMobile(input) {
   if (digits.length === 0) return { ok: false, message: 'Enter your mobile number.' };
   if (!/^[6-9]\d{9}$/.test(digits)) return { ok: false, message: 'Enter a 10-digit Indian mobile number.' };
   return { ok: true, e164: `+91${digits}` };
+}
+
+// "+919876543210" -> "+91 98765 43210". Anything else is shown as it is.
+export const formatPhone = (e164) => String(e164 ?? '').replace(/^(\+91)(\d{5})(\d{5})$/, '$1 $2 $3');
+
+const PROVIDER_NAMES = { 'google.com': 'Google', 'microsoft.com': 'Microsoft', phone: 'Mobile number' };
+
+// What the account page shows about a signed-in person, from the Firebase user. Google and Microsoft give a name and an
+// email; a phone sign-in gives only the number. `title` is the best single label for them.
+export function describeAccount(user) {
+  const providers = user?.providerData ?? [];
+  const providerId = providers.map((p) => p.providerId).find((id) => PROVIDER_NAMES[id]);
+  const name = String(user?.displayName ?? '').trim();
+  const email = user?.email || providers.find((p) => p.email)?.email || '';
+  const phone = formatPhone(user?.phoneNumber);
+  const title = name || email || phone || 'Your account';
+  return {
+    title,
+    name,
+    email,
+    phone,
+    photoURL: user?.photoURL || '',
+    provider: PROVIDER_NAMES[providerId] ?? '',
+    initial: title.replace(/^\+/, '').charAt(0).toUpperCase() || 'F',
+  };
 }
 
 export const OTP_LENGTH = 6;

@@ -54,6 +54,77 @@ const cancel = (over = {}) => cancelOrderTx(db, { orderId: id, reason: 'Customer
 const refund = (over = {}) => refundOrderTx(db, { orderId: id, note: '', staffUid: 'staff1', ...over });
 
 // ============================================================
+// ============================================================
+describe('cancelOrderTx (customer cancels their own order)', () => {
+  const mine = (over = {}) => cancelOrderTx(db, { orderId: id, reason: 'Customer: Changed my mind', customerUid: 'alice', ...over });
+
+  it('lets the owner cancel a new order: refund flagged, stock returned, marked as the customer', async () => {
+    const r = await mine();
+    assert.deepEqual([r.status, r.paymentStatus, r.restocked, r.replay], ['CANCELLED', 'REFUND_PENDING', true, false]);
+    const o = await get();
+    assert.equal(o.cancelledBy, 'customer');
+    assert.equal(o.updatedBy, 'alice');
+    assert.equal(o.cancelReason, 'Customer: Changed my mind');
+    assert.equal(await stockOf(), 7);
+  });
+
+  it('lets the owner cancel while it is being prepared', async () => {
+    await advance('PREPARING');
+    assert.equal((await mine()).status, 'CANCELLED');
+    assert.equal(await stockOf(), 7);
+  });
+
+  it('refuses once the order is packed, and changes nothing', async () => {
+    await advance('PREPARING');
+    await advance('PACKED');
+    await assert.rejects(() => mine(), /packed/);
+    const o = await get();
+    assert.equal(o.status, 'PACKED');
+    assert.equal(o.paymentStatus, 'PAID');
+    assert.equal(await stockOf(), 5);
+  });
+
+  it('refuses when it is out for delivery or delivered', async () => {
+    await advance('PREPARING');
+    await advance('PACKED');
+    await advance('OUT_FOR_DELIVERY', RIDER);
+    await assert.rejects(() => mine(), /packed/);
+    await db.doc(`orders/${id}`).update({ status: 'DELIVERED' });
+    await assert.rejects(() => mine(), /delivered order cannot be cancelled/);
+    assert.equal(await stockOf(), 5);
+  });
+
+  it("will not touch someone else's order, and says 'not found' so ids cannot be probed", async () => {
+    await assert.rejects(() => mine({ customerUid: 'mallory' }), /could not find that order/);
+    const o = await get();
+    assert.equal(o.status, 'PAYMENT_CONFIRMED');
+    assert.equal(await stockOf(), 5);
+  });
+
+  it('ignores a restock override: a customer cannot choose it', async () => {
+    const r = await mine({ restock: false });
+    assert.equal(r.restocked, true);
+    assert.equal(await stockOf(), 7);
+  });
+
+  it('returns stock only once even when the button is pressed three times at once', async () => {
+    const results = await Promise.all([mine(), mine(), mine()]);
+    assert.equal(results.filter((r) => !r.replay).length, 1);
+    assert.equal(await stockOf(), 7);
+  });
+
+  it('needs exactly one of staffUid or customerUid', async () => {
+    await assert.rejects(() => cancelOrderTx(db, { orderId: id, reason: 'x' }), /exactly one/);
+    await assert.rejects(() => cancelOrderTx(db, { orderId: id, reason: 'x', staffUid: 's', customerUid: 'alice' }), /exactly one/);
+  });
+
+  it('feeds the normal refund queue: staff can then mark the refund done', async () => {
+    await mine();
+    const r = await refund();
+    assert.equal(r.paymentStatus, 'REFUNDED');
+  });
+});
+
 describe('cancelOrderTx (staff cancel, starts the refund workflow)', () => {
   it('cancels, flags the refund, stamps it, and returns the boxes to stock (not packed yet)', async () => {
     const r = await cancel();

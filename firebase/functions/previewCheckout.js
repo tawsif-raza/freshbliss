@@ -18,7 +18,7 @@
 
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { getFirestore } = require('firebase-admin/firestore');
-const { normaliseLines, priceCart, findZone, loadPromo, loadProducts, ALLOWED_TIPS, PINCODE } = require('./createCheckout');
+const { normaliseLines, priceCart, findZone, loadPromo, loadProducts, readSlot, ALLOWED_TIPS, PINCODE } = require('./createCheckout');
 const { callableOptions } = require('./shared/hardening');
 const { enforce, assertNotBlocked, recordFailure } = require('./shared/rateLimit');
 
@@ -38,6 +38,8 @@ async function quoteCart(request, deps = {}) {
     throw fail('failed-precondition', 'Enter your delivery pincode first.');
   }
 
+  const slot = readSlot(data.slot, deps.now); // a closed or made-up slot is refused here, so the page can say so early
+
   const db = deps.db || getFirestore();
   const [products, zone, promo] = await Promise.all([
     loadProducts(db, lines),
@@ -51,6 +53,7 @@ async function quoteCart(request, deps = {}) {
     pricing,
     zone: { id: zone.id, name: zone.name ?? null, etaMin: zone.etaMin ?? null, etaMax: zone.etaMax ?? null },
     promo: promo ? { code: promo.code, type: promo.type, value: promo.value } : null,
+    slot,
   };
 }
 

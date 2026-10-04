@@ -20,7 +20,9 @@ exports.verifyPayment = require('./verifyPayment').verifyPayment;
 exports.razorpayWebhook = require('./razorpayWebhook').razorpayWebhook;
 exports.updateOrderStatus = require('./updateOrderStatus').updateOrderStatus;
 exports.cancelOrder = require('./cancelOrder').cancelOrder;
+exports.cancelMyOrder = require('./cancelOrder').cancelMyOrder; // the customer's own cancel, until the order is packed
 exports.processRefund = require('./processRefund').processRefund;
+exports.claimGuestOrders = require('./claimGuestOrders').claimGuestOrders; // moves a guest's orders to the account they sign in to
 
 // Copies each new order into an Excel workbook (a .xlsx file in Amazon S3) and keeps its
 // status up to date (see docs/AWS_SETUP.md and docs/EXCEL_SYNC.md). Does nothing until AWS is set up.

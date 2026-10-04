@@ -14,21 +14,45 @@ import { useRouter } from 'next/router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import LoginForm from '@/components/auth/LoginForm';
 import OptimizedImage from '@/components/OptimizedImage';
+import { useToast } from '@/components/ToastProvider';
 import { auth } from '@/lib/firebaseClient';
-import { safeNextPath } from '@/lib/authHelpers';
+import { allowGuestCheckout, isGatedTarget, safeNextPath } from '@/lib/authHelpers';
 
 const HERO_PHOTO = 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1200&q=80';
 
 export default function LoginPage() {
   const router = useRouter();
+  const toast = useToast();
+  const toastRef = useRef(toast);
+  useEffect(() => {
+    toastRef.current = toast;
+  }, [toast]);
   const [ready, setReady] = useState(false); // the saved session has been looked at
   const leaving = useRef(false);
 
-  const goOn = useCallback(() => {
+  // Sent here because checkout asks for sign-in: a guest checkout is still allowed, so offer it.
+  const guestOption = router.isReady && isGatedTarget(router.query.next);
+
+  // `result` is { user, claimed } from a sign-in just now. Said once, on the way out, so the customer knows their
+  // earlier orders came with them. (Absent when the page finds an existing session.)
+  const goOn = useCallback(
+    (result) => {
+      if (leaving.current) return;
+      leaving.current = true;
+      if (result?.claimed > 0) {
+        toastRef.current.success(`We added your ${result.claimed === 1 ? 'earlier order' : `${result.claimed} earlier orders`} to your account.`);
+      }
+      router.replace(safeNextPath(router.query.next));
+    },
+    [router],
+  );
+
+  function continueAsGuest() {
     if (leaving.current) return;
     leaving.current = true;
+    allowGuestCheckout();
     router.replace(safeNextPath(router.query.next));
-  }, [router]);
+  }
 
   // Look at any saved session once, before the buttons are usable (a pop-up must open straight from a tap, so the
   // sign-in code cannot wait for this itself). A customer who is already signed in skips the page. A guest
@@ -94,15 +118,38 @@ export default function LoginPage() {
               </p>
             )}
 
+            {ready && guestOption && (
+              <div className="mt-6 rounded-lg border border-line bg-surface-card p-4">
+                <p className="text-small text-ink-muted">Just want to order? You can check out without an account. Your orders are then kept in this browser only.</p>
+                <button
+                  type="button"
+                  onClick={continueAsGuest}
+                  className="mt-2 inline-flex min-h-11 items-center rounded-pill border border-green-accent px-5 text-nav-link text-brand-text hover:bg-surface-cream"
+                >
+                  Continue as guest
+                </button>
+              </div>
+            )}
+
             <p className="mt-8 text-small text-ink-muted">
-              We only use your details to deliver your orders. See our <Link href="/privacy" className="font-bold text-brand-text underline">Privacy Policy</Link>.
-            </p>
-            <p className="mt-2 text-small text-ink-muted">
-              <Link href="/products" className="font-bold text-brand-text underline">
-                Keep browsing
+              By continuing, you agree to our{' '}
+              <Link href="/terms" className="font-bold text-brand-text underline">
+                Terms of Service
               </Link>{' '}
-              without signing in.
+              and our{' '}
+              <Link href="/privacy" className="font-bold text-brand-text underline">
+                Privacy Policy
+              </Link>
+              . The Privacy Policy explains how your name, email or mobile number is used.
             </p>
+            {!guestOption && (
+              <p className="mt-2 text-small text-ink-muted">
+                <Link href="/products" className="font-bold text-brand-text underline">
+                  Keep browsing
+                </Link>{' '}
+                without signing in.
+              </p>
+            )}
           </div>
         </section>
       </div>

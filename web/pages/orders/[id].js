@@ -11,12 +11,14 @@ import Callout from '@/components/Callout';
 import OrderReceipt from '@/components/OrderReceipt';
 import OrderStepper from '@/components/OrderStepper';
 import TrackingSkeleton from '@/components/TrackingSkeleton';
+import CancelOrderCard from '@/components/orders/CancelOrderCard';
 import DeliveryCodeCard from '@/components/orders/DeliveryCodeCard';
 import InfoCard from '@/components/orders/InfoCard';
 import LivePill from '@/components/orders/LivePill';
 import OrderSummary from '@/components/orders/OrderSummary';
 import { useLiveOrder } from '@/lib/liveOrder';
 import { ORDER_FLOW, expectedBy, formatTime } from '@/lib/orderStatus';
+import { slotText } from '@/lib/slots';
 
 // ---------- the page ----------
 
@@ -79,6 +81,7 @@ export default function OrderTrackingPage() {
   const cancelled = order.status === 'CANCELLED';
   const step = ORDER_FLOW.find((s) => s.status === order.status);
   const eta = expectedBy(order);
+  const scheduled = slotText(order.slot); // '' for an "as soon as possible" order
   const deliveredAt = formatTime(order.timestamps?.DELIVERED);
 
   return (
@@ -108,7 +111,7 @@ export default function OrderTrackingPage() {
                 <p className="mt-1 text-lead text-ink-muted">
                   {order.status === 'DELIVERED'
                     ? deliveredAt && `Delivered at ${deliveredAt}.`
-                    : eta && `Expected by ${eta}.`}
+                    : scheduled ? `Scheduled: ${scheduled}.` : eta && `Expected by ${eta}.`}
                 </p>
               )}
             </motion.div>
@@ -132,6 +135,7 @@ export default function OrderTrackingPage() {
           )}
           <AnimatePresence>{order.status === 'OUT_FOR_DELIVERY' && <DeliveryCodeCard order={order} />}</AnimatePresence>
           <OrderSummary order={order} />
+          <CancelOrderCard order={order} />
         </div>
 
         <div className="mt-8 flex flex-wrap gap-3">
