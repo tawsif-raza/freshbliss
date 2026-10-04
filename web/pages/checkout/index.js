@@ -29,6 +29,7 @@ import SlotPicker from '@/components/checkout/SlotPicker';
 import TipSelector from '@/components/checkout/TipSelector';
 import { useCart } from '@/context/CartContext';
 import { ADDRESS_LIMITS, DEFAULT_ADDRESS_TYPE, addressErrors, formatAddress } from '@/lib/address';
+import { isPromoLimitError } from '@/lib/errors';
 import { usingEmulators } from '@/lib/firebaseClient';
 import { previewTotals } from '@/lib/pricing';
 import { slotChoice } from '@/lib/slots';
@@ -100,6 +101,15 @@ export default function CheckoutPage() {
         const data = await previewPricing({ lines, pincode, tip, promoCode, slot: slotChoice(slot) });
         if (!cancelled) setSettled({ key: inputKey, data, error: '', promoError: '' });
       } catch (err) {
+        // A code that has been used up (or already used by this customer) since it was applied: drop it and say so,
+        // so the customer can simply pay the normal price.
+        if (promoCode && isPromoLimitError(err)) {
+          if (!cancelled) {
+            setPromoNote(friendlyError(err));
+            setPromoCode(null);
+          }
+          return;
+        }
         let promoError = '';
         let data = null;
         if (promoCode) {
@@ -153,7 +163,9 @@ export default function CheckoutPage() {
   // The one line the order stores, for example "Home: Flat 4B, MG Road, near Metro. Pincode: 560041".
   const address = formatAddress({ type: addressType, flat: form.flat, area: form.area, landmark: form.landmark, pincode });
 
-  const canPay = loaded && items.length > 0 && problems.length === 0 && !busy && !promoBusy && !quoting && !current?.error && promoStatus !== 'error' && area.kind !== 'outside';
+  // A code that was refused must not stop the customer paying: only an APPLIED code that has gone bad does (they can Remove it).
+  const promoBlocks = Boolean(promoCode) && promoStatus === 'error';
+  const canPay = loaded && items.length > 0 && problems.length === 0 && !busy && !promoBusy && !quoting && !current?.error && !promoBlocks && area.kind !== 'outside';
 
   function handlePincode(value) {
     const digits = value.replace(/\D/g, '').slice(0, 6);
@@ -220,7 +232,10 @@ export default function CheckoutPage() {
         await router.push(`/orders/${order.orderId}`);
         clearCart(); // after leaving: emptying it first would flash "Your cart is empty" on this page for a moment
       } catch (err) {
-        setError(friendlyError(err));
+        if (isPromoLimitError(err)) {
+          setPromoNote(friendlyError(err));
+          setPromoCode(null);
+        } else setError(friendlyError(err));
         setStage('idle');
       }
       return; // on success we have left this page: nothing more to reset here
@@ -236,7 +251,12 @@ export default function CheckoutPage() {
     } catch (err) {
       if (err instanceof CheckoutError && err.code === 'dismissed') setNotice(err.message);
       else if (err instanceof CheckoutError && err.code === 'verify-failed') setUnconfirmed(err.pending);
-      else setError(friendlyError(err));
+      else if (isPromoLimitError(err)) {
+        // The code was used up between "Apply" and "Pay". Nothing was charged. Drop it and let them pay the normal price.
+        setPromoNote(friendlyError(err));
+        setPromoCode(null);
+        setNotice('We took the promo code off your order. Your total has changed: check it, then press Pay again.');
+      } else setError(friendlyError(err));
     } finally {
       setStage('idle');
     }

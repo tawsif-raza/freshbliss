@@ -14,20 +14,32 @@ function fakeDb() {
     ['products/classic-fresh-mix', { name: 'Classic Fresh Mix', price: 149, stock: 25, active: true, sizes: SIZES }],
     ['products/mango', { name: 'Mango Box', price: 229, stock: 0, active: true, sizes: SIZES }],
     ['promoCodes/WELCOME10', { type: 'percent', value: 10, min: 199, active: true, expiresAt: null }],
+    ['promoCodes/ONCE', { type: 'percent', value: 10, min: 0, active: true, expiresAt: null, maxUsesPerUser: 1, usedCount: 4 }],
+    ['promoCodes/ONCE/uses/used-it', { uid: 'used-it', count: 1 }],
   ]);
   const zones = [
     { id: 'A', name: 'Zone A', fee: 0, etaMin: 30, etaMax: 45, match: { regex: '^5600\\d{2}$' }, priority: 1, active: true },
     { id: 'B', name: 'Zone B', fee: 30, etaMin: 45, etaMax: 60, match: { regex: '^560\\d{3}$' }, priority: 2, active: true },
   ];
   const written = [];
+  const claims = []; // promo usage writes made inside a transaction: { op, path, data }
   const snap = (path) => ({ id: path.split('/').pop(), exists: docs.has(path), data: () => docs.get(path), get: (f) => docs.get(path)?.[f] });
   return {
     written,
+    claims,
     docs,
+    // A tiny transaction: reads go straight through, writes are recorded.
+    runTransaction: async (fn) =>
+      fn({
+        get: (ref) => ref.get(),
+        create: (ref, data) => ref.create(data),
+        update: (ref, data) => void claims.push({ op: 'update', path: ref.path, data }),
+        set: (ref, data) => void claims.push({ op: 'set', path: ref.path, data }),
+      }),
     doc: (path) => ({ path, get: async () => snap(path) }),
     getAll: async (...refs) => refs.map((r) => snap(r.path)),
     collection: (name) => {
-      if (name === 'orders') return { doc: () => ({ id: 'order123', create: async (data) => void written.push({ path: 'orders/order123', data }) }) };
+      if (name === 'orders') return { doc: () => ({ id: 'order123', path: 'orders/order123', create: async (data) => void written.push({ path: 'orders/order123', data }) }) };
       return { where: () => ({ get: async () => ({ docs: zones.map((z) => ({ id: z.id, data: () => z })) }) }) };
     },
   };
@@ -144,5 +156,28 @@ describe('the guards', () => {
     const db = fakeDb();
     await assert.rejects(make(cart({ tip: 15 }), { db }));
     assert.equal(db.written.length, 0);
+  });
+});
+
+// ============================================================
+describe('a test checkout and promo usage limits', () => {
+  it('counts the use exactly like a real order: the code\'s total goes up and this customer\'s record is written', async () => {
+    const { db } = await make(cart({ promoCode: 'once' }));
+    assert.equal(db.written.length, 1, 'the order was created');
+    assert.deepEqual(db.claims.map((c) => [c.op, c.path]), [['update', 'promoCodes/ONCE'], ['set', 'promoCodes/ONCE/uses/u1']]);
+    assert.deepEqual(db.claims[1].data.uid, 'u1');
+  });
+
+  it('refuses a customer who has used a one-use code, and creates nothing', async () => {
+    const db = fakeDb();
+    await rejects(make(cart({ promoCode: 'ONCE' }), { db, auth: { uid: 'used-it', token: {} } }), 'failed-precondition', /already used the code ONCE/);
+    assert.equal(db.written.length, 0);
+    assert.equal(db.claims.length, 0);
+  });
+
+  it('counts nothing when no promo code is used (and does not need a transaction)', async () => {
+    const { db } = await make(cart());
+    assert.equal(db.claims.length, 0);
+    assert.equal(db.written.length, 1);
   });
 });

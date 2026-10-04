@@ -21,6 +21,7 @@ const { getFirestore } = require('firebase-admin/firestore');
 const { normaliseLines, priceCart, findZone, loadPromo, loadProducts, readSlot, ALLOWED_TIPS, PINCODE } = require('./createCheckout');
 const { callableOptions } = require('./shared/hardening');
 const { enforce, assertNotBlocked, recordFailure } = require('./shared/rateLimit');
+const { whoIs } = require('./shared/promoLimits');
 
 const fail = (code, message) => new HttpsError(code, message);
 
@@ -44,7 +45,7 @@ async function quoteCart(request, deps = {}) {
   const [products, zone, promo] = await Promise.all([
     loadProducts(db, lines),
     findZone(db, data.pincode), // "We don't deliver to this pincode yet."
-    loadPromoQuietly(db, data.promoCode, deps.onBadPromo),
+    loadPromoQuietly(db, data.promoCode, whoIs(request.auth), deps.onBadPromo),
   ]);
 
   const { items, pricing } = priceCart({ lines, products, zone, promo, tip });
@@ -57,11 +58,15 @@ async function quoteCart(request, deps = {}) {
   };
 }
 
-// loadPromo, but every way of being "not a usable code" gives the same answer.
-async function loadPromoQuietly(db, rawCode, onBadPromo) {
+// loadPromo, but every way of being "not a usable code" gives the same answer: a wrong, switched-off or expired code
+// is just "not valid". The exception is a usage limit ("already used", "reached its limit"): the customer needs to be
+// told, and it leaks nothing, because they only hear "already used" for a code they used themselves, and "reached its
+// limit" is about a code that no longer works for anyone. It is not counted as a wrong guess.
+async function loadPromoQuietly(db, rawCode, who, onBadPromo) {
   try {
-    return await loadPromo(db, rawCode);
+    return await loadPromo(db, rawCode, who);
   } catch (err) {
+    if (err instanceof HttpsError && err.details?.promoLimit) throw err;
     if (err instanceof HttpsError && err.code === 'failed-precondition') {
       await onBadPromo?.(); // a wrong, switched-off or expired code all count as a wrong guess
       throw fail('failed-precondition', 'That promo code is not valid.');

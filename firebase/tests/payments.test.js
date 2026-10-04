@@ -20,6 +20,7 @@ const { initializeApp } = fromFunctions('firebase-admin/app');
 const { getFirestore, FieldValue } = fromFunctions('firebase-admin/firestore');
 const { finalizeCheckout, confirmPayment, hmacMatches } = require('../functions/shared/payments');
 const { handleWebhook } = require('../functions/razorpayWebhook');
+const { loadPromo } = require('../functions/createCheckout');
 
 const WEBHOOK_SECRET = 'whsec_test_secret';
 const SIZES = [{ id: 'regular', label: 'Regular', extra: 0 }, { id: 'large', label: 'Large', extra: 50 }];
@@ -438,5 +439,204 @@ describe('razorpayWebhook: refund events', () => {
     assert.equal((await order()).paymentStatus, 'REFUND_PENDING');
     assert.equal((await handleWebhook(db, good)).body, 'Refund recorded');
     assert.equal((await handleWebhook(db, good)).body, 'Duplicate');
+  });
+});
+
+// ============================================================
+describe('promo usage limits: enforced and counted when the order is confirmed', () => {
+  let code; // a fresh promo code per test (codes are uppercase letters, digits, - and _)
+  beforeEach(() => {
+    code = `LIM${Date.now()}X${n}`.toUpperCase();
+  });
+
+  const promoRef = () => db.doc(`promoCodes/${code}`);
+  const usesRef = (uid) => db.doc(`promoCodes/${code}/uses/${uid}`);
+  const makePromo = (limits = {}) => promoRef().set({ type: 'percent', value: 10, min: 0, active: true, expiresAt: null, usedCount: 0, ...limits });
+  const usedCount = async () => (await promoRef().get()).get('usedCount');
+  const userCount = async (uid) => (await usesRef(uid).get()).get('count') ?? 0;
+  const orderOf = async (checkoutName) => (await db.doc(`orders/${ids(checkoutName)}`).get()).data();
+
+  // A checkout for `uid` using the code. Each buyer has their own checkout id, product stock is plentiful.
+  async function buyer(uid, name, { qty = 1 } = {}) {
+    await db.doc(`checkouts/${ids(name)}`).set(checkout(uid, ids('p'), qty, `order_${name}`, { promo: { code, type: 'percent', value: 10 } }));
+    return name;
+  }
+  const pay = (uid, name) => finalizeCheckout(db, { checkoutId: ids(name), razorpayPaymentId: `pay_${name}`, uid });
+  const settle = (results) => ({
+    confirmed: results.filter((r) => r.status === 'PAYMENT_CONFIRMED').length,
+    cancelled: results.filter((r) => r.status === 'CANCELLED').length,
+  });
+
+  beforeEach(async () => {
+    await product(ids('p'), 100);
+  });
+
+  it('counts one use for the code and one for the customer, and records which order used it', async () => {
+    await makePromo({ globalMaxUses: 5, maxUsesPerUser: 2 });
+    await buyer('alice', 'a');
+    assert.equal((await pay('alice', 'a')).status, 'PAYMENT_CONFIRMED');
+    assert.equal(await usedCount(), 1);
+    const use = (await usesRef('alice').get()).data();
+    assert.deepEqual([use.uid, use.code, use.count, use.orderIds], ['alice', code, 1, [ids('a')]]);
+    assert.ok(use.lastUsedAt);
+  });
+
+  it('counts a code with no limits too (so a limit added later starts from the truth), and never blocks it', async () => {
+    await makePromo();
+    for (const [i, uid] of ['a1', 'a2', 'a3'].entries()) {
+      await buyer(uid, `n${i}`);
+      assert.equal((await pay(uid, `n${i}`)).status, 'PAYMENT_CONFIRMED');
+    }
+    assert.equal(await usedCount(), 3);
+  });
+
+  it('counts a use ONCE even when the browser callback and the webhook confirm the same payment at the same instant', async () => {
+    await makePromo({ globalMaxUses: 5, maxUsesPerUser: 1 });
+    await buyer('alice', 'a');
+    const results = await Promise.all([pay('alice', 'a'), pay('alice', 'a'), pay('alice', 'a')]);
+    assert.equal(results.filter((r) => !r.replay).length, 1);
+    assert.equal(await usedCount(), 1);
+    assert.equal(await userCount('alice'), 1);
+    assert.equal((await orderOf('a')).status, 'PAYMENT_CONFIRMED', 'the replays did not cancel the order');
+  });
+
+  it('never goes over the total limit: 8 customers racing for 3 uses give 3 orders and 5 refunds', async () => {
+    await makePromo({ globalMaxUses: 3 });
+    const names = Array.from({ length: 8 }, (_, i) => `r${i}`);
+    for (const nm of names) await buyer(`user-${nm}`, nm);
+    const results = await Promise.all(names.map((nm) => pay(`user-${nm}`, nm)));
+    assert.deepEqual(settle(results), { confirmed: 3, cancelled: 5 });
+    assert.equal(await usedCount(), 3, 'exactly the limit, never more');
+    assert.equal(await stockOf(ids('p')), 97, 'stock was taken for the 3 real orders only');
+  });
+
+  it('a customer who pays twice with a one-use code (double click) gets one order and one refund', async () => {
+    await makePromo({ maxUsesPerUser: 1 });
+    await buyer('alice', 'first');
+    await buyer('alice', 'second'); // a second checkout made by the second click
+    const results = await Promise.all([pay('alice', 'first'), pay('alice', 'second')]);
+    assert.deepEqual(settle(results), { confirmed: 1, cancelled: 1 });
+    assert.equal(await userCount('alice'), 1);
+    assert.equal(await usedCount(), 1);
+    assert.equal(await stockOf(ids('p')), 99);
+  });
+
+  it('allows exactly maxUsesPerUser uses, and refuses the next one', async () => {
+    await makePromo({ maxUsesPerUser: 2 });
+    for (const nm of ['u1', 'u2', 'u3']) await buyer('alice', nm);
+    assert.equal((await pay('alice', 'u1')).status, 'PAYMENT_CONFIRMED');
+    assert.equal((await pay('alice', 'u2')).status, 'PAYMENT_CONFIRMED');
+    assert.equal((await pay('alice', 'u3')).status, 'CANCELLED');
+    assert.equal(await userCount('alice'), 2);
+  });
+
+  it('counts each customer separately: three different customers can each use a one-use code', async () => {
+    await makePromo({ maxUsesPerUser: 1 });
+    for (const uid of ['p1', 'p2', 'p3']) await buyer(uid, uid);
+    const results = await Promise.all(['p1', 'p2', 'p3'].map((uid) => pay(uid, uid)));
+    assert.deepEqual(settle(results), { confirmed: 3, cancelled: 0 });
+    assert.equal(await usedCount(), 3);
+  });
+
+  it('the refused order is a clean cancellation: refund pending, reason says why, no stock taken, no use counted, cart kept', async () => {
+    await makePromo({ globalMaxUses: 1 });
+    await buyer('alice', 'win');
+    await buyer('bob', 'lose');
+    await db.doc('carts/bob').set({ items: [{ productId: ids('p'), size: 'regular', qty: 1 }] });
+    await pay('alice', 'win');
+    const r = await pay('bob', 'lose');
+
+    assert.deepEqual([r.status, r.paymentStatus], ['CANCELLED', 'REFUND_PENDING']);
+    const o = await orderOf('lose');
+    assert.deepEqual([o.status, o.paymentStatus, o.cancelledBy], ['CANCELLED', 'REFUND_PENDING', 'system']);
+    assert.match(o.cancelReason, /^Promo code limit: This promo code has reached its usage limit\.$/);
+    assert.equal(r.cancelReason, o.cancelReason);
+    assert.equal(o.payment.razorpayPaymentId, 'pay_lose', 'the payment is recorded, so it can be refunded');
+    assert.equal(await stockOf(ids('p')), 99);
+    assert.equal(await usedCount(), 1);
+    assert.equal(await userCount('bob'), 0);
+    assert.equal((await db.doc(`checkouts/${ids('lose')}`).get()).get('outcome'), 'PROMO_LIMIT');
+    assert.equal(await exists('carts/bob'), true, 'bob keeps his cart and can order again without the code');
+  });
+
+  it('says "already used" for a per-customer refusal', async () => {
+    await makePromo({ maxUsesPerUser: 1 });
+    await buyer('alice', 'x1');
+    await buyer('alice', 'x2');
+    await pay('alice', 'x1');
+    assert.match((await pay('alice', 'x2')).cancelReason, new RegExp(`already used the code ${code}`));
+  });
+
+  it('a replay of a refused payment reports the same reason (a late webhook after the browser callback)', async () => {
+    await makePromo({ globalMaxUses: 0 });
+    await buyer('alice', 'z');
+    const first = await pay('alice', 'z');
+    const again = await pay('alice', 'z');
+    assert.equal(again.replay, true);
+    assert.equal(again.cancelReason, first.cancelReason);
+  });
+
+  it('out of stock still wins, and a cancelled order uses up nothing', async () => {
+    await makePromo({ maxUsesPerUser: 1 });
+    await buyer('alice', 'big', { qty: 500 }); // more boxes than exist
+    const r = await pay('alice', 'big');
+    assert.equal(r.status, 'CANCELLED');
+    assert.match(r.cancelReason, /^Out of stock/);
+    assert.equal(await usedCount(), 0);
+    assert.equal(await userCount('alice'), 0);
+  });
+
+  it('honours an order quoted with a code that was deleted since (the customer already paid the quoted price)', async () => {
+    await makePromo({ globalMaxUses: 1 });
+    await buyer('alice', 'del');
+    await promoRef().delete();
+    assert.equal((await pay('alice', 'del')).status, 'PAYMENT_CONFIRMED');
+    assert.equal(await exists(`promoCodes/${code}`), false, 'the claim did not resurrect the deleted code');
+  });
+
+  it('honours an order whose code had its limit mistyped after the quote (config problems never cancel a paid order)', async () => {
+    await makePromo({ globalMaxUses: 'ten' });
+    await buyer('alice', 'typo');
+    assert.equal((await pay('alice', 'typo')).status, 'PAYMENT_CONFIRMED');
+  });
+});
+
+// ============================================================
+describe('promo usage limits: the early check before payment (createCheckout / previewCheckout use loadPromo)', () => {
+  let code;
+  beforeEach(() => {
+    code = `EARLY${Date.now()}X${n}`.toUpperCase();
+  });
+  const guest = { uid: 'alice', anonymous: false };
+
+  it('lets a first-time customer through, then politely refuses once they have used a one-use code', async () => {
+    await db.doc(`promoCodes/${code}`).set({ type: 'percent', value: 10, active: true, expiresAt: null, maxUsesPerUser: 1 });
+    assert.equal((await loadPromo(db, code, guest)).code, code);
+
+    await db.doc(`promoCodes/${code}/uses/alice`).set({ uid: 'alice', code, count: 1 });
+    await assert.rejects(loadPromo(db, code, guest), (err) => err.code === 'failed-precondition' && err.message === `You have already used the code ${code}.` && err.details.promoLimit === true);
+    assert.equal((await loadPromo(db, code, { uid: 'bob', anonymous: false })).code, code, 'someone else is unaffected');
+  });
+
+  it('refuses a code whose total is used up, reading the server-kept counter', async () => {
+    await db.doc(`promoCodes/${code}`).set({ type: 'percent', value: 10, active: true, expiresAt: null, globalMaxUses: 2, usedCount: 2 });
+    await assert.rejects(loadPromo(db, code, guest), /reached its usage limit/);
+    await db.doc(`promoCodes/${code}`).update({ usedCount: 1 });
+    assert.equal((await loadPromo(db, code, guest)).code, code);
+  });
+
+  it('the early check and the confirmation agree: the counter the confirmation writes is the one the early check reads', async () => {
+    await db.doc(`promoCodes/${code}`).set({ type: 'percent', value: 10, active: true, expiresAt: null, globalMaxUses: 1, usedCount: 0 });
+    await product(ids('p'), 10);
+    await db.doc(`checkouts/${ids('c')}`).set(checkout('alice', ids('p'), 1, 'order_c', { promo: { code, type: 'percent', value: 10 } }));
+    assert.equal((await loadPromo(db, code, guest)).code, code);
+    await finalizeCheckout(db, { checkoutId: ids('c'), razorpayPaymentId: 'pay_c', uid: 'alice' });
+    await assert.rejects(loadPromo(db, code, { uid: 'bob', anonymous: false }), /reached its usage limit/);
+  });
+
+  it('asks a guest to sign in for a members-only code', async () => {
+    await db.doc(`promoCodes/${code}`).set({ type: 'percent', value: 10, active: true, expiresAt: null, requiresSignIn: true });
+    await assert.rejects(loadPromo(db, code, { uid: 'g', anonymous: true }), /Sign in to use this promo code/);
+    assert.equal((await loadPromo(db, code, guest)).code, code);
   });
 });

@@ -135,9 +135,15 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // promoCodes: server-only so codes cannot be listed by customers.
+    // promoCodes: server-only so codes cannot be listed by customers. Its usage counters
+    // (usedCount, and the per-customer promoCodes/{code}/uses/{uid} documents; see
+    // functions/shared/promoLimits.js) must not be readable or editable by anyone either: a customer who could
+    // reset their own count would get unlimited uses.
     match /promoCodes/{code} {
       allow read, write: if false;
+      match /uses/{uid} {
+        allow read, write: if false;
+      }
     }
 
     // rateLimits: the call counters behind the rate limits (functions/shared/rateLimit.js). Server-only, so a

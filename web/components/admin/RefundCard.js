@@ -62,7 +62,7 @@ export default function RefundCard({ order }) {
         <span className="rounded-pill border border-danger bg-surface-danger px-3 py-1 text-small font-bold text-danger">{BADGE[state]}</span>
       </div>
       <p className="mt-1 text-small text-ink-muted">
-        Cancelled at {formatTime(order.timestamps?.CANCELLED) || '...'} · {bySystem ? 'automatically (sold out while paying)' : order.cancelledBy === 'customer' ? 'by the customer' : 'by staff'}
+        Cancelled at {formatTime(order.timestamps?.CANCELLED) || '...'} · {bySystem ? 'automatically (see the reason below)' : order.cancelledBy === 'customer' ? 'by the customer' : 'by staff'}
       </p>
       <p className="mt-2 text-small text-ink">Reason: {order.cancelReason || 'Not recorded'}</p>
 

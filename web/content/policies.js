@@ -26,6 +26,7 @@ export const TERMS_SECTIONS = [
           'Prices, delivery fees, stock and promo discounts are always worked out by our server when you pay. If something changed since you added a box to your cart, the checkout shows the updated amount before you pay.',
           'An order is confirmed only after your payment is confirmed by our payment provider. Until then it is not an order.',
           'We deliver only to the pincodes shown at checkout. If your pincode is not served, checkout will say so.',
+          'Promo codes can have limits, for example a total number of uses, or one use per customer. Checkout tells you if a code cannot be used. If a code reaches its limit while you are paying, we cancel the order and refund you in full, and you can order again without the code.',
           'If an item sells out after you order, we refund the amount for that item to your original payment method.',
         ],
       },
@@ -105,6 +106,7 @@ export const REFUND_SECTIONS = [
         type: 'ul',
         items: [
           'An item sells out after you order: we refund that item to your original payment method.',
+          'A promo code reaches its usage limit while you are paying: we cancel the order and refund the full amount to your original payment method.',
           'Something is wrong with your delivery (damaged, missing or not as described): contact us (details below) as soon as possible and tell us your order number. We will review it and put it right.',
         ],
       },

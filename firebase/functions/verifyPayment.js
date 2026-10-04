@@ -87,9 +87,11 @@ exports.verifyPayment = onCall(
       status: result.status,
       paymentStatus: result.paymentStatus,
       message:
-        result.status === 'CANCELLED'
-          ? 'Sorry, an item sold out while you were paying. Your payment will be refunded.'
-          : 'Payment confirmed.',
+        result.status !== 'CANCELLED'
+          ? 'Payment confirmed.'
+          : /^Promo code/.test(result.cancelReason || '')
+            ? 'Sorry, that promo code reached its usage limit while you were paying, so we could not take this order. Your payment will be refunded. You can order again without the code.'
+            : 'Sorry, an item sold out while you were paying. Your payment will be refunded.',
     };
   },
 );

@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { friendlyError } from '../lib/errors.js';
+import { friendlyError, isPromoLimitError } from '../lib/errors.js';
 
 const vercel = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url), 'utf8'));
 const headersFor = (source) => Object.fromEntries((vercel.headers.find((h) => h.source === source)?.headers ?? []).map((h) => [h.key, h.value]));
@@ -86,5 +86,23 @@ describe('error messages for the customer', () => {
 
   it('still shows our own sign-in message when the server wrote one', () => {
     assert.equal(friendlyError(callable('functions/unauthenticated', 'Please sign in to check out.')), 'Please sign in to check out.');
+  });
+});
+
+describe('promo usage-limit errors', () => {
+  const callable = (code, message, details) => Object.assign(new Error(message), { code, details });
+
+  it('shows the polite sentence from the server as it is (the SDK adds a status code, which is removed)', () => {
+    assert.equal(friendlyError(callable('functions/failed-precondition', 'This promo code has reached its usage limit. [400]', { promoLimit: true })), 'This promo code has reached its usage limit.');
+    assert.equal(friendlyError(callable('functions/failed-precondition', 'You have already used the code WELCOME10.', { promoLimit: true })), 'You have already used the code WELCOME10.');
+  });
+
+  it('recognises a usage-limit refusal, and nothing else', () => {
+    assert.equal(isPromoLimitError(callable('functions/failed-precondition', 'x', { promoLimit: true })), true);
+    assert.equal(isPromoLimitError(callable('functions/failed-precondition', 'That promo code is not valid.')), false);
+    assert.equal(isPromoLimitError(callable('functions/failed-precondition', 'x', { productId: 'a' })), false);
+    assert.equal(isPromoLimitError(callable('functions/failed-precondition', 'x', { promoLimit: 'yes' })), false);
+    assert.equal(isPromoLimitError(null), false);
+    assert.equal(isPromoLimitError(new Error('network')), false);
   });
 });

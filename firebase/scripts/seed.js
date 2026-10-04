@@ -217,8 +217,10 @@ function buildZones() {
 }
 
 // A demo code for testing checkout. Server-only collection; clients cannot read it.
+// maxUsesPerUser 1 = one use per customer. globalMaxUses null = no total limit. usedCount is kept by the server.
+// requiresSignIn is off here so the demo works for guests; set it to true on a real welcome code (docs/GO_LIVE.md).
 function buildPromos() {
-  return [{ code: 'WELCOME10', type: 'percent', value: 10, min: 199, active: true, expiresAt: null }];
+  return [{ code: 'WELCOME10', type: 'percent', value: 10, min: 199, active: true, expiresAt: null, maxUsesPerUser: 1, globalMaxUses: null, requiresSignIn: false, usedCount: 0 }];
 }
 
 // ---------- the safety guard ----------

@@ -66,6 +66,7 @@ beforeEach(async () => {
     await setDoc(doc(db, 'deliveryZones/A'), { name: 'Zone A', fee: 0, active: true });
     await setDoc(doc(db, 'checkouts/c1'), { uid: 'alice', status: 'CREATED' });
     await setDoc(doc(db, 'promoCodes/WELCOME'), { type: 'percent', value: 10, active: true });
+    await setDoc(doc(db, 'promoCodes/WELCOME/uses/alice'), { count: 1 });
     await setDoc(doc(db, 'paymentEvents/evt1'), { processedAt: 1 });
     await setDoc(doc(db, 'refunds/order-alice_full_1'), { orderId: 'order-alice', amountPaise: 34800, status: 'PENDING' });
     await setDoc(doc(db, 'rateLimits/createCheckout__uid__alice'), { count: 1, windowStart: 1 });
@@ -137,6 +138,8 @@ describe('default deny', () => {
     'orders/new-order',
     'checkouts/c2',
     'promoCodes/FREE100',
+    'promoCodes/WELCOME/uses/alice', // a customer must not reset their own promo usage count
+    'promoCodes/WELCOME/uses/new-user',
     'paymentEvents/evt2',
     'refunds/order-alice_full_1', // the refund ledger: a customer must not be able to edit their own refund record
     'refunds/new-refund',
@@ -154,7 +157,7 @@ describe('default deny', () => {
   }
 
   it('blocks all reads of server-only data, even for staff', async () => {
-    for (const p of ['checkouts/c1', 'promoCodes/WELCOME', 'paymentEvents/evt1', 'refunds/order-alice_full_1', 'rateLimits/createCheckout__uid__alice', 'excelSync/order-1', 'some-unknown-collection/x']) {
+    for (const p of ['checkouts/c1', 'promoCodes/WELCOME', 'promoCodes/WELCOME/uses/alice', 'paymentEvents/evt1', 'refunds/order-alice_full_1', 'rateLimits/createCheckout__uid__alice', 'excelSync/order-1', 'some-unknown-collection/x']) {
       await assertFails(getDoc(doc(asUser('alice'), p)));
       await assertFails(getDoc(doc(asStaff(), p)));
     }

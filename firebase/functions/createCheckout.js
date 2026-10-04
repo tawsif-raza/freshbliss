@@ -25,6 +25,7 @@ const { razorpayKeyProblem } = require('./shared/razorpayMode');
 const { callableOptions } = require('./shared/hardening');
 const { enforce } = require('./shared/rateLimit');
 const { validateSlot } = require('./shared/slots');
+const { assertPromoUsable, whoIs } = require('./shared/promoLimits');
 
 // The key id is a normal param (it is public: the browser needs it); the key secret is a secret.
 // Local: functions/.env.local and functions/.secret.local (both git-ignored).
@@ -181,7 +182,10 @@ async function findZone(db, pincode) {
 }
 
 // Look up a promo code. Returns null when the customer did not use one.
-async function loadPromo(db, rawCode) {
+//   who   { uid, anonymous } (shared/promoLimits.js whoIs): whose usage limits to check. Throws a polite error if the
+//         code has reached its total limit, or this customer has used it as many times as they may. The limit is only
+//         READ here; it is enforced and counted when the order is confirmed (shared/payments.js).
+async function loadPromo(db, rawCode, who) {
   if (rawCode === null || rawCode === undefined || rawCode === '') return null;
   const code = String(rawCode).trim().toUpperCase();
   if (!PROMO_CODE.test(code)) throw fail('failed-precondition', 'That promo code is not valid.');
@@ -194,7 +198,9 @@ async function loadPromo(db, rawCode) {
   if (expiresAt && expiresAt.toMillis() < Date.now()) {
     throw fail('failed-precondition', 'That promo code has expired.');
   }
-  return { code, ...snap.data() };
+  const promo = { code, ...snap.data() };
+  await assertPromoUsable(db, promo, who);
+  return promo;
 }
 
 // Read the live product docs for every box in the cart.
@@ -268,7 +274,7 @@ exports.createCheckout = onCall(
     const [products, zone, promo] = await Promise.all([
       loadProducts(db, lines),
       findZone(db, pincode),
-      loadPromo(db, cart.promoCode),
+      loadPromo(db, cart.promoCode, whoIs(request.auth)),
     ]);
 
     // 3. Check stock and calculate the total from BACKEND prices.

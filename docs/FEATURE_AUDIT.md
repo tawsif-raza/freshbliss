@@ -45,8 +45,18 @@ What was checked, what was added in this pass, and what is still open, in priori
    `captured:false`. The browser callback (`verifyPayment`) still fires at authorization, so **Payment Capture must stay on
    Automatic** in the Razorpay dashboard in both Test and Live mode (`docs/GO_LIVE.md` s.6). The code cannot read that setting.
    If an uncaptured payment is ever auto-refunded, the refund webhook flags the still-active order with `refundAlert`.
-4. **Promo usage limits** (per-user and global cap, expiry): prevents a single code being used unlimited times.
-   Needs a transactional counter in `finalizeCheckout`.
+4. ~~**Promo usage limits**~~ **Done (October 2026).** `promoCodes/{CODE}` gains `globalMaxUses`, `maxUsesPerUser`,
+   `requiresSignIn` (optional) and a server-kept `usedCount`; per-customer use lives in `promoCodes/{CODE}/uses/{uid}`
+   (`count`, `orderIds`, `lastUsedAt`). `previewCheckout` and `createCheckout` read the counters and refuse an exhausted code
+   with a polite message ("You have already used the code X." / "This promo code has reached its usage limit." / "Sign in to
+   use this promo code."). The use is counted inside `confirmPayment`'s transaction, so a double click, a retried request, the
+   webhook arriving with the browser, or 8 buyers racing for 3 uses cannot exceed a limit; the loser is cancelled and
+   auto-refunded (`outcome: PROMO_LIMIT`). A mistyped limit refuses the code instead of making it unlimited. The checkout
+   page drops a code that became exhausted between Apply and Pay and explains why; it also no longer disables Pay after a
+   refused code. Local test orders count uses too. Code: `functions/shared/promoLimits.js`, `shared/payments.js`,
+   `createCheckout.js`, `previewCheckout.js`, `createMockOrder.js`; rules deny the new subcollection.
+   Limits: per ACCOUNT not per person (use `requiresSignIn`), a cancelled order does not give the use back, and **no admin
+   screen** (codes are edited in the Firestore console; see `docs/GO_LIVE.md` s.8.1b). Not run against real Firebase.
 5. **DPDP Act consent / erasure.** The 2025 Rules need a clear consent notice and a way to withdraw or erase.
    Add an "erase my data" callable (delete orders' personal fields, keep amounts for accounting) and consent text.
 6. **Tax decision.** Receipts print no tax line. Ask the accountant: GST registered? prices tax-inclusive? Then

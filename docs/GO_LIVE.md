@@ -265,7 +265,7 @@ The policy is shipped in **report-only** mode on purpose. It was written from th
 
 - [ ] It adds **5 products with demo prices and stock** (for example stock 25, 18, 4, 12 and **0**). The last, "Mango Season Box", is stock 0 on purpose, to show "Out of stock". **Edit the stock and prices in the Firestore console afterwards**, or edit `seed.js` first.
 - [ ] It adds **2 delivery zones** for Bengaluru pincodes (`5600xx` free, other `560xxx` ₹30). Check they are your real zones.
-- [ ] It adds a **demo promo code `WELCOME10` (10% off orders of ₹199 or more)**. **That is live for any customer who guesses or is told it.** Delete `promoCodes/WELCOME10` in the console right after, unless you want it.
+- [ ] It adds a **demo promo code `WELCOME10` (10% off orders of ₹199 or more, one use per account; see section 8.1b)**. **That is live for any customer who guesses or is told it.** Delete `promoCodes/WELCOME10` in the console right after, unless you want it.
 
 It needs Google credentials on your computer. Do this once, with your own Google account (no key file to keep or leak):
 
@@ -288,6 +288,27 @@ GCLOUD_PROJECT=<project-id> SEED_CONFIRM_PROJECT=<project-id> npm run seed -- --
 - [ ] Open the live site: the products show.
 
 (The script refuses to run against a real project without `--remote`, a non-`demo-` ID and the `SEED_CONFIRM_PROJECT` variable. That is deliberate. Close the PowerShell window afterwards, or `Remove-Item Env:SEED_CONFIRM_PROJECT`.)
+
+### 8.1b Promo codes: fields and limits
+
+A promo code is a document in the Firestore collection `promoCodes`, whose **document id is the code** (uppercase letters, digits, `-` and `_`, up to 32). Customers cannot read or write it. Create and edit codes in the console.
+
+| Field | Meaning |
+|---|---|
+| `type` | `percent` (value 1 to 100) or `flat` (rupees) |
+| `value` | the amount |
+| `min` | smallest cart subtotal in rupees; `0` = none |
+| `active` | `false` switches the code off |
+| `expiresAt` | a Timestamp, or `null` |
+| `globalMaxUses` | **most orders that may ever use the code, across all customers.** Leave out (or `null`) for no limit. `0` means used up |
+| `maxUsesPerUser` | **most orders one account may place with the code.** `1` = a welcome code. Leave out for no limit |
+| `requiresSignIn` | `true` = guests (anonymous accounts) are asked to sign in first. **Set this on every code that has `maxUsesPerUser`**: a guest account is lost when browser data is cleared, so without it a determined guest can reuse a "once only" code |
+| `usedCount` | kept by the server. **Never edit it** (set it to `0` when you create a code). Raising `globalMaxUses` is how you extend a code; do not reset `usedCount` |
+
+- [ ] A limit must be a whole number, `0` or more. **A typo such as `"10"` (text) or `-1` makes the code REFUSED**, never unlimited. If a code suddenly says "not valid", check its fields first.
+- [ ] How it behaves: a customer who has used up a code is told straight away ("You have already used the code WELCOME10." / "This promo code has reached its usage limit."). A use is counted when the order is **confirmed**, in the same transaction that takes the stock, so two people racing for the last use cannot both get it. The loser is cancelled automatically and **refunded in full** (it shows in **Needs refund** with the reason `Promo code limit: …`, and `autoRefund` sends the money back), and keeps their cart. Orders that fail or are abandoned before payment use nothing.
+- [ ] Per-customer counts are in `promoCodes/<CODE>/uses/<uid>` (`count`, `orderIds`, `lastUsedAt`): that is where to look to see who used a code.
+- [ ] A cancelled order does **not** give the use back (the customer can order again, but the code stays used). If you want to give a use back, lower that customer's `count` by hand.
 
 ### 8.2 Staff access
 
@@ -394,6 +415,7 @@ These are true of the code today. None blocks launch, but each is a decision you
 
 - **Refunds are automatic, but only as good as the webhook.** Cancelling an order sends a full refund to Razorpay at once (`autoRefund`), and the refund is stored with its Razorpay id. The order only changes from *Refund pending* to *Refunded* when Razorpay's `refund.processed` webhook arrives; if the webhook is not set up (section 6) the card stays in **Needs refund** and staff press **Check status** to catch up. There is no scheduled job that polls Razorpay. **The refund code has been tested against a fake Razorpay, never the real one**: the rehearsal in section 9 is its first real test.
 - **Partial refunds exist in the server but not on the admin page.** `processRefund` accepts an `amount` (rupees) and a delivered order then ends *Partly refunded*, but there is no screen for it yet; there is also no customer-facing "return an item" flow. Until then, a partial refund is made in the Razorpay dashboard and the webhook records it.
+- **Promo limits count accounts, not people.** `maxUsesPerUser` is per account (uid). A guest who clears their browser data becomes a new account and can use a "once only" code again, which is why `requiresSignIn` exists (section 8.1b); even then someone can make a second Google account. For a code that costs real money, also set `globalMaxUses`. A customer who pays twice at the same moment with a one-use code gets one order and one automatic refund.
 - **Customers can sign in; staff are still granted by hand.** Guests keep their orders in the browser, and signing in on `/login` keeps them across devices. A staff member who clears their browser data must be granted staff again (section 8.2). "Customer" in Excel shows `Guest` for an anonymous session and the phone column is blank.
 - **No App Check.** Anyone can create anonymous accounts and carts against your project. The server re-prices and re-checks everything and the rules block direct writes, so the exposure is nuisance and cost, not data or money. Add [App Check](https://firebase.google.com/docs/app-check) when you have steady traffic.
 - **The price preview has no rate limit.** `previewCheckout` (the checkout page's live total and promo check) answers any signed-in visitor, and anonymous accounts are free to create, so someone could try many promo codes. It gives the same answer for a wrong, switched-off or expired code, so it does not reveal which codes exist, and `createCheckout` has had the same exposure. If promo codes are ever worth more than a few percent, add App Check and a per-user limit.

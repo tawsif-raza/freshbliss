@@ -19,3 +19,8 @@ export function friendlyError(err) {
   console.error('Unexpected error:', err);
   return 'Something went wrong. Please try again.';
 }
+
+// True when the server refused a promo code because of its usage limits ("already used", "reached its usage limit") or
+// because it needs a signed-in customer. The checkout page then drops the code and explains why in the promo box,
+// instead of showing a generic error at the Pay button. (firebase/functions/shared/promoLimits.js sets `details.promoLimit`.)
+export const isPromoLimitError = (err) => err?.details?.promoLimit === true;
