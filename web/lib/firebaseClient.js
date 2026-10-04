@@ -44,6 +44,10 @@ function readConfig() {
   if (missing.length > 0) {
     throw new Error(`Missing Firebase config (${missing.join(', ')}). See web/.env.example.`);
   }
+  // Not needed by anything the storefront does today (no Storage upload, no push messages), so they are optional: left
+  // out when empty rather than failing the build. An empty string would be passed on as if it were a real value.
+  if (process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET) config.storageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+  if (process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID) config.messagingSenderId = process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID;
   return config;
 }
 
