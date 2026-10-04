@@ -63,7 +63,7 @@ describe('the Content Security Policy is ENFORCED, not just reported', () => {
 });
 
 describe('private pages stay out of search results', () => {
-  for (const source of ['/admin/:path*', '/orders/:path*', '/cart', '/checkout', '/account']) {
+  for (const source of ['/admin/:path*', '/orders/:path*', '/cart', '/checkout', '/account', '/login']) {
     it(`${source} says noindex`, () => {
       assert.match(headersFor(source)['X-Robots-Tag'] ?? '', /noindex/);
     });

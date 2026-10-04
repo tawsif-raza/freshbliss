@@ -15,7 +15,7 @@
         { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains" },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://checkout.razorpay.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://nominatim.openstreetmap.org https://*.googleapis.com https://*.cloudfunctions.net https://*.run.app https://api.razorpay.com https://lumberjack.razorpay.com https://checkout.razorpay.com https://www.google.com/recaptcha/; frame-src https://api.razorpay.com https://checkout.razorpay.com https://www.google.com/recaptcha/ https://recaptcha.google.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self' https://api.razorpay.com; frame-ancestors 'none'; upgrade-insecure-requests"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://checkout.razorpay.com https://apis.google.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://nominatim.openstreetmap.org https://*.googleapis.com https://*.cloudfunctions.net https://*.run.app https://api.razorpay.com https://lumberjack.razorpay.com https://checkout.razorpay.com https://www.google.com/recaptcha/; frame-src https://api.razorpay.com https://checkout.razorpay.com https://*.firebaseapp.com https://*.web.app https://www.google.com/recaptcha/ https://recaptcha.google.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self' https://api.razorpay.com; frame-ancestors 'none'; upgrade-insecure-requests"
         }
       ]
     },
@@ -37,6 +37,10 @@
     },
     {
       "source": "/account",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+    },
+    {
+      "source": "/login",
       "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
     }
   ]

@@ -27,7 +27,8 @@ const fontRoot = `:root { --font-playfair: ${playfair.style.fontFamily}; --font-
 
 // Order matters: the cart shows toasts and opens the slide-out cart, so both of those wrap it. The error boundary
 // sits INSIDE all the providers and wraps only the page, so a crash in a page leaves the header, footer and cart
-// working, and the cart is untouched.
+// working, and the cart is untouched. A page can set `Page.bare = true` (the sign-in screen) to be drawn without the
+// site header and footer.
 export default function App({ Component, pageProps }) {
   const router = useRouter();
 
@@ -47,13 +48,13 @@ export default function App({ Component, pageProps }) {
                   Skip to content
                 </a>
                 <RouteProgress />
-                <SiteHeader />
+                {!Component.bare && <SiteHeader />}
                 <main id="fbs-main" className="flex-1">
                   <ErrorBoundary resetKey={router.asPath}>
                     <Component {...pageProps} />
                   </ErrorBoundary>
                 </main>
-                <Footer />
+                {!Component.bare && <Footer />}
                 <CartDrawer />
                 <CommandPalette />
               </WishlistProvider>
