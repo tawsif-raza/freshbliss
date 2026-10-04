@@ -20,7 +20,7 @@ import { feeLabel } from '@/lib/zoneMatch';
 
 const capitalise = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
-const PAYMENT_STATUS = { PAID: 'Paid', PAID_MOCK: 'Test order', REFUND_PENDING: 'Refund pending', REFUNDED: 'Refunded' };
+const PAYMENT_STATUS = { PAID: 'Paid', PAID_MOCK: 'Test order', REFUND_PENDING: 'Refund pending', REFUNDED: 'Refunded', PARTIALLY_REFUNDED: 'Partly refunded' };
 
 export default function OrderReceipt({ order, open, onClose }) {
   const dialogRef = useRef(null);

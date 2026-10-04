@@ -5,7 +5,8 @@
 // lawyer or the business's advisor read it. Two things deliberately have NO number here because the business
 // has not decided them: how many days a refund takes to reach the customer, and any quality-complaint window.
 // Add them below ONLY once the business has committed to them (and make the FAQ say the same thing).
-// If the system changes (for example automatic Razorpay refunds), change this at the same time.
+// If the system changes, change this at the same time. (Refunds go to Razorpay automatically when an order is cancelled:
+// firebase/functions/autoRefund.js.)
 
 export const POLICIES_UPDATED = '4 October 2026';
 
@@ -89,9 +90,9 @@ export const REFUND_SECTIONS = [
       {
         type: 'ul',
         items: [
-          'After you cancel, your order shows "Refund pending". Our team then issues the refund.',
+          'After you cancel, your order shows "Refund pending" while we send the refund to your payment method through Razorpay. This happens automatically. The order changes to "Refunded" once Razorpay confirms it. If something goes wrong on our side, our team steps in.',
           'The refund goes back to the original payment method (the same card, UPI app or bank account you paid with). We cannot refund to a different account.',
-          'Once we issue it, how long your bank or card issuer takes to show it depends on them.',
+          'Once the refund is sent, how long your bank or card issuer takes to show it depends on them.',
         ],
       },
     ],

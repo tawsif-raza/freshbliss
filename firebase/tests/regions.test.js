@@ -20,6 +20,7 @@ const EXPECTED = [
   'cancelOrder',
   'cancelMyOrder',
   'processRefund',
+  'autoRefund',
   'claimGuestOrders',
   'excelSync',
   'excelSyncUpdate',

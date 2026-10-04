@@ -5,7 +5,9 @@
 //                  one to its next step, or cancel it (which starts a refund).
 //   Needs refund   orders that are CANCELLED with paymentStatus REFUND_PENDING:
 //                  staff-cancelled ones and ones the system cancelled when the
-//                  last box sold out mid-payment. Staff mark each refund done.
+//                  last box sold out mid-payment. Refunds are sent to Razorpay
+//                  automatically; a card stays here until Razorpay confirms it, so this
+//                  is where a failed one is seen and retried.
 //
 // Nothing here writes to Firestore directly: the security rules let no browser
 // change an order. Every button calls a staff-only Cloud Function (updateOrderStatus,

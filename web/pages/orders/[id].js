@@ -121,7 +121,7 @@ export default function OrderTrackingPage() {
         {cancelled && (
           <Callout tone="danger" className="mt-6" title="Cancelled">
             {order.cancelReason || 'This order was cancelled.'}
-            {order.paymentStatus === 'REFUND_PENDING' && <p className="mt-2">Your payment will be refunded.</p>}
+            {order.paymentStatus === 'REFUND_PENDING' && <p className="mt-2">Your refund is being sent to your original payment method.</p>}
             {order.paymentStatus === 'REFUNDED' && <p className="mt-2">Your payment has been refunded.</p>}
           </Callout>
         )}

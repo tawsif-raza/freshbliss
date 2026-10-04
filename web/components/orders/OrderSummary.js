@@ -8,7 +8,7 @@ import { slotText } from '@/lib/slots';
 export default function OrderSummary({ order }) {
   const items = order.items ?? [];
   const p = order.pricing ?? {};
-  const totalLabel = { REFUND_PENDING: 'Total (refund pending)', REFUNDED: 'Total refunded', PAID_MOCK: 'Total (test order)' }[order.paymentStatus] ?? 'Total paid';
+  const totalLabel = { REFUND_PENDING: 'Total (refund pending)', REFUNDED: 'Total refunded', PARTIALLY_REFUNDED: 'Total (partly refunded)', PAID_MOCK: 'Total (test order)' }[order.paymentStatus] ?? 'Total paid';
 
   return (
     <InfoCard title="Order summary">

@@ -28,15 +28,23 @@ What was checked, what was added in this pass, and what is still open, in priori
    callable. Header Sign in / Sign out, checkout gate (`/login?next=/checkout`, with "Continue as guest"), account
    card, terms line on the login page, privacy copy updated. Not yet run against a real Firebase project: switch on
    Anonymous, Google, Microsoft and Phone under Authentication > Sign-in method first (`docs/GO_LIVE.md`).
-2. **Automatic Razorpay refunds.** `processRefund` only records a refund; a person must press the button in
-   the Razorpay dashboard and nothing checks that it happened. Calling Razorpay's Refund API from the callable
-   (with an idempotency key on the refund record) closes the loop. Needs `refunds` fields: `razorpayRefundId`,
-   `status`.
-3. **Payment capture mode.** `razorpayWebhook.js` finalizes an order on `order.paid` **and** `payment.authorized`.
-   That is fine while the Razorpay account auto-captures (the default). If anyone switches the account to manual
-   capture, an order could be finalized for a payment that is later auto-refunded. Keep auto-capture on, or
-   drop `payment.authorized` from `HANDLED_EVENTS` (the file's own comment says how). One-line change, but check
-   the dashboard setting first.
+2. ~~**Automatic Razorpay refunds.**~~ **Done (October 2026).** Cancelling an order (customer, staff, or the system when a
+   box sells out mid-payment) triggers `autoRefund`, which asks Razorpay for a full normal-speed refund. The amount is
+   reserved in Firestore first and the call carries an `X-Refund-Idempotency` key, so a retry or a double trigger cannot
+   refund twice. Each refund is a document in `refunds/` (Razorpay refund id, amount, status, who asked, why); the order
+   keeps `refundIds`, `refundedPaise`, `refundPendingPaise`, `refundError`. `refund.created/processed/failed` webhooks move
+   the order to `REFUNDED` (or `PARTIALLY_REFUNDED` for a delivered order refunded in part) and also record refunds made by
+   hand in the dashboard. Staff get **Retry refund / Check status** on the Needs-refund card. Code: `functions/shared/refunds.js`,
+   `autoRefund.js`, `processRefund.js`. **Only tested against a fake Razorpay**; first real test is the rehearsal (`docs/GO_LIVE.md` s.9).
+   Follow-ups, small: (a) a scheduled job that re-checks refunds still pending after a day, for when a webhook is lost
+   (today staff press Check status); (b) an admin screen for partial refunds and a customer "return an item" request
+   (the server already accepts `processRefund({orderId, amount, requestId})`); (c) tell the customer by email/SMS when the
+   refund is processed.
+3. ~~**Payment capture mode.**~~ **Done in code; one dashboard check remains for you.** `razorpayWebhook` now creates an order
+   only on `order.paid` (money captured), no longer on `payment.authorized`, and refuses an `order.paid` whose payment says
+   `captured:false`. The browser callback (`verifyPayment`) still fires at authorization, so **Payment Capture must stay on
+   Automatic** in the Razorpay dashboard in both Test and Live mode (`docs/GO_LIVE.md` s.6). The code cannot read that setting.
+   If an uncaptured payment is ever auto-refunded, the refund webhook flags the still-active order with `refundAlert`.
 4. **Promo usage limits** (per-user and global cap, expiry): prevents a single code being used unlimited times.
    Needs a transactional counter in `finalizeCheckout`.
 5. **DPDP Act consent / erasure.** The 2025 Rules need a clear consent notice and a way to withdraw or erase.

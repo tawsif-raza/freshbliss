@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { CUSTOMER_CANCEL_REASONS, TRACKER_STEPS, customerCancelState, trackerStates } from '../lib/orderStatus.js';
+import { CUSTOMER_CANCEL_REASONS, TRACKER_STEPS, customerCancelState, refundState, trackerStates } from '../lib/orderStatus.js';
 import { ORDER_FILTERS, countByFilter, filterOrders, placedAt } from '../lib/orderFilters.js';
 
 describe('order tracker steps', () => {
@@ -97,5 +97,21 @@ describe('customer cancel state', () => {
     const server = readFileSync(new URL('../../firebase/functions/cancelOrder.js', import.meta.url), 'utf8');
     const listed = server.match(/CUSTOMER_REASONS = \[(.*?)\];/s)?.[1] ?? '';
     for (const reason of CUSTOMER_CANCEL_REASONS) assert.ok(listed.includes(`'${reason}'`), `server does not accept "${reason}"`);
+  });
+});
+
+describe('refund state (staff Needs refund card)', () => {
+  it('is failed when the last attempt left an error, even if an amount is still reserved', () => {
+    assert.equal(refundState({ refundError: 'Bad request', refundPendingPaise: 100 }), 'failed');
+  });
+
+  it('is waiting while a refund is with Razorpay', () => {
+    assert.equal(refundState({ refundPendingPaise: 34800 }), 'waiting');
+  });
+
+  it('is not-sent when nothing has been sent, or the order is missing', () => {
+    assert.equal(refundState({ refundPendingPaise: 0 }), 'not-sent');
+    assert.equal(refundState({}), 'not-sent');
+    assert.equal(refundState(null), 'not-sent');
   });
 });

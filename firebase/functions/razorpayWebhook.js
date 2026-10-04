@@ -9,7 +9,7 @@
 // Set up in the Razorpay dashboard (Settings > Webhooks), test mode:
 //   URL:     <functions base>/razorpayWebhook   (needs a public URL; use a tunnel locally)
 //   Secret:  any string you choose; put the SAME string in RAZORPAY_WEBHOOK_SECRET
-//   Events:  order.paid, payment.authorized
+//   Events:  order.paid, refund.created, refund.processed, refund.failed
 //
 // Security: the request is trusted ONLY if x-razorpay-signature equals
 // HMAC-SHA256(RAZORPAY_WEBHOOK_SECRET, the raw request body). We check it before
@@ -55,20 +55,24 @@ const { defineSecret } = require('firebase-functions/params');
 const { getFirestore } = require('firebase-admin/firestore');
 const { FieldValue } = require('firebase-admin/firestore');
 const { finalizeCheckout, hmacMatches } = require('./shared/payments');
+const { applyRefundEntity } = require('./shared/refunds');
 
 // Local: put it in functions/.secret.local  (RAZORPAY_WEBHOOK_SECRET=...)
 const RAZORPAY_WEBHOOK_SECRET = defineSecret('RAZORPAY_WEBHOOK_SECRET');
 
-// The events that mean "this order was paid". Edit here to add or remove one.
+// The event that means "this order was paid".
 //
-// Heads-up on payment.authorized: "authorized" means the bank approved the
-// payment, but the money is only taken ("captured") once Razorpay captures it.
-// With Razorpay's default Automatic capture that happens immediately, so this is
-// fine. If you ever switch to manual capture, an uncaptured payment is refunded
-// after a few days and we would have already confirmed the order. Keep
-// Automatic capture on (Dashboard > Settings > Payment Capture), or remove
-// payment.authorized from this list and rely on order.paid.
-const HANDLED_EVENTS = new Set(['order.paid', 'payment.authorized']);
+// Capture mode: "authorized" means the bank approved the payment, but the money is only taken ("captured") once Razorpay
+// captures it. Razorpay refunds a payment that is never captured, so confirming an order on payment.authorized could ship
+// fruit for money we never got. order.paid is sent only once the payment IS captured, so it is the only event we act on
+// (and one that says captured:false is refused below). Keep Automatic capture on anyway (Dashboard > Account & Settings >
+// Payment Capture): the browser callback (verifyPayment) fires at authorization, and docs/GO_LIVE.md section 6 makes
+// checking this setting a launch step.
+const HANDLED_EVENTS = new Set(['order.paid']);
+
+// Refund events (Dashboard > Webhooks > tick these too). They keep the order's paymentStatus in step with Razorpay,
+// whether the refund was sent by autoRefund, by staff, or made by hand in the dashboard.
+const REFUND_EVENTS = new Set(['refund.created', 'refund.processed', 'refund.failed']);
 
 const EVENT_ID = /^[A-Za-z0-9_-]{1,100}$/;
 const RAZORPAY_ID = /^[A-Za-z0-9_]{1,60}$/;
@@ -97,6 +101,33 @@ async function recordEvent(db, eventId, data) {
   }
 }
 
+// refund.created / refund.processed / refund.failed: record what Razorpay says about one refund (shared/refunds.js).
+async function handleRefundEvent(db, event, eventId) {
+  if (eventId && (await db.doc(`paymentEvents/${eventId}`).get()).exists) return { status: 200, body: 'Duplicate' };
+
+  const entity = event.payload && event.payload.refund && event.payload.refund.entity;
+  if (!entity || !RAZORPAY_ID.test(entity.id || '') || !RAZORPAY_ID.test(entity.payment_id || '')) {
+    logger.error('Razorpay refund webhook: missing refund or payment id', { event: event.event });
+    return { status: 200, body: 'Ignored' };
+  }
+
+  let result;
+  try {
+    result = await applyRefundEntity(db, entity);
+  } catch (err) {
+    if (err instanceof HttpsError) {
+      logger.error('Razorpay refund webhook could not be applied', { refundId: entity.id, code: err.code, message: err.message });
+      await recordEvent(db, eventId, { event: event.event, refundId: entity.id, outcome: `REJECTED_${err.code}` });
+      return { status: 200, body: 'Not applied' };
+    }
+    throw err; // temporary trouble: 500 so Razorpay retries
+  }
+
+  if (result.unknown) logger.warn('Razorpay refund webhook for an unknown payment', { refundId: entity.id });
+  await recordEvent(db, eventId, { event: event.event, refundId: entity.id, orderId: result.orderId || null, outcome: result.unknown ? 'UNKNOWN_PAYMENT' : result.status });
+  return { status: 200, body: result.unknown ? 'Unknown payment' : 'Refund recorded' };
+}
+
 // The whole webhook, as a plain function (no HTTP objects) so it is easy to test.
 // Returns { status, body } for the wrapper below to send.
 async function handleWebhook(db, { rawBody, signature, eventId, secret }) {
@@ -113,7 +144,9 @@ async function handleWebhook(db, { rawBody, signature, eventId, secret }) {
     return { status: 400, body: 'Unreadable body' };
   }
 
-  // 2. Only act on "paid" events. Everything else gets a 200 so Razorpay stops sending it.
+  // 2. Refund events update the order's refund state; only "paid" events create orders. Everything else gets a 200 so
+  // Razorpay stops sending it.
+  if (REFUND_EVENTS.has(event.event)) return handleRefundEvent(db, event, EVENT_ID.test(eventId || '') ? eventId : null);
   if (!HANDLED_EVENTS.has(event.event)) return { status: 200, body: 'Ignored' };
 
   const ids = readEvent(event);
@@ -122,6 +155,12 @@ async function handleWebhook(db, { rawBody, signature, eventId, secret }) {
     return { status: 200, body: 'Ignored' };
   }
   const safeEventId = EVENT_ID.test(eventId || '') ? eventId : null;
+
+  // A payment that Razorpay says is not captured is not money in the bank (see the capture note above).
+  if (event.payload.payment.entity.captured === false) {
+    await recordEvent(db, safeEventId, { event: event.event, outcome: 'NOT_CAPTURED' });
+    return { status: 200, body: 'Not captured' };
+  }
 
   // 3. Same event delivered twice? Answer from the ledger and stop (see point 4 above).
   if (safeEventId && (await db.doc(`paymentEvents/${safeEventId}`).get()).exists) {

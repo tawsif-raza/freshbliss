@@ -132,7 +132,7 @@ npm run deploy:functions    # Cloud Functions only
 
 - [ ] **Rules deployed.** Console → Firestore → Rules shows today's date. Check that a signed-out visitor cannot read anything private: in the console's Rules playground, a read of `orders/anything` unauthenticated is **denied**.
 - [ ] **Indexes deployed.** There is **one** composite index, for the customer's "My orders" page (`orders`: `uid` ascending, `createdAt` descending; see `firebase/firestore.indexes.json`). It is deployed by `npm run deploy:rules`, and it takes a few minutes to build: Console → Firestore → Indexes must show it as **Enabled** before you open `/account`, or the page will say it could not load orders. Every other query in the app is single-field or equality-only and needs none. If you ever add a query that filters on one field and sorts on another, add its index to that file *before* the code that needs it, because the emulator does not enforce indexes and production does.
-- [ ] **Functions deployed.** The terminal ends with `Deploy complete!`. Run `firebase functions:list --project production`: every row must show location **`asia-south1`** (Mumbai), none `us-central1`. (The code guarantees this twice: each function names the region, and `functions/index.js` sets it as the default for any function added later. `tests/regions.test.js` fails if one ever drifts.) Console → Functions lists: `createCheckout`, `previewCheckout`, `verifyPayment`, `razorpayWebhook`, `updateOrderStatus`, `cancelOrder`, `cancelMyOrder`, `processRefund`, `excelSync`, `excelSyncUpdate`, `retryExcelSync`, `getOrdersDownloadUrl`. **`devGrantStaff` must NOT be there** (it is emulator-only).
+- [ ] **Functions deployed.** The terminal ends with `Deploy complete!`. Run `firebase functions:list --project production`: every row must show location **`asia-south1`** (Mumbai), none `us-central1`. (The code guarantees this twice: each function names the region, and `functions/index.js` sets it as the default for any function added later. `tests/regions.test.js` fails if one ever drifts.) Console → Functions lists: `createCheckout`, `previewCheckout`, `verifyPayment`, `razorpayWebhook`, `updateOrderStatus`, `cancelOrder`, `cancelMyOrder`, `processRefund`, `autoRefund`, `excelSync`, `excelSyncUpdate`, `retryExcelSync`, `getOrdersDownloadUrl`. **`devGrantStaff` must NOT be there** (it is emulator-only).
 - [ ] **Copy the webhook URL** printed as `Function URL (razorpayWebhook(asia-south1))`, or from Console → Functions → `razorpayWebhook` → Trigger. You need it in section 6.
 - [ ] If the CLI asks about **cleanup policy for container images**, answer yes (for example keep 1 day) so old builds do not accrue storage cost.
 
@@ -179,6 +179,7 @@ These four, and **only** these four, are read by the web app. They are **public 
 |---|---|---|---|
 | ☐ | `RAZORPAY_KEY_ID` | `rzp_test_…` now, `rzp_live_…` at go-live | Public. Must match `RAZORPAY_MODE`. **Required: there is no default.** |
 | ☐ | `RAZORPAY_MODE` | `test` now, `live` at go-live | Default `test`. A key that does not match is refused at checkout and by preflight. |
+| ☐ | `AUTO_REFUNDS` | leave unset (on) | Default `true`: a cancelled order's refund is sent to Razorpay by itself. Set `false` to stop all automatic refunds (staff then press **Refund via Razorpay** on each card). |
 | ☐ | `EXCEL_S3_BUCKET` | your bucket name | Empty = Excel sync and the download button switched off |
 | ☐ | `EXCEL_AWS_ACCESS_KEY_ID` | the IAM user's access key ID | Required if the bucket is set |
 | ☐ | `EXCEL_AWS_REGION` | `ap-south-1` | Default; set only if the bucket is elsewhere |
@@ -189,7 +190,7 @@ These four, and **only** these four, are read by the web app. They are **public 
 
 | ☐ | Secret | Used by |
 |---|---|---|
-| ☐ | `RAZORPAY_KEY_SECRET` | `createCheckout`, `verifyPayment` |
+| ☐ | `RAZORPAY_KEY_SECRET` | `createCheckout`, `verifyPayment`, `processRefund`, `autoRefund` (refunds need the secret) |
 | ☐ | `RAZORPAY_WEBHOOK_SECRET` | `razorpayWebhook` |
 | ☐ | `EXCEL_AWS_SECRET_ACCESS_KEY` | `excelSync`, `excelSyncUpdate`, `retryExcelSync`, `getOrdersDownloadUrl` |
 
@@ -240,8 +241,9 @@ The policy is shipped in **report-only** mode on purpose. It was written from th
 - [ ] **Webhook (test mode first).** Razorpay dashboard → make sure the switch at the top says **Test Mode** → Account & Settings → **Webhooks → Add New Webhook**:
   - **Webhook URL:** the `razorpayWebhook` URL you copied in 3.5.
   - **Secret:** the exact value you stored as `RAZORPAY_WEBHOOK_SECRET`.
-  - **Active events:** tick **`order.paid`** and **`payment.authorized`**. These are the only two the function handles; others are ignored.
-- [ ] The webhook exists so a customer who pays and then closes the browser still gets their order. Test it in section 9.
+  - **Active events:** tick **`order.paid`**, **`refund.created`**, **`refund.processed`** and **`refund.failed`**. These are the only ones the function handles; others are ignored. (`payment.authorized` is deliberately NOT used: it can fire for a payment that is never captured, so only `order.paid`, which means the money was taken, creates an order.)
+- [ ] **Payment capture must be Automatic.** Razorpay dashboard → Account & Settings → **Payment Capture** → *Automatic*. The code cannot read this setting, so **check it by eye in both Test and Live mode**. With manual capture, the customer's browser reports success when the bank only *authorizes* the payment, the order is created, and Razorpay refunds the uncaptured payment a few days later. (If that ever happens the refund webhook sets `refundAlert` on the still-active order, so it is not silent, but it is a refund you did not choose.)
+- [ ] The webhook exists so a customer who pays and then closes the browser still gets their order, and so refunds move from *Refund pending* to *Refunded* by themselves. Test both in section 9.
 - [ ] **Live mode needs its own webhook** (section 10). Test-mode webhooks do not fire for live payments.
 
 ---
@@ -330,7 +332,7 @@ Do this with `RAZORPAY_MODE=test` and your `rzp_test_` key, against the real pro
 - [ ] **Firestore:** `orders/<id>` exists with `paymentStatus: PAID` and the stock of the product has gone down by the quantity ordered.
 - [ ] **Webhook:** Razorpay → Webhooks → your webhook → **Logs** shows `order.paid` delivered with a `200`. Then test the safety net: place another order, pay, and **close the tab at the Razorpay success screen before the page returns**. The order should still appear (the webhook created it).
 - [ ] **Staff:** on `/admin/orders` the order is listed. Move it Preparing → Packed → Out for delivery → Delivered. The customer's tracking page changes **by itself**, without a reload.
-- [ ] **Cancel and refund:** cancel a second order. It moves to **Needs refund**. Press Process Refund. Remember: **this records the refund, it does not send money.** Refund it in the Razorpay dashboard first.
+- [ ] **Cancel and refund:** cancel a second order (as the customer, from the order page, and once as staff). Within a few seconds the order shows a Razorpay refund id (`rfnd_…`) in **Needs refund**, then, once Razorpay confirms (the `refund.processed` webhook, Webhooks → Logs shows it delivered with a `200`), the card leaves the list and the order is **Refunded**. In Razorpay → Payments the payment shows **one** refund for the full amount. If the card instead says **Refund failed**, read the reason, fix it, and press **Retry refund**. Also try **Check status** while it is waiting, and refund one by hand in the Razorpay dashboard instead: the next time you press Retry/Check, the order notices it and does not refund twice.
 - [ ] **Sold-out race:** set a product's stock to 1 and try to buy it from two browsers at the same moment. At most one order is confirmed. If both reach the payment step, the later one is **cancelled automatically** and appears under **Needs refund** (the customer paid, so refund it). Stock never goes below zero. Put the stock back afterwards.
 - [ ] **Excel:** `orders/orders.xlsx` has one row per order, and columns P to R follow each status change. **Download orders sheet** saves a file that opens in Excel.
 - [ ] **Logs are quiet:** Firebase console → Functions → Logs. Filter by severity `ERROR`. There are none you do not understand. (A failed Excel copy logs an error with a hint and never affects the order.)
@@ -352,10 +354,10 @@ Do this while **no customer has the link**: for a moment the key, the mode and t
 - [ ] Update `firebase/functions/.env.production`: `RAZORPAY_KEY_ID=rzp_live_…` and `RAZORPAY_MODE=live`.
 - [ ] Store the live secret (this creates a new version, which the next deploy picks up):
   `firebase functions:secrets:set RAZORPAY_KEY_SECRET --project production`
-- [ ] **Live webhook.** In Razorpay **Live Mode** → Webhooks → Add the same URL, a secret, and the same two events (`order.paid`, `payment.authorized`). If you choose a *new* webhook secret, store it: `firebase functions:secrets:set RAZORPAY_WEBHOOK_SECRET --project production`.
+- [ ] **Live webhook.** In Razorpay **Live Mode** → Webhooks → Add the same URL, a secret, and the same four events (`order.paid`, `refund.created`, `refund.processed`, `refund.failed`), and check **Payment Capture** is Automatic in Live mode too. If you choose a *new* webhook secret, store it: `firebase functions:secrets:set RAZORPAY_WEBHOOK_SECRET --project production`.
 - [ ] `cd firebase; npm run preflight`. It must say **Razorpay mode: live** and have no FAIL and no "NOT be charged" warning.
 - [ ] `npm run deploy:functions`.
-- [ ] **Take one real payment** of the smallest amount you can (a ₹1 or cheapest box, to your own card or UPI). Follow it through every step of section 9, then **refund it** in the Razorpay dashboard, and confirm the money returns.
+- [ ] **Take one real payment** of the smallest amount you can (a ₹1 or cheapest box, to your own card or UPI). Follow it through every step of section 9, then **cancel it in the shop** (the refund is sent by itself) and confirm the money returns to your card or UPI.
 - [ ] Delete that test order (and its Excel row's record) as in the last box of section 9.
 
 ---
@@ -390,8 +392,9 @@ Do this while **no customer has the link**: for a moment the key, the mode and t
 
 These are true of the code today. None blocks launch, but each is a decision you should make knowingly.
 
-- **Refunds are manual.** `processRefund` only *records* that a refund was made. Money is returned by a person, in the Razorpay dashboard. There is no automatic refund and no check that one happened.
-- **Staff and customers are anonymous sessions.** There is no phone or email login. A customer who clears their browser data loses access to their orders, including the tracking link, because both are tied to that browser's session. A staff member who does so must be granted staff again (section 8.2). "Customer" in Excel shows `Guest` and the phone column is blank for the same reason.
+- **Refunds are automatic, but only as good as the webhook.** Cancelling an order sends a full refund to Razorpay at once (`autoRefund`), and the refund is stored with its Razorpay id. The order only changes from *Refund pending* to *Refunded* when Razorpay's `refund.processed` webhook arrives; if the webhook is not set up (section 6) the card stays in **Needs refund** and staff press **Check status** to catch up. There is no scheduled job that polls Razorpay. **The refund code has been tested against a fake Razorpay, never the real one**: the rehearsal in section 9 is its first real test.
+- **Partial refunds exist in the server but not on the admin page.** `processRefund` accepts an `amount` (rupees) and a delivered order then ends *Partly refunded*, but there is no screen for it yet; there is also no customer-facing "return an item" flow. Until then, a partial refund is made in the Razorpay dashboard and the webhook records it.
+- **Customers can sign in; staff are still granted by hand.** Guests keep their orders in the browser, and signing in on `/login` keeps them across devices. A staff member who clears their browser data must be granted staff again (section 8.2). "Customer" in Excel shows `Guest` for an anonymous session and the phone column is blank.
 - **No App Check.** Anyone can create anonymous accounts and carts against your project. The server re-prices and re-checks everything and the rules block direct writes, so the exposure is nuisance and cost, not data or money. Add [App Check](https://firebase.google.com/docs/app-check) when you have steady traffic.
 - **The price preview has no rate limit.** `previewCheckout` (the checkout page's live total and promo check) answers any signed-in visitor, and anonymous accounts are free to create, so someone could try many promo codes. It gives the same answer for a wrong, switched-off or expired code, so it does not reveal which codes exist, and `createCheckout` has had the same exposure. If promo codes are ever worth more than a few percent, add App Check and a per-user limit.
 - **No tax invoice.** Receipts show amounts charged, with no tax breakdown (section 8.3).

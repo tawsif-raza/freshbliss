@@ -64,11 +64,13 @@ const checkout = (uid, productId, qty, razorpayOrderId, over = {}) => ({
 });
 
 // Build a signed webhook request the way Razorpay would send it.
-function webhookRequest({ event = 'order.paid', razorpayOrderId, paymentId, amount, eventId = 'evt_default', secret = WEBHOOK_SECRET }) {
+function webhookRequest({ event = 'order.paid', razorpayOrderId, paymentId, amount, eventId = 'evt_default', secret = WEBHOOK_SECRET, captured, refund }) {
   const payment = { entity: { id: paymentId, order_id: razorpayOrderId, amount, currency: 'INR', status: event === 'order.paid' ? 'captured' : 'authorized' } };
-  const payload = event === 'order.paid'
-    ? { order: { entity: { id: razorpayOrderId, amount, amount_paid: amount, status: 'paid' } }, payment }
-    : { payment };
+  if (captured !== undefined) payment.entity.captured = captured;
+  let payload;
+  if (event.startsWith('refund.')) payload = { refund: { entity: refund }, payment };
+  else if (event === 'order.paid') payload = { order: { entity: { id: razorpayOrderId, amount, amount_paid: amount, status: 'paid' } }, payment };
+  else payload = { payment };
   const rawBody = Buffer.from(JSON.stringify({ entity: 'event', event, payload }));
   const signature = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
   return { rawBody, signature, eventId, secret: WEBHOOK_SECRET };
@@ -254,11 +256,26 @@ describe('razorpayWebhook handler', () => {
     assert.equal((await db.doc(`paymentEvents/${ids('evt')}`).get()).get('outcome'), 'PAYMENT_CONFIRMED');
   });
 
-  it('payment.authorized is handled the same way', async () => {
+  it('payment.authorized does NOT create an order: only a captured payment (order.paid) does', async () => {
     const { amount } = await setup();
     const out = await handleWebhook(db, req({ amount, event: 'payment.authorized' }));
-    assert.deepEqual([out.status, out.body], [200, 'Processed']);
-    assert.equal(await stockOf(ids('p')), 1);
+    assert.deepEqual([out.status, out.body], [200, 'Ignored']);
+    assert.equal(await stockOf(ids('p')), 3);
+    assert.equal(await exists(`orders/${ids('c')}`), false);
+  });
+
+  it('refuses an order.paid whose payment says captured:false (manual capture, money not taken)', async () => {
+    const { amount } = await setup();
+    const out = await handleWebhook(db, req({ amount, captured: false }));
+    assert.deepEqual([out.status, out.body], [200, 'Not captured']);
+    assert.equal(await stockOf(ids('p')), 3);
+    assert.equal(await exists(`orders/${ids('c')}`), false);
+    assert.equal((await db.doc(`paymentEvents/${ids('evt')}`).get()).get('outcome'), 'NOT_CAPTURED');
+  });
+
+  it('accepts an order.paid whose payment says captured:true', async () => {
+    const { amount } = await setup();
+    assert.equal((await handleWebhook(db, req({ amount, captured: true }))).body, 'Processed');
   });
 
   it('a repeated delivery of the same event is answered from the ledger and changes nothing', async () => {
@@ -269,10 +286,10 @@ describe('razorpayWebhook handler', () => {
     assert.equal(await stockOf(ids('p')), 1);
   });
 
-  it('two DIFFERENT events for the same payment (authorized then paid) still decrement once', async () => {
+  it('two DIFFERENT order.paid events for the same payment (a re-sent event gets a new id) still decrement once', async () => {
     const { amount } = await setup();
-    await handleWebhook(db, req({ amount, event: 'payment.authorized', eventId: ids('e1') }));
-    const second = await handleWebhook(db, req({ amount, event: 'order.paid', eventId: ids('e2') }));
+    await handleWebhook(db, req({ amount, eventId: ids('e1') }));
+    const second = await handleWebhook(db, req({ amount, eventId: ids('e2') }));
     assert.equal(second.body, 'Already processed');
     assert.equal(await stockOf(ids('p')), 1);
   });
@@ -341,3 +358,85 @@ describe('razorpayWebhook handler', () => {
 });
 
 void confirmPayment; // exported for completeness; finalizeCheckout wraps it
+
+// ============================================================
+describe('razorpayWebhook: refund events', () => {
+  const PAY = 'pay_refundtest';
+  const TOTAL = 34800;
+  let orderId;
+  beforeEach(async () => {
+    orderId = ids('o');
+    await db.doc(`orders/${orderId}`).set({
+      uid: 'alice',
+      status: 'CANCELLED',
+      paymentStatus: 'REFUND_PENDING',
+      payment: { razorpayOrderId: 'order_x', razorpayPaymentId: `${PAY}${n}`, amountPaise: TOTAL },
+    });
+  });
+  const refundEvent = (event, over = {}) =>
+    webhookRequest({
+      event,
+      paymentId: `${PAY}${n}`,
+      eventId: ids(`evt-${event.replace('.', '-')}`), // event ids may not contain dots
+      refund: { id: `rfnd_${rz('r')}`, payment_id: `${PAY}${n}`, amount: TOTAL, status: event === 'refund.processed' ? 'processed' : event === 'refund.failed' ? 'failed' : 'pending', ...over },
+    });
+  const order = async () => (await db.doc(`orders/${orderId}`).get()).data();
+
+  it('refund.processed (a refund made in the Razorpay dashboard) marks the order REFUNDED and keeps the refund id', async () => {
+    const out = await handleWebhook(db, refundEvent('refund.processed'));
+    assert.deepEqual([out.status, out.body], [200, 'Refund recorded']);
+    const o = await order();
+    assert.equal(o.paymentStatus, 'REFUNDED');
+    assert.equal(o.refundedPaise, TOTAL);
+    assert.deepEqual(o.refundIds, [`rfnd_${rz('r')}`]);
+    const doc = (await db.doc(`refunds/rp_rfnd_${rz('r')}`).get()).data();
+    assert.deepEqual([doc.status, doc.kind, doc.amountPaise], ['PROCESSED', 'dashboard', TOTAL]);
+  });
+
+  it('refund.created then refund.processed: pending first, REFUNDED after, counted once', async () => {
+    await handleWebhook(db, refundEvent('refund.created'));
+    let o = await order();
+    assert.deepEqual([o.paymentStatus, o.refundPendingPaise, o.refundedPaise ?? 0], ['REFUND_PENDING', TOTAL, 0]);
+    await handleWebhook(db, refundEvent('refund.processed'));
+    await handleWebhook(db, { ...refundEvent('refund.processed'), eventId: ids('again') }); // re-sent under a new event id
+    o = await order();
+    assert.deepEqual([o.paymentStatus, o.refundPendingPaise, o.refundedPaise], ['REFUNDED', 0, TOTAL]);
+  });
+
+  it('refund.failed keeps the order in the refund queue and records why', async () => {
+    await handleWebhook(db, refundEvent('refund.failed', { failure_reason: 'Bank account closed' }));
+    const o = await order();
+    assert.equal(o.paymentStatus, 'REFUND_PENDING');
+    assert.equal(o.refundError, 'Bank account closed');
+  });
+
+  it('a partial refund on a cancelled order leaves it pending; on a delivered order it is PARTIALLY_REFUNDED', async () => {
+    await handleWebhook(db, refundEvent('refund.processed', { amount: 10000 }));
+    assert.deepEqual(((o) => [o.paymentStatus, o.refundedPaise])(await order()), ['REFUND_PENDING', 10000]);
+
+    await db.doc(`orders/${orderId}`).update({ status: 'DELIVERED', paymentStatus: 'PAID', refundedPaise: 0 });
+    await handleWebhook(db, { ...refundEvent('refund.processed', { id: `rfnd_${rz('r2')}`, amount: 5000 }), eventId: ids('evt-second') });
+    assert.deepEqual(((o) => [o.paymentStatus, o.refundedPaise])(await order()), ['PARTIALLY_REFUNDED', 5000]);
+  });
+
+  it('flags a full refund of an order that is still being fulfilled', async () => {
+    await db.doc(`orders/${orderId}`).update({ status: 'PREPARING', paymentStatus: 'PAID' });
+    await handleWebhook(db, refundEvent('refund.processed'));
+    const o = await order();
+    assert.equal(o.paymentStatus, 'REFUNDED');
+    assert.match(o.refundAlert, /not cancelled/);
+  });
+
+  it('answers 200 and records an unknown payment instead of failing', async () => {
+    const out = await handleWebhook(db, refundEvent('refund.processed', { payment_id: 'pay_nobody' }));
+    assert.deepEqual([out.status, out.body], [200, 'Unknown payment']);
+  });
+
+  it('rejects a bad signature, and a repeated event id is a no-op', async () => {
+    const good = refundEvent('refund.processed');
+    assert.equal((await handleWebhook(db, { ...good, signature: 'a'.repeat(64) })).status, 400);
+    assert.equal((await order()).paymentStatus, 'REFUND_PENDING');
+    assert.equal((await handleWebhook(db, good)).body, 'Refund recorded');
+    assert.equal((await handleWebhook(db, good)).body, 'Duplicate');
+  });
+});

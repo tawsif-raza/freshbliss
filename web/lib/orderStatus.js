@@ -89,3 +89,13 @@ export function customerCancelState(order) {
   if (order.status === 'PACKED' || order.status === 'OUT_FOR_DELIVERY') return 'locked';
   return 'no';
 }
+
+// Where a cancelled order's refund has got to, for the staff "Needs refund" card.
+//   'failed'    Razorpay refused it or could not be reached; refundError says why
+//   'waiting'   the refund is with Razorpay and not confirmed yet
+//   'not-sent'  nothing has been sent (automatic refunds off, or the function has not run yet)
+export function refundState(order) {
+  if (order?.refundError) return 'failed';
+  if ((order?.refundPendingPaise ?? 0) > 0) return 'waiting';
+  return 'not-sent';
+}

@@ -35,7 +35,8 @@ npm run deploy:functions     # Cloud Functions
 | `razorpayWebhook` | HTTP | Razorpay | Same as `verifyPayment`, for customers whose browser never called back |
 | `updateOrderStatus` | callable | staff | Moves an order one step forward |
 | `cancelOrder` | callable | staff | Cancels an order and starts the refund process; returns stock if not packed |
-| `processRefund` | callable | staff | Records that a refund was made (does not send money yet) |
+| `autoRefund` | Firestore write | automatic | When an order becomes cancelled with a refund pending, sends the refund to Razorpay (idempotent; switch off with `AUTO_REFUNDS=false`) |
+| `processRefund` | callable | staff | Retry or check a refund (also counts refunds made in the Razorpay dashboard), or refund part of a delivered order |
 | `excelSync` | Firestore create | automatic | Adds each new order as a row in the Excel workbook |
 | `excelSyncUpdate` | Firestore update | automatic | Keeps that row's status in step as the order changes |
 | `retryExcelSync` | callable | staff (dashboard button) | Re-sends Excel rows and updates that failed |
