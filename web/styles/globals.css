@@ -156,6 +156,18 @@
   }
 }
 
+/* On a phone a tab bar is fixed to the bottom edge (components/MobileBottomNav.js). Whatever wraps the page carries
+   fb-has-bottom-nav, which leaves that much room under the footer, so the bar never covers it. The product page's
+   buy bar (fb-sticky-cta) sits just above the tab bar, using the same variable. */
+:root {
+  --fb-bottom-nav-h: 4rem;
+}
+@media (max-width: 767px) {
+  .fb-has-bottom-nav {
+    padding-bottom: calc(var(--fb-bottom-nav-h) + env(safe-area-inset-bottom));
+  }
+}
+
 /* On a phone the product page has a buy bar fixed to the bottom of the screen (class fb-sticky-cta). Leave room
    under the footer so the bar never covers its last line. */
 @media (max-width: 767px) {

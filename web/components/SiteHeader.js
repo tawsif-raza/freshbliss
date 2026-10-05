@@ -1,4 +1,5 @@
-// Top bar: wordmark, the main links, and the wishlist and cart buttons.
+// Top bar: wordmark, the main links, and the wishlist and cart buttons. On a phone the links and the cart button
+// move to the bottom tab bar (components/MobileBottomNav.js).
 //
 // It is "sticky": it stays at the top of the screen as the visitor scrolls. It is frosted glass (the cream page
 // colour at 80% with the page blurred behind it, so content softly passes beneath), with a fine bottom border,
@@ -22,9 +23,9 @@ import { useWishlist } from '@/context/WishlistContext';
 import { loginHref } from '@/lib/authHelpers';
 
 // A button-like item with an icon, a label (hidden on the smallest screens) and a count badge.
-function Count({ label, value, icon: Icon, href, onClick }) {
+function Count({ label, value, icon: Icon, href, onClick, hideOnPhone = false }) {
   const text = `${value} ${value === 1 ? 'item' : 'items'} in ${label.toLowerCase()}`;
-  const className = 'inline-flex min-h-11 items-center gap-2 rounded-pill px-2 text-nav-link text-brand-text hover:bg-surface-cream';
+  const className = `inline-flex min-h-11 items-center gap-2 rounded-pill px-2 text-nav-link text-brand-text hover:bg-surface-cream ${hideOnPhone ? 'max-md:hidden' : ''}`;
   const inner = (
     <>
       <Icon size={20} aria-hidden="true" />
@@ -140,12 +141,13 @@ export default function SiteHeader() {
             FreshBliss
           </Link>
           <div className="flex flex-wrap items-center gap-x-4 sm:gap-x-6">
-            <nav aria-label="Main" className="flex items-center gap-4 sm:gap-6">
+            {/* On a phone these links live in the bottom tab bar (components/MobileBottomNav.js), so the header keeps only
+                the wordmark, search and wishlist. */}
+            <nav aria-label="Main" className="flex items-center gap-4 max-md:hidden sm:gap-6">
               <NavLink href="/products">Shop</NavLink>
               {/* A guest's orders live here too, so it stays "My orders" until they sign in. */}
               <NavLink href="/account">{authStatus === 'user' ? 'Account' : 'My orders'}</NavLink>
-              {/* hidden on the smallest phones, where it would wrap the header onto a third line (the footer has the link) */}
-              <NavLink href="/faq" className="max-sm:hidden">
+              <NavLink href="/faq">
                 FAQ
               </NavLink>
               <SignInOut />
@@ -162,7 +164,7 @@ export default function SiteHeader() {
                 <span className="hidden sm:inline">Search</span>
               </button>
               <Count label="Wishlist" value={wishlistCount} icon={Heart} />
-              {cartIsOnScreen ? <Count label="Cart" value={itemCount} icon={ShoppingBag} href="/cart" /> : <Count label="Cart" value={itemCount} icon={ShoppingBag} onClick={openCart} />}
+              {cartIsOnScreen ? <Count label="Cart" value={itemCount} icon={ShoppingBag} href="/cart" hideOnPhone /> : <Count label="Cart" value={itemCount} icon={ShoppingBag} onClick={openCart} hideOnPhone />}
             </nav>
           </div>
         </div>

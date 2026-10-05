@@ -1,4 +1,4 @@
-// "Add something with it": a sliding row of small product cards under a box's details, each with a quick
+// "Frequently Bought Together": a sliding row of small product cards under a box's details, each with a quick
 // "+ Add" button, so a customer can put a complementary box in the cart without leaving the page.
 //
 //   product    the box being viewed (it is never suggested to itself)
@@ -80,8 +80,8 @@ export default function RelatedProducts({ product, products, status, onAdd }) {
       <div className="flex items-end justify-between gap-4">
         <div>
           <p className="text-label text-gold">Pairs well</p>
-          <h2 id="related-title" className="mt-1 text-heading-3 text-ink">
-            Add something with it
+          <h2 id="related-title" className="mt-1 font-serif text-heading-3 text-ink">
+            Frequently Bought Together
           </h2>
         </div>
         {status === 'ready' && related.length > 2 && (

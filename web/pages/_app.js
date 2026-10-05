@@ -6,6 +6,7 @@ import CartDrawer from '@/components/CartDrawer';
 import CommandPalette from '@/components/CommandPalette';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import Footer from '@/components/Footer';
+import MobileBottomNav from '@/components/MobileBottomNav';
 import RouteProgress from '@/components/RouteProgress';
 import SiteHeader from '@/components/SiteHeader';
 import { ToastProvider } from '@/components/ToastProvider';
@@ -31,12 +32,12 @@ const fontRoot = `:root { --font-playfair: ${playfair.style.fontFamily}; --font-
 // (AuthProvider) is needed by the header, the checkout gate and the pages, and raises no toasts itself. The error boundary
 // sits INSIDE all the providers and wraps only the page, so a crash in a page leaves the header, footer and cart
 // working, and the cart is untouched. A page can set `Page.bare = true` (the sign-in screen) to be drawn without the
-// site header and footer.
+// site header, footer and phone tab bar.
 export default function App({ Component, pageProps }) {
   const router = useRouter();
 
   return (
-    <div className={`${playfair.variable} ${jakarta.variable} flex min-h-screen flex-col bg-surface-page font-sans text-ink`}>
+    <div className={`${playfair.variable} ${jakarta.variable} flex min-h-screen flex-col bg-surface-page font-sans text-ink ${Component.bare ? '' : 'fb-has-bottom-nav'}`}>
       <style jsx global>{fontRoot}</style>
       <ToastProvider>
         <AuthProvider>
@@ -61,6 +62,7 @@ export default function App({ Component, pageProps }) {
                     </ErrorBoundary>
                   </main>
                   {!Component.bare && <Footer />}
+                  {!Component.bare && <MobileBottomNav />}
                   <CartDrawer />
                   <CommandPalette />
                 </WishlistProvider>

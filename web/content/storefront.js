@@ -99,6 +99,14 @@ export const TESTIMONIALS = [
   },
 ];
 
+// ---------- free delivery ----------
+
+// The subtotal (whole rupees) at which the cart's progress bar says delivery is free. It is a PREVIEW message only:
+// the server decides the real fee per delivery zone (a zone's `freeDeliveryFrom`, firebase/functions/createCheckout.js).
+// REVIEW BEFORE LAUNCH: keep this equal to `freeDeliveryFrom` on the zones that charge a fee, and to the ₹500 wording in
+// the ticker below and in the FAQ, or the bar will promise something checkout does not give.
+export const FREE_DELIVERY_THRESHOLD = 499;
+
 // ---------- the ticker under the banner ----------
 
 // REVIEW BEFORE LAUNCH: each line is a promise, so make sure it is true. In particular, check the free

@@ -155,8 +155,9 @@ function ProductDetail({ product, products, status }) {
           <div className="mt-4 flex flex-wrap items-center gap-3">
             {/* The buy bar. On a phone it is fixed to the bottom of the screen (frosted glass), so Add to Cart is
                 always one tap away however far the visitor has scrolled; from tablet width up it is an ordinary
-                button in the page. (fb-sticky-cta makes the footer leave room for it: styles/globals.css.) */}
-            <div className="fb-no-print fb-sticky-cta fixed bottom-0 left-0 z-50 w-full border-t border-line/70 bg-surface-card/90 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-md md:relative md:z-auto md:w-auto md:border-none md:bg-transparent md:p-0 md:backdrop-blur-none">
+                button in the page. It sits just above the phone tab bar (components/MobileBottomNav.js), whose height is
+                --fb-bottom-nav-h. (fb-sticky-cta makes the footer leave room for it: styles/globals.css.) */}
+            <div className="fb-no-print fb-sticky-cta fixed bottom-[calc(var(--fb-bottom-nav-h)+env(safe-area-inset-bottom))] left-0 z-50 w-full border-t border-line/70 bg-surface-card/90 p-4 backdrop-blur-md md:relative md:z-auto md:w-auto md:border-none md:bg-transparent md:p-0 md:backdrop-blur-none">
               <div className="mx-auto flex max-w-xl items-center gap-4 md:mx-0 md:max-w-none">
                 <div className="shrink-0 md:hidden" aria-live="polite">
                   <p className="text-small text-ink-muted">{quantity > 1 ? `Total for ${quantity}` : 'Price'}</p>
@@ -211,6 +212,9 @@ function ProductDetail({ product, products, status }) {
         </div>
       </div>
 
+      {/* Cross-selling, right under the main details: other boxes that go with this one, each with a quick "+ Add" */}
+      <RelatedProducts product={product} products={products} status={status} onAdd={addToCart} />
+
       {/* Where it grew, its energy and its benefits (only the facts the shop has added) */}
       <HarvestHealth product={product} />
 
@@ -227,9 +231,6 @@ function ProductDetail({ product, products, status }) {
           <Accordion items={accordionItems} defaultOpenId={accordionItems[0].id} />
         </div>
       </section>
-
-      {/* Cross-selling: other boxes that go with this one, each with a quick "+ Add" */}
-      <RelatedProducts product={product} products={products} status={status} onAdd={addToCart} />
     </PageShell>
   );
 }

@@ -17,6 +17,7 @@ import { useEffect, useRef } from 'react';
 import { MotionConfig, motion } from 'framer-motion';
 import { ShoppingBag, Trash2, X } from 'lucide-react';
 import { CartLinesSkeleton } from '@/components/CartSkeleton';
+import FreeDeliveryProgress from '@/components/FreeDeliveryProgress';
 import QuantityStepper from '@/components/QuantityStepper';
 import { useCheckoutHref } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
@@ -134,6 +135,10 @@ export default function CartDrawer() {
               <X size={22} aria-hidden="true" />
             </button>
           </header>
+
+          {/* Free-delivery progress, pinned above the list so it stays in view as the list scrolls. Drawn only once the cart has
+              loaded (the saved cart is empty on the server), so the numbers can never differ between server and browser. */}
+          {loaded && items.length > 0 && <FreeDeliveryProgress subtotal={subtotal} className="mx-5 mt-4" />}
 
           <div className="min-h-0 flex-1 overflow-y-auto px-5">
             {!loaded && catalogStatus !== 'error' && (
