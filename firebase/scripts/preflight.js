@@ -29,7 +29,7 @@ const { razorpayKeyProblem } = require('../functions/shared/razorpayMode');
 const ROOT = path.join(__dirname, '..'); // the firebase/ folder
 
 // Secrets live in Secret Manager. They must never be in a settings file.
-const SECRETS = ['RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET', 'EXCEL_AWS_SECRET_ACCESS_KEY'];
+const SECRETS = ['RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET', 'EXCEL_AWS_SECRET_ACCESS_KEY', 'ERASURE_HASH_KEY'];
 
 // ---------- small pure helpers (tested in tests/preflight.test.js) ----------
 
@@ -151,7 +151,7 @@ function main(argv) {
 
   const secretsMissing = [];
   if (!flag('--skip-secrets')) {
-    const needed = ['RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET', ...(env.EXCEL_S3_BUCKET ? ['EXCEL_AWS_SECRET_ACCESS_KEY'] : [])];
+    const needed = ['RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET', 'ERASURE_HASH_KEY', ...(env.EXCEL_S3_BUCKET ? ['EXCEL_AWS_SECRET_ACCESS_KEY'] : [])];
     for (const name of needed) if (!secretExists(name, projectId)) secretsMissing.push(name);
   }
 

@@ -119,7 +119,7 @@ describe('checkSettings', () => {
   });
 
   it('refuses a secret written into the settings file, naming the fix', () => {
-    for (const name of ['RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET', 'EXCEL_AWS_SECRET_ACCESS_KEY']) {
+    for (const name of ['RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET', 'EXCEL_AWS_SECRET_ACCESS_KEY', 'ERASURE_HASH_KEY']) {
       const r = check({ ...GOOD, [name]: 'hunter2' });
       assert.ok(r.errors.some((e) => e.includes(name) && /Secret Manager/.test(e)));
       assert.ok(!JSON.stringify(r).includes('hunter2'), 'the value is never repeated');

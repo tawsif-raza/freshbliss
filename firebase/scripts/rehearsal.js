@@ -17,6 +17,7 @@ const env = {
   ...process.env,
   RAZORPAY_KEY_SECRET: 'rehearsal_key_secret_not_real',
   RAZORPAY_WEBHOOK_SECRET: 'rehearsal_webhook_secret_not_real',
+  ERASURE_HASH_KEY: 'rehearsal-erasure-hash-key-not-real-0123456789abcdef',
   RAZORPAY_API_BASE: `http://127.0.0.1:${PORT}`,
   REHEARSAL_PORT: PORT,
   GCLOUD_PROJECT: 'demo-freshbliss',

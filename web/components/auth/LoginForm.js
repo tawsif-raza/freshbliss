@@ -12,7 +12,8 @@
 // The bot check for phone sign-in is Firebase's invisible reCAPTCHA. It draws into #recaptcha-container, which stays on
 // the page for the whole visit (it is outside the swapping step) and is emptied again by clear().
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
 import { ArrowLeft, CircleAlert, LoaderCircle, ShieldCheck } from 'lucide-react';
 import { Field, inputClass } from '@/components/Field';
@@ -57,6 +58,9 @@ export default function LoginForm({ onSuccess }) {
   const [sentTo, setSentTo] = useState(''); // "+919876543210", shown on the code step
   const [code, setCode] = useState('');
   const [cooldown, setCooldown] = useState(0);
+  // DPDP consent: an unticked box the customer must tick themselves. Nothing is pre-ticked, and no sign-in method starts until it is.
+  const [agreed, setAgreed] = useState(false);
+  const consentId = useId();
 
   const confirmationRef = useRef(null);
   const verifierRef = useRef(null);
@@ -96,6 +100,10 @@ export default function LoginForm({ onSuccess }) {
 
   // Run one sign-in attempt: lock the buttons, show a failure as a message, hand a success to the page.
   async function attempt(label, work) {
+    if (!agreed) {
+      setError('Please tick the box to give your consent first.');
+      return false;
+    }
     setBusy(label);
     setError('');
     try {
@@ -171,12 +179,36 @@ export default function LoginForm({ onSuccess }) {
           )}
         </AnimatePresence>
 
+        <div className="mb-6 rounded-lg border border-line bg-surface-card p-4">
+          <div className="flex items-start gap-3">
+            <input
+              id={consentId}
+              type="checkbox"
+              checked={agreed}
+              onChange={(e) => {
+                setAgreed(e.target.checked);
+                if (e.target.checked) setError('');
+              }}
+              className="mt-1 size-5 shrink-0 accent-[var(--fb-brand)]"
+            />
+            <label htmlFor={consentId} className="text-small text-ink">
+              I consent to FreshBliss collecting and using my name, email or mobile number, delivery address and order details to run my
+              account, take and deliver my orders and keep the shop&apos;s accounts, as described in the{' '}
+              <Link href="/privacy" className="font-bold text-brand-text underline">
+                Privacy Policy
+              </Link>
+              . I can withdraw this consent and have my data erased at any time from My account, under &quot;Delete my data&quot;.
+            </label>
+          </div>
+          {!agreed && <p className="mt-2 ml-8 text-small text-ink-muted">Tick the box to continue.</p>}
+        </div>
+
         <div className="space-y-3">
-          <button type="button" className={socialButton} disabled={working} onClick={() => attempt('google', signInWithGoogle)}>
+          <button type="button" className={socialButton} disabled={working || !agreed} onClick={() => attempt('google', signInWithGoogle)}>
             {busy === 'google' ? spinner : <GoogleMark />}
             Continue with Google
           </button>
-          <button type="button" className={socialButton} disabled={working} onClick={() => attempt('microsoft', signInWithMicrosoft)}>
+          <button type="button" className={socialButton} disabled={working || !agreed} onClick={() => attempt('microsoft', signInWithMicrosoft)}>
             {busy === 'microsoft' ? spinner : <MicrosoftMark />}
             Continue with Microsoft
           </button>
@@ -227,7 +259,7 @@ export default function LoginForm({ onSuccess }) {
                   </div>
                 )}
               </Field>
-              <button type="submit" className={`${primaryButton} mt-4`} disabled={working}>
+              <button type="submit" className={`${primaryButton} mt-4`} disabled={working || !agreed}>
                 {busy === 'send' && spinner}
                 {busy === 'send' ? 'Sending code' : 'Send OTP'}
               </button>
@@ -275,7 +307,7 @@ export default function LoginForm({ onSuccess }) {
                   />
                 )}
               </Field>
-              <button type="submit" className={`${primaryButton} mt-4`} disabled={working}>
+              <button type="submit" className={`${primaryButton} mt-4`} disabled={working || !agreed}>
                 {busy === 'verify' ? spinner : <ShieldCheck size={18} aria-hidden="true" />}
                 {busy === 'verify' ? 'Verifying' : 'Verify & Login'}
               </button>

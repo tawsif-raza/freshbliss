@@ -70,6 +70,7 @@ beforeEach(async () => {
     await setDoc(doc(db, 'paymentEvents/evt1'), { processedAt: 1 });
     await setDoc(doc(db, 'refunds/order-alice_full_1'), { orderId: 'order-alice', amountPaise: 34800, status: 'PENDING' });
     await setDoc(doc(db, 'rateLimits/createCheckout__uid__alice'), { count: 1, windowStart: 1 });
+    await setDoc(doc(db, 'erasureLog/erased_abc'), { state: 'COMPLETED' });
     await setDoc(doc(db, 'orders/order-alice'), orderFor('alice', 'PREPARING'));
     await setDoc(doc(db, 'orders/order-alice-delivered'), orderFor('alice', 'DELIVERED'));
     await setDoc(doc(db, 'orders/order-bob'), orderFor('bob', 'DELIVERED'));
@@ -144,6 +145,7 @@ describe('default deny', () => {
     'refunds/order-alice_full_1', // the refund ledger: a customer must not be able to edit their own refund record
     'refunds/new-refund',
     'rateLimits/createCheckout__uid__alice', // the rate-limit counters: a customer must not be able to reset their own
+    'erasureLog/erased_abc', // the proof an erasure happened: nobody may edit or remove it
     'excelSync/order-1', // the Excel copy ledger
     'some-unknown-collection/x', // a collection the rules never mention
   ];
@@ -157,7 +159,7 @@ describe('default deny', () => {
   }
 
   it('blocks all reads of server-only data, even for staff', async () => {
-    for (const p of ['checkouts/c1', 'promoCodes/WELCOME', 'promoCodes/WELCOME/uses/alice', 'paymentEvents/evt1', 'refunds/order-alice_full_1', 'rateLimits/createCheckout__uid__alice', 'excelSync/order-1', 'some-unknown-collection/x']) {
+    for (const p of ['checkouts/c1', 'promoCodes/WELCOME', 'promoCodes/WELCOME/uses/alice', 'paymentEvents/evt1', 'refunds/order-alice_full_1', 'rateLimits/createCheckout__uid__alice', 'erasureLog/erased_abc', 'excelSync/order-1', 'some-unknown-collection/x']) {
       await assertFails(getDoc(doc(asUser('alice'), p)));
       await assertFails(getDoc(doc(asStaff(), p)));
     }

@@ -97,6 +97,7 @@ Secrets live in Google Secret Manager, never in a file and never in git. Each co
 firebase functions:secrets:set RAZORPAY_KEY_SECRET --project production
 firebase functions:secrets:set RAZORPAY_WEBHOOK_SECRET --project production
 firebase functions:secrets:set EXCEL_AWS_SECRET_ACCESS_KEY --project production
+firebase functions:secrets:set ERASURE_HASH_KEY --project production
 ```
 
 | Secret | Where the value comes from |
@@ -104,8 +105,9 @@ firebase functions:secrets:set EXCEL_AWS_SECRET_ACCESS_KEY --project production
 | `RAZORPAY_KEY_SECRET` | Razorpay dashboard → Account & Settings → API keys → Key Secret (test key for now) |
 | `RAZORPAY_WEBHOOK_SECRET` | **You invent it**: a long random string (for example `openssl rand -hex 32`, or a password manager). You paste the *same* value into the Razorpay webhook form in section 6 |
 | `EXCEL_AWS_SECRET_ACCESS_KEY` | AWS: the IAM user's secret access key, step 2.4 of [AWS_SETUP.md](../firebase/docs/AWS_SETUP.md). Skip it only if `EXCEL_S3_BUCKET` is empty |
+| `ERASURE_HASH_KEY` | **You invent it**: a long random string (`openssl rand -hex 32`). The "Delete my data" button uses it to replace a customer's account id with a code nobody can work backwards from (`firebase/functions/shared/erasure.js`). **The button refuses to run without it.** Keep it somewhere safe and do not change it casually: erasures done before and after a change cannot be matched to each other (nothing breaks, but you lose that audit link) |
 
-- [ ] All three exist. Check (this prints the secret's *name and versions*, never its value): `firebase functions:secrets:get RAZORPAY_KEY_SECRET --project production`, and the same for the other two.
+- [ ] All of them exist (the Excel one only if you use Excel). Check (this prints the secret's *name and versions*, never its value): `firebase functions:secrets:get RAZORPAY_KEY_SECRET --project production`, and the same for the others. `npm run preflight` asks for `ERASURE_HASH_KEY` too.
 - [ ] If a secret ever leaks: set a new value with the same command (that creates a new version), redeploy the functions (3.5), then disable the old version in the console.
 
 > The old Azure secret (`GRAPH_CLIENT_SECRET`) is gone. If a previous deploy created it, you can delete it: `firebase functions:secrets:destroy GRAPH_CLIENT_SECRET --project production`.
@@ -192,7 +194,8 @@ These four, and **only** these four, are read by the web app. They are **public 
 |---|---|---|
 | ☐ | `RAZORPAY_KEY_SECRET` | `createCheckout`, `verifyPayment`, `processRefund`, `autoRefund` (refunds need the secret) |
 | ☐ | `RAZORPAY_WEBHOOK_SECRET` | `razorpayWebhook` |
-| ☐ | `EXCEL_AWS_SECRET_ACCESS_KEY` | `excelSync`, `excelSyncUpdate`, `retryExcelSync`, `getOrdersDownloadUrl` |
+| ☐ | `EXCEL_AWS_SECRET_ACCESS_KEY` | `excelSync`, `excelSyncUpdate`, `retryExcelSync`, `getOrdersDownloadUrl`, `requestDataErasure` (it scrubs the customer's row) |
+| ☐ | `ERASURE_HASH_KEY` | `requestDataErasure` (the "Delete my data" button) |
 
 ---
 
@@ -252,6 +255,7 @@ The policy is shipped in **report-only** mode on purpose. It was written from th
 
 - [ ] Follow [firebase/docs/AWS_SETUP.md](../firebase/docs/AWS_SETUP.md) for the **production** bucket: private (Block all public access **on**), **versioning on**, and an IAM user whose policy covers only that one file (and `s3:ListBucket`).
 - [ ] The three values are in sections 3.2 and 3.3.
+- [ ] **Add a lifecycle rule that expires old versions of the file** (S3 → the bucket → Management → Lifecycle rules → *Permanently delete noncurrent versions of objects* after **30 days**). Versioning keeps every saved copy of the sheet, and when a customer erases their data the *current* file is scrubbed but older versions still hold their name, phone and address until they expire. The privacy page promises this ("Your rights and erasing your data").
 - [ ] After the first order: the file `orders/orders.xlsx` appears in the bucket, and on the staff dashboard **Download orders sheet** opens it.
 - [ ] Staff know to work in a **downloaded copy** and never upload an edited file over the live one ([EXCEL_SYNC.md](../firebase/docs/EXCEL_SYNC.md)).
 
@@ -363,6 +367,7 @@ Do this with `RAZORPAY_MODE=test` and your `rzp_test_` key, against the real pro
 - [ ] **Account page:** after an order, `/account` lists it, newest first; **Reorder** puts the same boxes in the cart; and the **Firestore index is Enabled** (section 3.5).
 - [ ] **Receipt:** on `/orders/<id>` press **View receipt**, then **Print / Save as PDF**. The preview shows only the receipt (no header, no buttons), with a masked payment reference. Check the printed total.
 - [ ] **Phone check:** the whole flow works on a real phone on mobile data, not just your laptop.
+- [ ] **Consent and erasure (DPDP).** On `/login` every sign-in button is off until you tick the consent box (it starts unticked). As a test customer with a paid, **delivered or cancelled** order, open `/account` → **Delete my data…**, type `DELETE`: you land on "Your data has been erased", the account is gone from Authentication, and in Firestore the order shows `uid: erased_…` and `address: [REDACTED - DPDP ERASURE]` with the **same total, items, status and Razorpay payment id**; the matching row in `orders.xlsx` shows the marker in the Customer, Phone, Address and Note cells. The refund (`refunds/…`) is untouched, and `erasureLog/erased_…` says `COMPLETED`. Try it **while an order is still on the way**: it is refused with a clear message and nothing changes. Press it with the wrong word: the red button stays off.
 - [ ] **Delete the test orders** from Firestore so the real orders and the Excel sheet start clean (delete the `orders/…`, matching `excelSync/…`, `checkouts/…` and `paymentEvents/…` documents, and delete `orders/orders.xlsx` from the bucket: the next real order creates a fresh one).
 
 ---
@@ -416,6 +421,7 @@ These are true of the code today. None blocks launch, but each is a decision you
 - **Refunds are automatic, but only as good as the webhook.** Cancelling an order sends a full refund to Razorpay at once (`autoRefund`), and the refund is stored with its Razorpay id. The order only changes from *Refund pending* to *Refunded* when Razorpay's `refund.processed` webhook arrives; if the webhook is not set up (section 6) the card stays in **Needs refund** and staff press **Check status** to catch up. There is no scheduled job that polls Razorpay. **The refund code has been tested against a fake Razorpay, never the real one**: the rehearsal in section 9 is its first real test.
 - **Partial refunds exist in the server but not on the admin page.** `processRefund` accepts an `amount` (rupees) and a delivered order then ends *Partly refunded*, but there is no screen for it yet; there is also no customer-facing "return an item" flow. Until then, a partial refund is made in the Razorpay dashboard and the webhook records it.
 - **Promo limits count accounts, not people.** `maxUsesPerUser` is per account (uid). A guest who clears their browser data becomes a new account and can use a "once only" code again, which is why `requiresSignIn` exists (section 8.1b); even then someone can make a second Google account. For a code that costs real money, also set `globalMaxUses`. A customer who pays twice at the same moment with a one-use code gets one order and one automatic refund.
+- **Erasing data: what it cannot reach.** "Delete my data" overwrites the personal fields of a customer's orders and deletes their account, cart and wishlist, but keeps paid orders, refunds and payment records for the accounts (with the address and notes replaced and the link to the person cut). It does **not** reach Razorpay's own record of the payment, Google's backups and logs, or **old versions of the Excel file in S3** unless you added the lifecycle rule in section 7. It waits while an order is still on the way, or a payment may be in progress. It does not ask the customer to sign in again first (they type DELETE), and a deleted account's sign-in token can keep working for up to an hour, so a scripted caller could still create a cart or an order under the deleted account's id in that window; it would belong to an account that no longer exists, and the customer could not erase it (they can contact you). A customer who erases their account and signs up again gets a fresh account, so a "once only" promo code can be used again (the same gap as "Promo limits count accounts", below). Consent is a tick-box on the sign-in screen; it is **not stored** per customer, so you cannot yet show *when* a given customer agreed. Add that if your adviser says you must prove it.
 - **Customers can sign in; staff are still granted by hand.** Guests keep their orders in the browser, and signing in on `/login` keeps them across devices. A staff member who clears their browser data must be granted staff again (section 8.2). "Customer" in Excel shows `Guest` for an anonymous session and the phone column is blank.
 - **No App Check.** Anyone can create anonymous accounts and carts against your project. The server re-prices and re-checks everything and the rules block direct writes, so the exposure is nuisance and cost, not data or money. Add [App Check](https://firebase.google.com/docs/app-check) when you have steady traffic.
 - **The price preview has no rate limit.** `previewCheckout` (the checkout page's live total and promo check) answers any signed-in visitor, and anonymous accounts are free to create, so someone could try many promo codes. It gives the same answer for a wrong, switched-off or expired code, so it does not reveal which codes exist, and `createCheckout` has had the same exposure. If promo codes are ever worth more than a few percent, add App Check and a per-user limit.

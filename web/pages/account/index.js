@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useMemo, useState } from 'react';
 import AccountCard from '@/components/auth/AccountCard';
+import DeleteAccountCard from '@/components/auth/DeleteAccountCard';
 import Callout from '@/components/Callout';
 import OrderFilterChips from '@/components/orders/OrderFilterChips';
 import OrderHistoryCard from '@/components/orders/OrderHistoryCard';
@@ -127,6 +128,9 @@ export default function AccountPage() {
             </>
           )}
         </div>
+
+        {/* The right to erasure (DPDP). Asks for confirmation; keeps the shop's accounts, without the customer's details. */}
+        <DeleteAccountCard />
       </div>
     </>
   );

@@ -132,15 +132,15 @@ export default function LoginPage() {
             )}
 
             <p className="mt-8 text-small text-ink-muted">
-              By continuing, you agree to our{' '}
+              By continuing, you also agree to our{' '}
               <Link href="/terms" className="font-bold text-brand-text underline">
                 Terms of Service
-              </Link>{' '}
-              and our{' '}
+              </Link>
+              . Your consent to how we use your personal data is the box above; you can read the{' '}
               <Link href="/privacy" className="font-bold text-brand-text underline">
                 Privacy Policy
-              </Link>
-              . The Privacy Policy explains how your name, email or mobile number is used.
+              </Link>{' '}
+              first and take it back whenever you like.
             </p>
             {!guestOption && (
               <p className="mt-2 text-small text-ink-muted">

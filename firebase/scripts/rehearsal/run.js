@@ -33,6 +33,7 @@ const F = fromWeb('firebase/firestore');
 const FN = fromWeb('firebase/functions');
 const admin = fromFunctions('firebase-admin/app');
 const adminFs = fromFunctions('firebase-admin/firestore');
+const adminAuth = fromFunctions('firebase-admin/auth');
 
 // ---------- reporting ----------
 
@@ -473,8 +474,92 @@ async function main() {
     assert.equal((await doc('promoCodes/MOCKONCE')).usedCount, 1);
   });
 
+  // ---------- erasure ----------
+  heading('10. A customer erases their data (DPDP): the personal details go, the books stay');
+  const REDACTED = '[REDACTED - DPDP ERASURE]';
+  const maya = client('maya');
+  let mayaTrip;
+  let mayaUid;
+  let booksBefore;
+  await step('erasure is refused without the word DELETE, and while an order is still on the way (nothing changes)', async () => {
+    await maya.signUp('maya@example.test');
+    mayaUid = maya.uid;
+    await adb.doc('promoCodes/ERASEME').set({ type: 'flat', value: 20, min: 0, active: true, expiresAt: null, maxUsesPerUser: 1, usedCount: 0 });
+    mayaTrip = await checkoutAndPay(maya, { productId: stock.box, qty: 2, promoCode: 'ERASEME' });
+    await maya.saveCart([{ productId: stock.drop, size: 'regular', qty: 1 }], { pincode: '560012', note: 'gate code 4411' });
+
+    const noWord = await refused(() => maya.call('requestDataErasure', { confirm: 'delete' }));
+    assert.equal(noWord.code, 'functions/invalid-argument');
+    const live = await refused(() => maya.call('requestDataErasure', { confirm: 'DELETE' }));
+    assert.equal(live.code, 'functions/failed-precondition');
+    assert.match(live.message, /still on the way/);
+
+    assert.ok(await adminAuth.getAuth().getUser(mayaUid), 'the account is still there');
+    const o = await doc(`orders/${mayaTrip.orderId}`);
+    assert.equal(o.uid, mayaUid);
+    assert.match(o.address, /Flat 4B/, 'the address is untouched');
+    assert.ok((await adb.doc(`carts/${mayaUid}`).get()).exists, 'the cart is untouched');
+  });
+  await step('once the order is cancelled and refunded, erasure runs: account deleted, orders anonymised, nothing financial changed', async () => {
+    await maya.call('cancelMyOrder', { orderId: mayaTrip.orderId, reason: 'Ordered by mistake' });
+    await waitFor('the refund to finish', async () => (await doc(`orders/${mayaTrip.orderId}`)).paymentStatus === 'REFUNDED');
+    const refundRef = (await adb.collection('refunds').where('orderId', '==', mayaTrip.orderId).get()).docs[0];
+    const o = await doc(`orders/${mayaTrip.orderId}`);
+    booksBefore = { order: o, refund: refundRef.data(), refundId: refundRef.id };
+
+    const result = await maya.call('requestDataErasure', { confirm: 'DELETE' });
+    assert.deepEqual([result.erased, result.orders], [true, 1]);
+
+    // The real Auth emulator deleted the real user.
+    await assert.rejects(() => adminAuth.getAuth().getUser(mayaUid), { code: 'auth/user-not-found' });
+
+    const after = await doc(`orders/${mayaTrip.orderId}`);
+    assert.match(after.uid, /^erased_[0-9a-f]{40}$/);
+    assert.equal(after.address, REDACTED);
+    for (const field of ['items', 'pricing', 'promo', 'zone', 'pincode', 'status', 'paymentStatus', 'payment', 'refundIds', 'refundedPaise', 'refundPendingPaise', 'timestamps', 'createdAt']) {
+      assert.deepEqual(after[field], booksBefore.order[field], `${field} is exactly as it was`);
+    }
+    assert.equal(after.payment.razorpayPaymentId, mayaTrip.paid.payment.id, 'the Razorpay payment id is kept');
+    const refundAfter = (await adb.doc(`refunds/${booksBefore.refundId}`).get()).data();
+    for (const field of ['amountPaise', 'razorpayRefundId', 'razorpayPaymentId', 'status', 'kind', 'orderId']) assert.equal(refundAfter[field], booksBefore.refund[field], `refund ${field}`);
+
+    assert.equal((await adb.doc(`carts/${mayaUid}`).get()).exists, false, 'the cart is gone');
+    assert.equal((await adb.doc(`promoCodes/ERASEME/uses/${mayaUid}`).get()).exists, false);
+    const use = await doc(`promoCodes/ERASEME/uses/${after.uid}`);
+    assert.deepEqual([use.uid, use.count], [after.uid, 1], 'the promo use is kept under the hash');
+    assert.equal((await doc('promoCodes/ERASEME')).usedCount, 1);
+    const log = await doc(`erasureLog/${after.uid}`);
+    assert.equal(log.state, 'COMPLETED');
+    assert.ok(!JSON.stringify(log).includes(mayaUid), 'the audit entry names nobody');
+    assert.ok(!JSON.stringify([after, refundAfter, use]).includes(mayaUid), 'the real uid appears nowhere in what is left');
+  });
+  await step('the erased customer can no longer read the order, and a late Razorpay webhook changes nothing', async () => {
+    assert.equal(await maya.order(mayaTrip.orderId), null);
+    const before = JSON.stringify(await doc(`orders/${mayaTrip.orderId}`));
+    const payment = mayaTrip.paid.payment;
+    const out = await fake.sendWebhook('order.paid', { order: { entity: { ...fake.orders.get(mayaTrip.quote.razorpayOrderId) } }, payment: { entity: { id: payment.id, order_id: mayaTrip.quote.razorpayOrderId, amount: payment.amount, status: 'captured', captured: true } } });
+    assert.equal(out.status, 200);
+    await sleep(500);
+    assert.equal(JSON.stringify(await doc(`orders/${mayaTrip.orderId}`)), before, 'the order is exactly as it was');
+  });
+  await step('a guest who ordered can erase too, and staff cannot erase themselves', async () => {
+    const guest = client('guest-eraser');
+    await guest.anonymous();
+    const guestUid = guest.uid;
+    const trip = await checkoutAndPay(guest, { productId: stock.drop, qty: 1 });
+    await guest.call('cancelMyOrder', { orderId: trip.orderId, reason: 'Ordered by mistake' });
+    await waitFor('the refund to finish', async () => (await doc(`orders/${trip.orderId}`)).paymentStatus === 'REFUNDED');
+    assert.equal((await guest.call('requestDataErasure', { confirm: 'DELETE' })).orders, 1);
+    assert.equal((await doc(`orders/${trip.orderId}`)).address, REDACTED);
+    await assert.rejects(() => adminAuth.getAuth().getUser(guestUid), { code: 'auth/user-not-found' });
+
+    const err = await refused(() => staff.call('requestDataErasure', { confirm: 'DELETE' }));
+    assert.equal(err.code, 'functions/failed-precondition');
+    assert.ok(await adminAuth.getAuth().getUser(staff.uid), 'the staff account is untouched');
+  });
+
   // ---------- sign-off ----------
-  heading('10. After all that');
+  heading('11. After all that');
   await step('no checkout left half-done and no negative stock anywhere', async () => {
     const products = await adb.collection('products').get();
     for (const p of products.docs) assert.ok(!(p.get('stock') < 0), `${p.id} has negative stock`);

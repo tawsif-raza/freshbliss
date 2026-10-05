@@ -57,8 +57,20 @@ What was checked, what was added in this pass, and what is still open, in priori
    `createCheckout.js`, `previewCheckout.js`, `createMockOrder.js`; rules deny the new subcollection.
    Limits: per ACCOUNT not per person (use `requiresSignIn`), a cancelled order does not give the use back, and **no admin
    screen** (codes are edited in the Firestore console; see `docs/GO_LIVE.md` s.8.1b). Not run against real Firebase.
-5. **DPDP Act consent / erasure.** The 2025 Rules need a clear consent notice and a way to withdraw or erase.
-   Add an "erase my data" callable (delete orders' personal fields, keep amounts for accounting) and consent text.
+5. ~~**DPDP Act consent / erasure**~~ **Done (October 2026).** A consent tick-box on `/login` (starts unticked; every sign-in method waits for it),
+   a privacy notice line at checkout, new "Your consent" and "Your rights and erasing your data" sections on `/privacy`, and a **Delete my data**
+   section on `/account` (type `DELETE` in a confirmation dialog) backed by the `requestDataErasure` callable. It never hard-deletes a
+   paid order, refund or payment record: it overwrites `address`, delivery `note`, staff-typed cancellation text and feedback comments with
+   `[REDACTED - DPDP ERASURE]`, replaces the customer's `uid` (and `claimedFrom`, `updatedBy`) with a keyed hash (HMAC-SHA256 with the
+   `ERASURE_HASH_KEY` secret), and keeps `items`, `pricing`, `status`, `paymentStatus`, the zone, the pincode and every Razorpay id. It also scrubs
+   the name, phone, address and note cells of the order's row in the Excel sheet (first, so a failure stops cleanly), re-keys the per-customer promo
+   use records, deletes the cart, wishlist and rate-limit counters, writes `erasureLog/{hash}` as proof (no personal data in it) and finally deletes
+   the Firebase Auth user. It **waits** while an order is still on the way or a payment may be in flight, refuses staff accounts, is rate limited, and is
+   safe to run again after a failure. The data model has no separate "user profile" document, so the cart and wishlist are the per-user documents. Code:
+   `functions/shared/erasure.js`, `shared/excelErasure.js`, `requestDataErasure.js`; web `components/auth/DeleteAccountCard.js`, `lib/erasure*.js`,
+   `pages/account/erased.js`. Tested by `tests/erasure.test.js` (21 emulator tests), `web/tests/erasure.test.mjs`, and rehearsal section 10 (real Auth emulator).
+   Limits (also in `docs/GO_LIVE.md` s.13): Razorpay's and Google's own copies are out of reach; old S3 versions need the lifecycle rule (s.7); consent is
+   not recorded per customer; no re-sign-in before erasing; erasing and re-registering gives a new account. **Needs the `ERASURE_HASH_KEY` secret before it will run.**
 6. **Tax decision.** Receipts print no tax line. Ask the accountant: GST registered? prices tax-inclusive? Then
    store the breakdown on the order at `finalizeCheckout` time (cannot be reconstructed later).
 7. **Reorder button** on past orders (re-add the same boxes to the cart; server re-prices anyway).

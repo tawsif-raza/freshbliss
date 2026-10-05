@@ -24,6 +24,7 @@ exports.cancelMyOrder = require('./cancelOrder').cancelMyOrder; // the customer'
 exports.processRefund = require('./processRefund').processRefund; // staff: retry, check or partially refund through Razorpay
 exports.autoRefund = require('./autoRefund').autoRefund; // sends a cancelled order's refund to Razorpay by itself
 exports.claimGuestOrders = require('./claimGuestOrders').claimGuestOrders; // moves a guest's orders to the account they sign in to
+exports.requestDataErasure = require('./requestDataErasure').requestDataErasure; // DPDP: anonymises the caller's data (keeps the books) and closes the account
 
 // Copies each new order into an Excel workbook (a .xlsx file in Amazon S3) and keeps its
 // status up to date (see docs/AWS_SETUP.md and docs/EXCEL_SYNC.md). Does nothing until AWS is set up.

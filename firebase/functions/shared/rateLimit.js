@@ -28,6 +28,8 @@ const LIMITS = {
   cancelMyOrder: { uid: { limit: 10, windowSec: 600 }, ip: { limit: 60, windowSec: 600 } },
   // Moving a guest's orders to the account they just signed in to. Needed once per sign-in.
   claimGuestOrders: { uid: { limit: 10, windowSec: 600 }, ip: { limit: 60, windowSec: 600 } },
+  // Erasing an account is final; nobody needs it more than a few times an hour, and a retry after a failure is rare.
+  requestDataErasure: { uid: { limit: 5, windowSec: 3600 }, ip: { limit: 20, windowSec: 3600 } },
   // Counted only for promo codes that were WRONG. This is what stops code guessing.
   badPromo: { uid: { limit: 6, windowSec: 900 }, ip: { limit: 30, windowSec: 900 } },
 };

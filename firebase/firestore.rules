@@ -153,8 +153,9 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // paymentEvents (webhook dedupe ledger) and excelSync (the Excel copy ledger) are
-    // server-only too. They are covered by the default deny below.
+    // paymentEvents (webhook dedupe ledger), excelSync (the Excel copy ledger) and erasureLog (the proof that a
+    // customer's data was erased, functions/shared/erasure.js; it holds no personal data) are server-only too.
+    // They are covered by the default deny below.
 
     // ---------- default deny ----------
     // Anything not matched above is closed to every client.

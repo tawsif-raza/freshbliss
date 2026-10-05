@@ -499,7 +499,11 @@ export default function CheckoutPage() {
                   <Link href="/refunds" className="font-bold text-brand-text underline">
                     Cancellation &amp; Refunds
                   </Link>
-                  .
+                  . We use your address and order details only to deliver and account for this order, as explained in our{' '}
+                  <Link href="/privacy" className="font-bold text-brand-text underline">
+                    Privacy Policy
+                  </Link>
+                  , and you can have your data erased later from My account.
                 </p>
                 <p role="status" className="sr-only">
                   {busy ? STAGE_TEXT[stage] : ''}
