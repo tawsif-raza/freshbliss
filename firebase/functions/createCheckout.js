@@ -20,7 +20,7 @@ const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { logger } = require('firebase-functions');
 const { defineSecret, defineString } = require('firebase-functions/params');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
-const Razorpay = require('razorpay');
+const { createRazorpay } = require('./shared/razorpayApi');
 const { razorpayKeyProblem } = require('./shared/razorpayMode');
 const { callableOptions } = require('./shared/hardening');
 const { enforce } = require('./shared/rateLimit');
@@ -285,7 +285,7 @@ exports.createCheckout = onCall(
     const checkoutId = checkoutRef.id;
     let razorpayOrder;
     try {
-      const razorpay = new Razorpay({ key_id: keyId, key_secret: RAZORPAY_KEY_SECRET.value() });
+      const razorpay = createRazorpay({ keyId, keySecret: RAZORPAY_KEY_SECRET.value() });
       razorpayOrder = await razorpay.orders.create({
         amount: amountPaise,
         currency: 'INR',

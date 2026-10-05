@@ -41,7 +41,7 @@
 const { HttpsError } = require('firebase-functions/v2/https');
 const { FieldValue } = require('firebase-admin/firestore');
 
-const API = 'https://api.razorpay.com/v1';
+const { apiBase } = require('./razorpayApi');
 const TERMINAL = new Set(['PROCESSED', 'FAILED']);
 const KEY = /^[A-Za-z0-9_-]{10,100}$/; // Razorpay: at least 10 characters, letters, digits, hyphen, underscore
 const SAFE_ID = /^[A-Za-z0-9_-]{1,100}$/;
@@ -59,7 +59,7 @@ function createRazorpayClient({ keyId, keySecret, fetchImpl = globalThis.fetch }
   async function call(method, path, { body, headers } = {}) {
     let res;
     try {
-      res = await fetchImpl(`${API}${path}`, {
+      res = await fetchImpl(`${apiBase()}/v1${path}`, {
         method,
         headers: { Authorization: auth, 'Content-Type': 'application/json', ...headers },
         body: body ? JSON.stringify(body) : undefined,
