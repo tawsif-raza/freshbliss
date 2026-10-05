@@ -32,7 +32,7 @@ const FAQ_GROUPS = [
       },
       {
         question: 'Is there a minimum order value for free delivery?',
-        answer: 'Yes, orders over ₹500 qualify for free delivery. For orders below this amount, a flat ₹30 delivery fee is applied during checkout.',
+        answer: 'Yes, orders of ₹499 or more qualify for free delivery. For orders below this amount, a flat ₹30 delivery fee is applied during checkout.',
       },
     ],
   },
@@ -48,7 +48,7 @@ const FAQ_GROUPS = [
       {
         question: 'What happens if an item I ordered is out of stock?',
         answer:
-          "Because we deal in fresh daily harvests, items occasionally run out. If this happens after your order is placed, we will instantly refund the missing item's amount to your original payment method. We never substitute with lower-quality items.",
+          "Because we deal in fresh daily harvests, items occasionally run out. We check stock before you pay. If the last box sells out in the moments while you are paying, we cancel the whole order (not just that item) and refund the full amount to your original payment method, and you can order again. We never substitute with lower-quality items.",
       },
     ],
   },

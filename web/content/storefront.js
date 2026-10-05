@@ -103,8 +103,8 @@ export const TESTIMONIALS = [
 
 // The subtotal (whole rupees) at which the cart's progress bar says delivery is free. It is a PREVIEW message only:
 // the server decides the real fee per delivery zone (a zone's `freeDeliveryFrom`, firebase/functions/createCheckout.js).
-// REVIEW BEFORE LAUNCH: keep this equal to `freeDeliveryFrom` on the zones that charge a fee, and to the ₹500 wording in
-// the ticker below and in the FAQ, or the bar will promise something checkout does not give.
+// REVIEW BEFORE LAUNCH: keep this equal to `freeDeliveryFrom` on the zones that charge a fee, and to the ₹499 wording in
+// the ticker below and in the FAQ (pages/faq.js), or the bar will promise something checkout does not give.
 export const FREE_DELIVERY_THRESHOLD = 499;
 
 // ---------- the ticker under the banner ----------
@@ -113,7 +113,7 @@ export const FREE_DELIVERY_THRESHOLD = 499;
 // delivery line against the delivery zones (Zone B charges a fee today) and the rating against real reviews.
 export const MARQUEE_ITEMS = [
   '🌿 100% Organic & Pesticide-Free',
-  '🚚 Free Bengaluru Delivery over ₹500',
+  '🚚 Free Bengaluru Delivery over ₹499',
   '👨‍🌾 Farm to Doorstep in 12 Hours',
   '⭐ 4.9/5 Average Rating',
 ];
