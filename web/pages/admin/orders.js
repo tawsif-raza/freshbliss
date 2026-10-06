@@ -5,7 +5,9 @@
 //                  one to its next step, or cancel it (which starts a refund).
 //   Needs refund   orders that are CANCELLED with paymentStatus REFUND_PENDING:
 //                  staff-cancelled ones and ones the system cancelled when the
-//                  last box sold out mid-payment. Staff mark each refund done.
+//                  last box sold out mid-payment. Refunds are sent to Razorpay
+//                  automatically; a card stays here until Razorpay confirms it, so this
+//                  is where a failed one is seen and retried.
 //
 // Nothing here writes to Firestore directly: the security rules let no browser
 // change an order. Every button calls a staff-only Cloud Function (updateOrderStatus,
@@ -47,7 +49,7 @@ function useLiveOrders(enabled, makeQuery, sorter) {
     if (!enabled) return undefined;
     const stop = onSnapshot(
       makeQuery(),
-      (snap) => setResult({ docs: snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort(sorter), state: 'ready' }),
+      (snap) => setResult({ docs: snap.docs.map((d) => ({ ...d.data(), id: d.id })).sort(sorter), state: 'ready' }),
       (err) => {
         console.error('Orders listener failed:', err);
         setResult({ docs: [], state: 'error' });

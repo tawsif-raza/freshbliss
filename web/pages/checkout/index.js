@@ -1,5 +1,6 @@
 // Checkout: /checkout
-// Where the customer says where to deliver, applies a promo code, picks a rider tip, sees the full
+// Where the customer says where to deliver (pincode, house/flat, road/area, an optional landmark and a
+// Home/Work/Other tag, with a "Use Current Location" button), applies a promo code, picks a rider tip, sees the full
 // itemised total, and pays. The cart page only holds the cart.
 //
 // Every figure is checked by the SERVER before it is shown as final (previewCheckout) and again when
@@ -19,12 +20,19 @@ import CartSkeleton from '@/components/CartSkeleton';
 import { Field, inputClass } from '@/components/Field';
 import SummaryRow from '@/components/SummaryRow';
 import ZoneStatus, { zoneOutcome } from '@/components/ZoneStatus';
+import AddressFields from '@/components/checkout/AddressFields';
 import CheckoutSummary from '@/components/checkout/CheckoutSummary';
+import LocationButton from '@/components/checkout/LocationButton';
+import OrderResult from '@/components/checkout/OrderResult';
 import PromoCode from '@/components/checkout/PromoCode';
+import SlotPicker from '@/components/checkout/SlotPicker';
 import TipSelector from '@/components/checkout/TipSelector';
 import { useCart } from '@/context/CartContext';
+import { ADDRESS_LIMITS, DEFAULT_ADDRESS_TYPE, addressErrors, formatAddress } from '@/lib/address';
+import { isPromoLimitError } from '@/lib/errors';
 import { usingEmulators } from '@/lib/firebaseClient';
 import { previewTotals } from '@/lib/pricing';
+import { slotChoice } from '@/lib/slots';
 import { CheckoutError, friendlyError, loadRazorpay, previewPricing, runCheckout, runMockCheckout, verifyPayment } from '@/lib/razorpayCheckout';
 import { PINCODE, deliveryFeeFor, feeLabel, useSavedPincode, useZones } from '@/lib/zones';
 
@@ -35,82 +43,6 @@ const STAGE_TEXT = {
   confirming: 'Confirming your payment...',
 };
 
-const capitalise = (s) => s.charAt(0).toUpperCase() + s.slice(1);
-
-// ---------- the confirmation shown after paying ----------
-
-function OrderResult({ outcome, onBack }) {
-  const { result, quote } = outcome;
-  const headingRef = useRef(null);
-  const cancelled = result.status === 'CANCELLED';
-  const p = quote.pricing;
-
-  // Move focus to the result so screen reader users hear it.
-  useEffect(() => {
-    headingRef.current?.focus();
-  }, []);
-
-  return (
-    <div className="mx-auto max-w-2xl">
-      <h1 ref={headingRef} tabIndex={-1} className="text-heading-2 text-brand-text">
-        {cancelled ? 'We could not complete your order' : 'Thank you. Your order is confirmed.'}
-      </h1>
-
-      <Callout tone={cancelled ? 'danger' : 'note'} className="mt-4.5">
-        {result.message}
-        <p className="mt-2 text-small text-ink-muted">
-          Order ID: <span className="text-code text-ink">{result.orderId}</span>
-        </p>
-      </Callout>
-
-      {cancelled ? (
-        <button type="button" onClick={onBack} className="mt-6 min-h-11 rounded-pill bg-brand px-6 text-nav-link text-on-brand hover:brightness-110">
-          Back to checkout
-        </button>
-      ) : (
-        <>
-          <section aria-labelledby="receipt-title" className="mt-6 rounded-xl border border-line bg-surface-card p-6 shadow-card">
-            <h2 id="receipt-title" className="text-heading-3 text-ink">
-              Your receipt
-            </h2>
-            <ul className="mt-3 divide-y divide-line">
-              {quote.items.map((i) => (
-                <li key={`${i.productId}:${i.size}`} className="flex justify-between gap-4 py-2 text-body text-ink">
-                  <span>
-                    {i.qty} × {i.name} <span className="text-ink-muted">({capitalise(i.size)})</span>
-                  </span>
-                  <span className="font-bold">₹{i.lineTotal}</span>
-                </li>
-              ))}
-            </ul>
-            <dl className="mt-3 flex flex-col gap-1 border-t border-line pt-3">
-              <SummaryRow label="Subtotal" value={`₹${p.subtotal}`} />
-              {p.discount > 0 && <SummaryRow label="Discount" value={`-₹${p.discount}`} />}
-              <SummaryRow label="Delivery" value={feeLabel(p.deliveryFee)} />
-              {p.tip > 0 && <SummaryRow label="Rider tip" value={`₹${p.tip}`} />}
-              <div className="mt-2 border-t border-line pt-2">
-                <SummaryRow label="Total paid" value={`₹${p.total}`} strong />
-              </div>
-            </dl>
-          </section>
-
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Link href={`/orders/${result.orderId}`} className="inline-grid min-h-11 place-items-center rounded-pill bg-gold-bright px-6 text-nav-link text-on-gold hover:brightness-95">
-              Track your order
-            </Link>
-            <Link href={`/orders/${result.orderId}?receipt=1`} className="inline-grid min-h-11 place-items-center rounded-pill border border-brand px-6 text-nav-link text-brand-text hover:bg-surface-cream">
-              View printable receipt
-            </Link>
-            <Link href="/products" className="inline-grid min-h-11 place-items-center rounded-pill border border-brand px-6 text-nav-link text-brand-text hover:bg-surface-cream">
-              Continue shopping
-            </Link>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
 // ---------- the page ----------
 
 export default function CheckoutPage() {
@@ -120,8 +52,10 @@ export default function CheckoutPage() {
   const { pincode: savedPincode, setPincode: savePincode } = useSavedPincode();
 
   const [typedPincode, setTypedPincode] = useState(null); // null until they type: then the remembered one shows
-  const [form, setForm] = useState({ address: '', note: '' });
+  const [form, setForm] = useState({ flat: '', area: '', landmark: '', note: '' });
+  const [addressType, setAddressType] = useState(DEFAULT_ADDRESS_TYPE); // home | work | other
   const [tip, setTip] = useState(0);
+  const [slot, setSlot] = useState(null); // null = as soon as possible, else a slot from lib/slots.js
   const [promoCode, setPromoCode] = useState(null); // only a code the server has accepted
   const [promoNote, setPromoNote] = useState(''); // why a code was refused
   const [promoBusy, setPromoBusy] = useState(false);
@@ -134,7 +68,8 @@ export default function CheckoutPage() {
   const [unconfirmed, setUnconfirmed] = useState(null); // paid, but not yet confirmed: { pending, quote }
   const [settled, setSettled] = useState(null); // the server's last answer: { key, data, error, promoError }
   const pincodeRef = useRef(null);
-  const addressRef = useRef(null);
+  const flatRef = useRef(null);
+  const areaRef = useRef(null);
 
   // Start with the pincode remembered from the product page or an earlier visit, until they type their own.
   const pincode = typedPincode ?? savedPincode;
@@ -156,22 +91,31 @@ export default function CheckoutPage() {
   // in which case the server is the judge). The answer is stored WITH the inputs it was for; anything that
   // changes the inputs makes the stored answer stale, so a stale price is never shown as final.
   const canQuote = loaded && items.length > 0 && problems.length === 0 && (area.kind === 'ok' || area.kind === 'unknown');
-  const inputKey = canQuote ? JSON.stringify([lines, pincode, tip, promoCode]) : null;
+  const inputKey = canQuote ? JSON.stringify([lines, pincode, tip, promoCode, slotChoice(slot)]) : null;
 
   useEffect(() => {
     if (!inputKey) return undefined;
     let cancelled = false;
     const timer = setTimeout(async () => {
       try {
-        const data = await previewPricing({ lines, pincode, tip, promoCode });
+        const data = await previewPricing({ lines, pincode, tip, promoCode, slot: slotChoice(slot) });
         if (!cancelled) setSettled({ key: inputKey, data, error: '', promoError: '' });
       } catch (err) {
+        // A code that has been used up (or already used by this customer) since it was applied: drop it and say so,
+        // so the customer can simply pay the normal price.
+        if (promoCode && isPromoLimitError(err)) {
+          if (!cancelled) {
+            setPromoNote(friendlyError(err));
+            setPromoCode(null);
+          }
+          return;
+        }
         let promoError = '';
         let data = null;
         if (promoCode) {
           // Is the code the problem, or the cart? Ask again without it.
           try {
-            data = await previewPricing({ lines, pincode, tip, promoCode: null });
+            data = await previewPricing({ lines, pincode, tip, promoCode: null, slot: slotChoice(slot) });
             promoError = friendlyError(err);
           } catch {
             data = null;
@@ -184,7 +128,7 @@ export default function CheckoutPage() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [inputKey, lines, pincode, tip, promoCode]);
+  }, [inputKey, lines, pincode, tip, promoCode, slot]);
 
   const current = settled && settled.key === inputKey ? settled : null; // the answer for what is on screen now
   const quoting = Boolean(inputKey) && !current;
@@ -213,15 +157,26 @@ export default function CheckoutPage() {
 
   const fieldErrors = {
     pincode: !PINCODE.test(pincode) ? 'Enter your 6-digit pincode.' : area.kind === 'outside' ? 'We do not deliver here yet.' : null,
-    address: form.address.trim() ? null : 'Enter your delivery address.',
+    ...addressErrors(form), // flat and area
   };
 
-  const canPay = loaded && items.length > 0 && problems.length === 0 && !busy && !promoBusy && !quoting && !current?.error && promoStatus !== 'error' && area.kind !== 'outside';
+  // The one line the order stores, for example "Home: Flat 4B, MG Road, near Metro. Pincode: 560041".
+  const address = formatAddress({ type: addressType, flat: form.flat, area: form.area, landmark: form.landmark, pincode });
+
+  // A code that was refused must not stop the customer paying: only an APPLIED code that has gone bad does (they can Remove it).
+  const promoBlocks = Boolean(promoCode) && promoStatus === 'error';
+  const canPay = loaded && items.length > 0 && problems.length === 0 && !busy && !promoBusy && !quoting && !current?.error && !promoBlocks && area.kind !== 'outside';
 
   function handlePincode(value) {
     const digits = value.replace(/\D/g, '').slice(0, 6);
     setTypedPincode(digits);
     if (PINCODE.test(digits)) savePincode(digits);
+  }
+
+  // "Use Current Location" found something: fill the pincode and the road/area (never the house or flat number).
+  function handleLocation({ pincode: foundPincode, area: foundArea }) {
+    if (foundPincode) handlePincode(foundPincode);
+    if (foundArea) setForm((f) => ({ ...f, area: foundArea.slice(0, ADDRESS_LIMITS.area) }));
   }
 
   // Apply a promo code: only keep it if the server accepts it.
@@ -233,7 +188,7 @@ export default function CheckoutPage() {
     }
     setPromoBusy(true);
     try {
-      await previewPricing({ lines, pincode, tip, promoCode: code });
+      await previewPricing({ lines, pincode, tip, promoCode: code, slot: slotChoice(slot) });
       setPromoCode(code);
     } catch (err) {
       setPromoNote(friendlyError(err));
@@ -261,9 +216,9 @@ export default function CheckoutPage() {
     setError(null);
     setNotice(null);
 
-    if (fieldErrors.pincode || fieldErrors.address) {
+    if (fieldErrors.pincode || fieldErrors.flat || fieldErrors.area) {
       setShowErrors(true);
-      (fieldErrors.pincode ? pincodeRef : addressRef).current?.focus();
+      (fieldErrors.pincode ? pincodeRef : fieldErrors.flat ? flatRef : areaRef).current?.focus();
       return;
     }
 
@@ -273,11 +228,14 @@ export default function CheckoutPage() {
     if (usingEmulators) {
       setStage('paying');
       try {
-        const order = await runMockCheckout({ lines, details: { pincode, address: form.address.trim(), note: form.note.trim(), tip, promoCode } });
+        const order = await runMockCheckout({ lines, details: { pincode, address, note: form.note.trim(), tip, promoCode, slot: slotChoice(slot) } });
         await router.push(`/orders/${order.orderId}`);
         clearCart(); // after leaving: emptying it first would flash "Your cart is empty" on this page for a moment
       } catch (err) {
-        setError(friendlyError(err));
+        if (isPromoLimitError(err)) {
+          setPromoNote(friendlyError(err));
+          setPromoCode(null);
+        } else setError(friendlyError(err));
         setStage('idle');
       }
       return; // on success we have left this page: nothing more to reset here
@@ -286,14 +244,19 @@ export default function CheckoutPage() {
     try {
       const { result, quote } = await runCheckout({
         lines,
-        details: { pincode, address: form.address.trim(), note: form.note.trim(), tip, promoCode },
+        details: { pincode, address, note: form.note.trim(), tip, promoCode, slot: slotChoice(slot) },
         hooks: { onStage: setStage, onPaymentFailed: (message) => setNotice(`${message} You can try again in the payment window.`) },
       });
       finish(result, quote);
     } catch (err) {
       if (err instanceof CheckoutError && err.code === 'dismissed') setNotice(err.message);
       else if (err instanceof CheckoutError && err.code === 'verify-failed') setUnconfirmed(err.pending);
-      else setError(friendlyError(err));
+      else if (isPromoLimitError(err)) {
+        // The code was used up between "Apply" and "Pay". Nothing was charged. Drop it and let them pay the normal price.
+        setPromoNote(friendlyError(err));
+        setPromoCode(null);
+        setNotice('We took the promo code off your order. Your total has changed: check it, then press Pay again.');
+      } else setError(friendlyError(err));
     } finally {
       setStage('idle');
     }
@@ -426,23 +389,19 @@ export default function CheckoutPage() {
                     </Field>
                     <ZoneStatus pincode={pincode} zones={zones} zonesStatus={zonesStatus} subtotal={subtotal} />
 
-                    <Field label="Delivery address" error={showErrors ? fieldErrors.address : null}>
-                      {({ id, invalid, describedBy }) => (
-                        <textarea
-                          ref={addressRef}
-                          id={id}
-                          value={form.address}
-                          onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-                          maxLength={200}
-                          rows={3}
-                          autoComplete="street-address"
-                          aria-invalid={invalid}
-                          aria-describedby={describedBy}
-                          disabled={busy}
-                          className={`${inputClass(invalid)} py-2`}
-                        />
-                      )}
-                    </Field>
+                    <LocationButton onFound={handleLocation} disabled={busy} />
+
+                    <AddressFields
+                      value={{ ...form, addressType }}
+                      onChange={({ addressType: nextType, ...rest }) => {
+                        if (nextType) setAddressType(nextType);
+                        if (Object.keys(rest).length > 0) setForm((f) => ({ ...f, ...rest }));
+                      }}
+                      errors={showErrors ? fieldErrors : {}}
+                      flatRef={flatRef}
+                      areaRef={areaRef}
+                      disabled={busy}
+                    />
 
                     <Field label="Delivery instructions" optional>
                       {({ id }) => (
@@ -459,6 +418,18 @@ export default function CheckoutPage() {
                       )}
                     </Field>
                   </div>
+                </section>
+
+                <section aria-labelledby="slot-title" className="rounded-xl border border-line bg-surface-card p-6 shadow-card">
+                  <h2 id="slot-title" className="sr-only">
+                    Delivery time
+                  </h2>
+                  <SlotPicker
+                    value={slot}
+                    onChange={setSlot}
+                    disabled={busy}
+                    etaText={area.kind === 'ok' && area.zone?.etaMin && area.zone?.etaMax ? `about ${area.zone.etaMin} to ${area.zone.etaMax} min` : ''}
+                  />
                 </section>
 
                 <section aria-labelledby="extras-title" className="rounded-xl border border-line bg-surface-card p-6 shadow-card">
@@ -519,6 +490,21 @@ export default function CheckoutPage() {
                 ) : (
                   <p className="mt-2 text-small text-ink-muted">You pay in Razorpay&apos;s secure window. Your total is confirmed before it opens.</p>
                 )}
+                <p className="mt-2 text-small text-ink-muted">
+                  By paying you agree to our{' '}
+                  <Link href="/terms" className="font-bold text-brand-text underline">
+                    Terms
+                  </Link>{' '}
+                  and{' '}
+                  <Link href="/refunds" className="font-bold text-brand-text underline">
+                    Cancellation &amp; Refunds
+                  </Link>
+                  . We use your address and order details only to deliver and account for this order, as explained in our{' '}
+                  <Link href="/privacy" className="font-bold text-brand-text underline">
+                    Privacy Policy
+                  </Link>
+                  , and you can have your data erased later from My account.
+                </p>
                 <p role="status" className="sr-only">
                   {busy ? STAGE_TEXT[stage] : ''}
                 </p>

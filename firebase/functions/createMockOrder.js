@@ -26,6 +26,7 @@
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { quoteCart } = require('./previewCheckout');
+const { readPromoClaim, writePromoClaim } = require('./shared/promoLimits');
 
 const MAX_ADDRESS_LENGTH = 200;
 const fail = (code, message) => new HttpsError(code, message);
@@ -50,7 +51,7 @@ async function buildMockOrder(request, deps = {}) {
   const now = FieldValue.serverTimestamp();
   const { pricing, zone } = quote;
 
-  await ref.create({
+  const order = {
     id: ref.id,
     uid: request.auth.uid,
     items: quote.items,
@@ -60,6 +61,7 @@ async function buildMockOrder(request, deps = {}) {
     pincode: data.pincode,
     address,
     note,
+    slot: quote.slot,
     payment: { razorpayOrderId: null, razorpayPaymentId: null, amountPaise: pricing.total * 100, currency: 'INR', mock: true },
     status: 'PREPARING',
     paymentStatus: 'PAID_MOCK',
@@ -68,7 +70,20 @@ async function buildMockOrder(request, deps = {}) {
     timestamps: { PAYMENT_CONFIRMED: now, PREPARING: now },
     createdAt: now,
     updatedAt: now,
-  });
+  };
+
+  if (!quote.promo) {
+    await ref.create(order);
+  } else {
+    // A test order counts a use of its promo code exactly like a real one (same limits, same transaction), so the
+    // "already used" and "usage limit" messages can be tried on a laptop.
+    await db.runTransaction(async (tx) => {
+      const claim = await readPromoClaim(tx, db, quote.promo.code, request.auth.uid);
+      if (claim?.problem) throw fail('failed-precondition', claim.problem.message, { promoLimit: true });
+      tx.create(ref, order);
+      if (claim) writePromoClaim(tx, claim, { uid: request.auth.uid, orderId: ref.id });
+    });
+  }
 
   return { orderId: ref.id, status: 'PREPARING', paymentStatus: 'PAID_MOCK', pricing };
 }

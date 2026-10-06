@@ -35,6 +35,96 @@ describe('seed catalogue', () => {
     }
   });
 
+  it('every seeded product turns into a complete, safe storefront product (images, benefits, tab)', async () => {
+    // Runs the seed through the SAME normaliser the storefront uses, so a seed change that would crash or blank
+    // a page (no photo, a bad benefits list, a category with no home-page tab) fails here first.
+    const { normaliseProduct } = await import('../../web/lib/product.js');
+    const { CATEGORIES } = await import('../../web/content/storefront.js');
+    const { inTab } = await import('../../web/lib/categories.js');
+    const realTabs = CATEGORIES.filter((t) => t.categories.length > 0);
+    for (const p of buildProducts()) {
+      const n = normaliseProduct(p.slug, p);
+      assert.ok(n, `${p.slug} could not be normalised`);
+      assert.ok(n.images.length > 0 && n.images.every((u) => /^https:\/\//.test(u)), `${p.slug} needs at least one photo`);
+      assert.ok(Array.isArray(n.keyBenefits), p.slug);
+      assert.ok(realTabs.some((t) => inTab(n, t)), `${p.slug} is in category "${n.category}", which has no home-page tab`);
+      assert.ok(Array.isArray(p.images), `${p.slug}: images must be a list (empty is fine: placeholders are used)`);
+    }
+  });
+
+  it('adds the four Chilled & Dairy products, each with a storage note and the harvest facts', () => {
+    const expected = {
+      'madagascar-vanilla-ice-cream': ['Madagascar Vanilla Bean Ice Cream', 'Ice Cream', 'Keep Frozen at -18°C'],
+      'a2-organic-farm-milk': ['A2 Organic Farm Milk', 'Dairy', 'Keep Refrigerated below 4°C'],
+      'cold-pressed-orange-juice': ['Cold-Pressed Valencia Orange Juice', 'Beverages', 'Keep Refrigerated'],
+      'chilled-watermelon-mint-bowl': ['Chilled Watermelon & Mint Bowl', 'Cut Fruits', 'Keep Refrigerated'],
+    };
+    for (const [slug, [name, category, storage]] of Object.entries(expected)) {
+      const p = bySlug[slug];
+      assert.ok(p, `${slug} is missing`);
+      assert.equal(p.name, name);
+      assert.equal(p.category, category);
+      assert.equal(p.storage, storage);
+      assert.ok(typeof p.origin === 'string' && p.origin.length > 0, slug);
+      assert.ok(typeof p.calories === 'string' && p.calories.length > 0, slug);
+      assert.ok(Array.isArray(p.keyBenefits) && p.keyBenefits.length >= 2, slug);
+      assert.ok(p.stock > 0 && p.active === true, slug);
+    }
+  });
+
+  it('only the chilled and frozen products have a storage note', () => {
+    const withStorage = buildProducts().filter((p) => p.storage !== undefined).map((p) => p.slug).sort();
+    assert.deepEqual(withStorage, ['a2-organic-farm-milk', 'chilled-watermelon-mint-bowl', 'cold-pressed-orange-juice', 'madagascar-vanilla-ice-cream']);
+  });
+
+  it('gives EVERY product the four specification fields (shelf life, story, ingredients text, nutrition)', async () => {
+    const { normaliseProduct } = await import('../../web/lib/product.js');
+    const { specRows } = await import('../../web/lib/specs.js');
+    for (const p of buildProducts()) {
+      const n = normaliseProduct(p.slug, p);
+      assert.ok(n.shelfLife, `${p.slug} has no shelfLife`);
+      assert.ok(n.brandStory && n.brandStory.length > 40, `${p.slug} has no brandStory`);
+      assert.ok(n.ingredientsText, `${p.slug} has no ingredientsText`);
+      assert.ok(n.nutrition && n.nutrition.rows.length >= 5, `${p.slug} has no nutrition table`);
+      assert.deepEqual(specRows(n), { ingredients: true, nutrition: true, sourcing: true, shelfLife: true }, p.slug);
+      // the plain list of ingredient names is still a list, as the rest of the app expects
+      assert.ok(Array.isArray(p.ingredients) && p.ingredients.every((i) => typeof i === 'string'), p.slug);
+      assert.equal(typeof p.ingredientsText, 'string', p.slug);
+    }
+  });
+
+  it('nutrition starts with Energy, and Energy agrees with the calories text where a product has one', () => {
+    for (const p of buildProducts()) {
+      assert.equal(p.nutrition.rows[0].label, 'Energy', p.slug);
+      const kcal = Number(/(\d+)\s*kcal/.exec(p.nutrition.rows[0].value)?.[1]);
+      assert.ok(Number.isFinite(kcal) && kcal > 0, p.slug);
+      if (p.calories) assert.equal(Number(/(\d+)\s*kcal/.exec(p.calories)?.[1]), kcal, `${p.slug}: calories text and nutrition Energy disagree`);
+    }
+  });
+
+  it('tells you about the real allergens: milk products say so, and so does the box with nuts', () => {
+    assert.match(bySlug['a2-organic-farm-milk'].allergens, /milk/i);
+    assert.match(bySlug['madagascar-vanilla-ice-cream'].allergens, /milk/i);
+    assert.match(bySlug['gym-fuel-pack'].allergens, /nuts/i);
+    // and no product that lists nuts or milk as an ingredient is missing the warning
+    for (const p of buildProducts()) {
+      if (p.ingredients.some((i) => /nut|milk|cream/i.test(i))) assert.ok(p.allergens, `${p.slug} lists nuts or milk but has no allergen note`);
+    }
+  });
+
+  it('the stories match what the shop promised: Gir cows for the milk, 4 days refrigerated, 3 months frozen', () => {
+    assert.match(bySlug['a2-organic-farm-milk'].brandStory, /Gir/);
+    assert.match(bySlug['a2-organic-farm-milk'].brandStory, /graze freely/);
+    assert.match(bySlug['a2-organic-farm-milk'].shelfLife, /4 days/);
+    assert.match(bySlug['madagascar-vanilla-ice-cream'].shelfLife, /3 months/);
+    assert.match(bySlug['madagascar-vanilla-ice-cream'].ingredientsText, /cream/i);
+    assert.match(bySlug['madagascar-vanilla-ice-cream'].ingredientsText, /vanilla bean/i);
+    assert.equal(bySlug['a2-organic-farm-milk'].ingredientsText, '100% Organic A2 Cow Milk');
+    for (const p of buildProducts().filter((x) => ['Fresh', 'Fitness', 'Ramadan', 'Seasonal', 'Exotics', 'Immunity'].includes(x.category))) {
+      assert.match(p.shelfLife, /within 3 days/i, p.slug);
+    }
+  });
+
   it('leaves the launch boxes without the new fields (the page then hides the section)', () => {
     for (const slug of ['classic-fresh-mix', 'tropical-bliss', 'gym-fuel-pack', 'ramadan-special-box', 'mango-season-box']) {
       assert.equal(bySlug[slug].origin, undefined, slug);

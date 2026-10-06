@@ -12,6 +12,13 @@
   --font-serif: var(--font-playfair), "Playfair Display", Georgia, serif;
   --font-sans: var(--font-jakarta), "Plus Jakarta Sans", "Segoe UI", Arial, sans-serif;
 
+  /* The "chill" colours of the temperature badge (components/StorageBadge.js): pale blue, its border, the text on
+     it (about 8:1 contrast) and the snowflake. Fixed on purpose: the badge brings its own light background. */
+  --color-chill: #e3f0f7;
+  --color-chill-line: #b9d8ea;
+  --color-chill-text: #0f4a6b;
+  --color-chill-icon: #2a7fb0;
+
   --radius-2xl: 24px;
   --radius-3xl: 32px;
 
@@ -65,6 +72,31 @@
 
 .fb-marquee:hover {
   animation-play-state: paused;
+}
+
+/* The category tabs (components/CategoryTabs.js) scroll sideways on a phone: no scrollbar, and a fade at the right edge. */
+.fb-tabs-scroll {
+  scrollbar-width: none;
+}
+.fb-tabs-scroll::-webkit-scrollbar {
+  display: none;
+}
+@media (max-width: 639px) {
+  .fb-tabs-scroll {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
+  }
+}
+
+/* The fruit on the home page promo banner (components/FeaturedPromo.js) drifts up and down. */
+@keyframes fb-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-14px);
+  }
 }
 
 /* Motion is optional: honour the visitor's setting everywhere. */
@@ -135,6 +167,28 @@
 
   dialog.fb-receipt-dialog::backdrop {
     background: transparent !important;
+  }
+}
+
+/* On a phone a tab bar is fixed to the bottom edge (components/MobileBottomNav.js). Whatever wraps the page carries
+   fb-has-bottom-nav, which leaves that much room under the footer, so the bar never covers it. The product page's
+   buy bar (fb-sticky-cta) sits just above the tab bar, using the same variable. */
+:root {
+  --fb-bottom-nav-h: 4rem;
+}
+@media (max-width: 767px) {
+  .fb-has-bottom-nav {
+    padding-bottom: calc(var(--fb-bottom-nav-h) + env(safe-area-inset-bottom));
+  }
+}
+
+/* The back-to-top button (components/BackToTop.js) floats above the phone tab bar, and higher still when the product page's buy bar is there. */
+@media (max-width: 767px) {
+  .fb-back-to-top {
+    bottom: calc(var(--fb-bottom-nav-h) + env(safe-area-inset-bottom) + 1rem);
+  }
+  body:has(.fb-sticky-cta) .fb-back-to-top {
+    bottom: calc(var(--fb-bottom-nav-h) + env(safe-area-inset-bottom) + 6.5rem);
   }
 }
 

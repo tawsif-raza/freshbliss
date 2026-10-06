@@ -16,8 +16,9 @@ const SIZES = [
 ];
 
 // A read-only database: products, zones and promos.
-function fakeDb({ products = {}, zones = [], promos = {} } = {}) {
+function fakeDb({ products = {}, zones = [], promos = {}, extra = {} } = {}) {
   const docs = new Map();
+  for (const [path, d] of Object.entries(extra)) docs.set(path, d); // any other document, for example a promo's usage record
   for (const [id, p] of Object.entries(products)) docs.set(`products/${id}`, p);
   for (const [code, p] of Object.entries(promos)) docs.set(`promoCodes/${code}`, p);
   const snap = (path) => {
@@ -187,5 +188,126 @@ describe('previewCheckout: it changes nothing', () => {
     assert.equal(typeof db.batch, 'undefined');
     assert.equal(typeof db.runTransaction, 'undefined');
     await ask(cart({ promoCode: 'WELCOME10' }), db);
+  });
+});
+
+// ============================================================
+describe('previewCheckout: wrong promo codes are reported to the rate limiter', () => {
+  const guess = async (promoCode) => {
+    let wrong = 0;
+    const result = await quoteCart({ auth: staff, data: cart({ promoCode }) }, { db: world(), onBadPromo: () => (wrong += 1) }).catch((e) => e);
+    return { wrong, result };
+  };
+
+  it('counts a made-up, switched-off, expired or malformed code as one wrong guess each', async () => {
+    for (const code of ['NOPE', 'OFF', 'OLD', 'has spaces!']) assert.equal((await guess(code)).wrong, 1, code);
+  });
+
+  it('does not count a right code, no code, or a right code that needs a bigger order', async () => {
+    assert.equal((await guess('WELCOME10')).wrong, 0);
+    assert.equal((await guess(null)).wrong, 0);
+    const small = await quoteCart({ auth: staff, data: cart({ items: [{ productId: 'classic-fresh-mix', size: 'regular', qty: 1 }], promoCode: 'WELCOME10' }) }, { db: world(), onBadPromo: () => assert.fail('a valid code is not a wrong guess') }).catch((e) => e);
+    assert.match(small.message, /Add ₹50 more/);
+  });
+});
+
+// ============================================================
+describe('previewCheckout: delivery slot', () => {
+  const NOW = new Date('2026-10-05T15:30:00+05:30');
+  const withSlot = (slot) => quoteCart({ auth: staff, data: cart({ slot }) }, { db: world(), now: NOW });
+
+  it('returns null for "as soon as possible" (no slot sent)', async () => {
+    const q = await quoteCart({ auth: staff, data: cart() }, { db: world(), now: NOW });
+    assert.equal(q.slot, null);
+  });
+
+  it('returns the full slot for an open one, and does not change the price', async () => {
+    const q = await withSlot({ date: '2026-10-05', id: '1900-2100' });
+    assert.equal(q.slot.label, '7 pm to 9 pm');
+    const plain = await quoteCart({ auth: staff, data: cart() }, { db: world(), now: NOW });
+    assert.deepEqual(q.pricing, plain.pricing);
+  });
+
+  it('says so plainly when the slot has closed, and rejects a made-up one', async () => {
+    await rejects(withSlot({ date: '2026-10-05', id: '1500-1700' }), 'failed-precondition', /no longer available/);
+    await rejects(withSlot({ date: '2026-10-05', id: 'free-delivery' }), 'invalid-argument', /not valid/);
+    await rejects(withSlot('later'), 'invalid-argument', /not valid/);
+  });
+});
+
+// ============================================================
+describe('previewCheckout: promo usage limits', () => {
+  const PROMOS = {
+    ONCE: { type: 'percent', value: 10, min: 0, active: true, expiresAt: null, maxUsesPerUser: 1 },
+    TWICE: { type: 'percent', value: 10, min: 0, active: true, expiresAt: null, maxUsesPerUser: 2 },
+    LIMITED: { type: 'percent', value: 10, min: 0, active: true, expiresAt: null, globalMaxUses: 100, usedCount: 99 },
+    GONE: { type: 'percent', value: 10, min: 0, active: true, expiresAt: null, globalMaxUses: 100, usedCount: 100 },
+    ZERO: { type: 'percent', value: 10, min: 0, active: true, expiresAt: null, globalMaxUses: 0 },
+    TYPO: { type: 'percent', value: 10, min: 0, active: true, expiresAt: null, maxUsesPerUser: '1' },
+    NEGATIVE: { type: 'percent', value: 10, min: 0, active: true, expiresAt: null, globalMaxUses: -5 },
+    MEMBERS: { type: 'percent', value: 10, min: 0, active: true, expiresAt: null, requiresSignIn: true, maxUsesPerUser: 1 },
+    OPEN: { type: 'percent', value: 10, min: 0, active: true, expiresAt: null },
+  };
+  const used = (code, uid, count) => ({ [`promoCodes/${code}/uses/${uid}`]: { uid, code, count } });
+  const db = (extra = {}) => world({ promos: PROMOS, extra });
+  const ask1 = (promoCode, over = {}, extra = {}) =>
+    quoteCart({ auth: { uid: 'u1', token: {}, ...over }, data: cart({ promoCode }) }, { db: db(extra), onBadPromo: over.onBad });
+
+  it('lets a customer use a code they have not used up (no usage record, or fewer uses than the limit)', async () => {
+    assert.equal((await ask1('ONCE')).promo.code, 'ONCE');
+    assert.equal((await ask1('TWICE', {}, used('TWICE', 'u1', 1))).promo.code, 'TWICE');
+    assert.equal((await ask1('LIMITED')).promo.code, 'LIMITED', 'one use left in total');
+    assert.equal((await ask1('OPEN', {}, used('OPEN', 'u1', 50))).promo.code, 'OPEN', 'no limits means no limits');
+  });
+
+  it('politely refuses a customer who has used a one-use code: "You have already used the code ONCE."', async () => {
+    await rejects(ask1('ONCE', {}, used('ONCE', 'u1', 1)), 'failed-precondition', /^You have already used the code ONCE\.$/);
+  });
+
+  it('says how many times a multi-use code allows', async () => {
+    await rejects(ask1('TWICE', {}, used('TWICE', 'u1', 2)), 'failed-precondition', /already used the code TWICE the 2 times it allows/);
+  });
+
+  it('counts each customer separately: someone else having used it changes nothing for u1', async () => {
+    assert.equal((await ask1('ONCE', {}, used('ONCE', 'someone-else', 1))).promo.code, 'ONCE');
+  });
+
+  it('refuses a code that has reached its total limit: "This promo code has reached its usage limit."', async () => {
+    await rejects(ask1('GONE'), 'failed-precondition', /^This promo code has reached its usage limit\.$/);
+  });
+
+  it('treats a limit of 0 as "used up"', async () => {
+    await rejects(ask1('ZERO'), 'failed-precondition', /reached its usage limit/);
+  });
+
+  it('REFUSES a code whose limit is a typo (a string, a negative number) instead of treating it as unlimited', async () => {
+    for (const code of ['TYPO', 'NEGATIVE']) await rejects(ask1(code), 'failed-precondition', /not valid/);
+  });
+
+  it('marks a usage-limit refusal so the checkout page can show it under the promo box', async () => {
+    const err = await ask1('GONE').catch((e) => e);
+    assert.equal(err.details.promoLimit, true);
+  });
+
+  it('does NOT count a usage-limit refusal as a wrong guess (the customer is not guessing), but a typo\'d code stays quiet and is counted', async () => {
+    let wrong = 0;
+    await ask1('GONE', { onBad: () => (wrong += 1) }).catch(() => {});
+    await ask1('ONCE', { onBad: () => (wrong += 1) }, used('ONCE', 'u1', 1)).catch(() => {});
+    assert.equal(wrong, 0);
+    await ask1('TYPO', { onBad: () => (wrong += 1) }).catch(() => {});
+    assert.equal(wrong, 1);
+  });
+
+  it('asks a guest to sign in for a members-only code, and lets a signed-in customer through', async () => {
+    const guest = { token: { firebase: { sign_in_provider: 'anonymous' } } };
+    await rejects(ask1('MEMBERS', guest), 'failed-precondition', /^Sign in to use this promo code\.$/);
+    assert.equal((await ask1('MEMBERS', { token: { firebase: { sign_in_provider: 'google.com' } } })).promo.code, 'MEMBERS');
+    assert.equal((await ask1('OPEN', guest)).promo.code, 'OPEN', 'other codes stay open to guests');
+  });
+
+  it('still reads only: a usage check never writes', async () => {
+    const d = db(used('ONCE', 'u1', 0));
+    assert.equal(typeof d.runTransaction, 'undefined');
+    await quoteCart({ auth: staff, data: cart({ promoCode: 'ONCE' }) }, { db: d });
   });
 });

@@ -28,11 +28,11 @@ const FAQ_GROUPS = [
       {
         question: 'Can I modify or cancel my order after placing it?',
         answer:
-          'Because our fulfillment process begins immediately to ensure fast delivery, orders cannot be modified or canceled once the status changes to "Preparing".',
+          'You can cancel from the My orders page until your order is packed (that is, while it still says "Payment confirmed" or "Preparing"). Once it is packed or out for delivery it can no longer be cancelled online, so please contact support. Orders cannot be edited after payment. See our Cancellation & Refunds page for how refunds work.',
       },
       {
         question: 'Is there a minimum order value for free delivery?',
-        answer: 'Yes, orders over ₹500 qualify for free delivery. For orders below this amount, a flat ₹30 delivery fee is applied during checkout.',
+        answer: 'Yes, orders of ₹499 or more qualify for free delivery. For orders below this amount, a flat ₹30 delivery fee is applied during checkout.',
       },
     ],
   },
@@ -48,7 +48,7 @@ const FAQ_GROUPS = [
       {
         question: 'What happens if an item I ordered is out of stock?',
         answer:
-          "Because we deal in fresh daily harvests, items occasionally run out. If this happens after your order is placed, we will instantly refund the missing item's amount to your original payment method. We never substitute with lower-quality items.",
+          "Because we deal in fresh daily harvests, items occasionally run out. We check stock before you pay. If the last box sells out in the moments while you are paying, we cancel the whole order (not just that item) and refund the full amount to your original payment method, and you can order again. We never substitute with lower-quality items.",
       },
     ],
   },

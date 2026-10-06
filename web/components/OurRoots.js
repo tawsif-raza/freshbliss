@@ -5,7 +5,7 @@
 // and the photo on the right. A gold outline sits offset behind the photo for depth, and the photo rises gently
 // into place as it scrolls into view (not for visitors who asked their device for less motion).
 
-import Image from 'next/image';
+import OptimizedImage from '@/components/OptimizedImage';
 import { MotionConfig, motion } from 'framer-motion';
 import { OUR_ROOTS } from '@/content/storefront';
 
@@ -32,7 +32,7 @@ export default function OurRoots() {
             {/* the gold outline, offset behind the photo */}
             <div aria-hidden="true" className="absolute inset-0 translate-x-3 translate-y-3 rounded-2xl border-2 border-gold-bright" />
             <div className="relative aspect-[4/3] overflow-hidden rounded-2xl shadow-2xl">
-              <Image src={OUR_ROOTS.image} alt={OUR_ROOTS.imageAlt} fill sizes="(min-width: 768px) 50vw, 100vw" unoptimized className="object-cover" />
+              <OptimizedImage src={OUR_ROOTS.image} alt={OUR_ROOTS.imageAlt} fill sizes="(min-width: 768px) 50vw, 100vw" className="object-cover" />
             </div>
           </motion.div>
         </div>

@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { TIP_OPTIONS, unitPrice, linesFromOrder, maskPaymentId, shortOrderNumber, previewTotals, formatOrderDate } from '../lib/pricing.js';
+import { TIP_OPTIONS, freeDeliveryProgress, unitPrice, linesFromOrder, maskPaymentId, shortOrderNumber, previewTotals, formatOrderDate } from '../lib/pricing.js';
 
 const product = { price: 149, sizes: [{ id: 'regular', label: 'Regular', extra: 0 }, { id: 'large', label: 'Large', extra: 50 }] };
 
@@ -11,6 +11,22 @@ describe('prices', () => {
     assert.equal(unitPrice(product, 'huge'), null);
   });
   it('offers the same tips the server accepts', () => assert.deepEqual(TIP_OPTIONS, [0, 10, 20, 30]));
+});
+
+describe('free delivery progress', () => {
+  it('fills the bar towards the threshold and says how much is left', () => {
+    assert.deepEqual(freeDeliveryProgress(0, 499), { percent: 0, remaining: 499, unlocked: false });
+    assert.deepEqual(freeDeliveryProgress(250, 499), { percent: 50, remaining: 249, unlocked: false });
+    assert.deepEqual(freeDeliveryProgress(498, 499), { percent: 100, remaining: 1, unlocked: false });
+  });
+  it('unlocks at exactly the threshold, like the server (>=), and stays full above it', () => {
+    assert.deepEqual(freeDeliveryProgress(499, 499), { percent: 100, remaining: 0, unlocked: true });
+    assert.deepEqual(freeDeliveryProgress(900, 499), { percent: 100, remaining: 0, unlocked: true });
+  });
+  it('treats a missing or negative subtotal as an empty cart', () => {
+    assert.equal(freeDeliveryProgress(undefined, 499).remaining, 499);
+    assert.equal(freeDeliveryProgress(-5, 499).percent, 0);
+  });
 });
 
 describe('preview totals', () => {

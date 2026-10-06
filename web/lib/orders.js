@@ -28,7 +28,7 @@ export function useMyOrders() {
       setState((s) => ({ ...s, status: 'loading' }));
       stopOrders = onSnapshot(
         query(collection(db, 'orders'), where('uid', '==', user.uid), orderBy('createdAt', 'desc'), limit(RECENT)),
-        (snap) => setState({ status: 'ready', orders: snap.docs.map((d) => ({ id: d.id, ...d.data() })) }),
+        (snap) => setState({ status: 'ready', orders: snap.docs.map((d) => ({ ...d.data(), id: d.id })) }),
         (error) => {
           console.error('Could not load orders:', error);
           setState({ status: 'error', orders: [] });

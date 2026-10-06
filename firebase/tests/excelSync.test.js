@@ -60,15 +60,30 @@ const ledger = async () => (await db.doc(`excelSync/${orderId}`).get()).data();
 
 // ============================================================
 describe('the row', () => {
+  it('writes the delivery slot: the chosen window, "As soon as possible", or blank for an old order', () => {
+    const at = (slot) => orderToRow('o', sampleOrder({ slot }))[EXCEL_COLUMNS.indexOf('Delivery slot')];
+    assert.equal(at({ date: '2026-10-05', id: '1800-2000', label: '6 pm to 8 pm', startsAt: '2026-10-05T12:30:00.000Z' }), '2026-10-05 6 pm to 8 pm');
+    assert.equal(at(null), 'As soon as possible');
+    assert.equal(at(undefined), '');
+    assert.equal(at({ date: 5 }), '', 'a malformed slot is left blank, never written as junk');
+  });
+
+  it('keeps the three live columns last, so a status change rewrites only those', () => {
+    assert.deepEqual(EXCEL_COLUMNS.slice(-3), ['Payment status', 'Order status', 'Last updated (IST)']);
+    assert.equal(EXCEL_COLUMNS.length - sync.FIRST_LIVE_COLUMN, 3);
+    assert.equal(EXCEL_COLUMNS[sync.FIRST_LIVE_COLUMN - 1], 'Delivery slot');
+  });
+
   it('has one value per column, in the documented order', () => {
     const row = orderToRow('ord1', sampleOrder(), { name: 'Asha', phone: '+91 99999 99999' });
     assert.equal(row.length, EXCEL_COLUMNS.length);
-    assert.equal(row.length, 18);
+    assert.equal(row.length, 19);
     assert.deepEqual(row, [
       'ord1', '2026-10-01 00:15', 'Asha', "'+91 99999 99999", // a leading + would be read as a formula, so it gets the apostrophe
       '12 MG Road, Indiranagar', '560100', 'Zone B',
       '2 × Classic Fresh Mix (Large); 1 × Tropical Bliss (Regular)',
       577, 0, 30, 0, 607, 'pay_123', 'Ring twice',
+      '', // an order with no `slot` field at all (made before slots existed)
       // live columns
       'PAID', 'PAYMENT_CONFIRMED', '2026-10-01 00:15',
     ]);
@@ -86,7 +101,7 @@ describe('the row', () => {
 
   it('keeps going when the order is missing most fields', () => {
     const row = orderToRow('o', {});
-    assert.equal(row.length, 18);
+    assert.equal(row.length, 19);
     assert.deepEqual(row.slice(8, 13), [0, 0, 0, 0, 0]);
   });
 

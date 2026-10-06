@@ -49,7 +49,7 @@ service cloud.firestore {
     // stock and uses just productId / size / qty. Rules cannot loop over array
     // items, so we limit the top-level shape and the list size here.
     function validCart(d) {
-      return d.keys().hasOnly(['items', 'note', 'tip', 'promoCode', 'pincode', 'updatedAt'])
+      return d.keys().hasOnly(['items', 'note', 'tip', 'promoCode', 'pincode', 'slot', 'updatedAt'])
         && d.keys().hasAll(['items', 'updatedAt'])
         && d.items is list
         && d.items.size() <= 30
@@ -59,7 +59,19 @@ service cloud.firestore {
               || (d.promoCode is string && d.promoCode.size() <= 32))
         && (!('pincode' in d) || d.pincode == null
               || (d.pincode is string && d.pincode.matches('^[0-9]{6}$')))
+        && (!('slot' in d) || validSlot(d.slot))
         && d.updatedAt == request.time;
+    }
+
+    // A delivery slot is just a date and a window id. null means "as soon as possible". Whether that slot
+    // is real and still open is decided by the server (functions/shared/slots.js) when the customer pays.
+    function validSlot(s) {
+      return s == null
+        || (s is map
+            && s.keys().hasOnly(['date', 'id'])
+            && s.keys().hasAll(['date', 'id'])
+            && s.date is string && s.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+            && s.id is string && s.id.matches('^[0-9]{4}-[0-9]{4}$'));
     }
 
     match /carts/{uid} {
@@ -123,13 +135,27 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // promoCodes: server-only so codes cannot be listed by customers.
+    // promoCodes: server-only so codes cannot be listed by customers. Its usage counters
+    // (usedCount, and the per-customer promoCodes/{code}/uses/{uid} documents; see
+    // functions/shared/promoLimits.js) must not be readable or editable by anyone either: a customer who could
+    // reset their own count would get unlimited uses.
     match /promoCodes/{code} {
+      allow read, write: if false;
+      match /uses/{uid} {
+        allow read, write: if false;
+      }
+    }
+
+    // rateLimits: the call counters behind the rate limits (functions/shared/rateLimit.js). Server-only, so a
+    // customer can neither read nor reset their own count. Old counters are deleted by a TTL policy on
+    // `expiresAt` (firestore.indexes.json).
+    match /rateLimits/{key} {
       allow read, write: if false;
     }
 
-    // paymentEvents (webhook dedupe ledger) and excelSync (the Excel copy ledger) are
-    // server-only too. They are covered by the default deny below.
+    // paymentEvents (webhook dedupe ledger), excelSync (the Excel copy ledger) and erasureLog (the proof that a
+    // customer's data was erased, functions/shared/erasure.js; it holds no personal data) are server-only too.
+    // They are covered by the default deny below.
 
     // ---------- default deny ----------
     // Anything not matched above is closed to every client.

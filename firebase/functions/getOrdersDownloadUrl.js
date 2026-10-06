@@ -17,6 +17,7 @@
 // It never returns the AWS secret. A link carries the access key ID and a signature, not the secret.
 
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { callableOptions } = require('./shared/hardening');
 const { logger } = require('firebase-functions');
 const { requireStaff } = require('./shared/staff');
 const { createDownloadLink, DOWNLOAD_LINK_SECONDS } = require('./shared/s3Workbook');
@@ -50,7 +51,7 @@ async function issueDownloadLink(request, deps = {}) {
   return { url: link.url, filename: link.filename, expiresAt: link.expiresAt, expiresInSeconds: DOWNLOAD_LINK_SECONDS };
 }
 
-exports.getOrdersDownloadUrl = onCall({ region: REGION, secrets: [EXCEL_AWS_SECRET_ACCESS_KEY], timeoutSeconds: 30 }, (request) => issueDownloadLink(request));
+exports.getOrdersDownloadUrl = onCall(callableOptions({ secrets: [EXCEL_AWS_SECRET_ACCESS_KEY], timeoutSeconds: 30 }), (request) => issueDownloadLink(request));
 
 // Exported for the tests.
 exports.issueDownloadLink = issueDownloadLink;

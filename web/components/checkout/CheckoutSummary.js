@@ -6,9 +6,8 @@
 //   estimated   true while these figures are our own preview and the server's price is still on its way
 //   promoCode   the applied code, to name the discount
 
-import Image from 'next/image';
+import OptimizedImage from '@/components/OptimizedImage';
 import SummaryRow from '@/components/SummaryRow';
-import { resizeImage } from '@/lib/images';
 import { feeLabel } from '@/lib/zoneMatch';
 
 export default function CheckoutSummary({ items, pricing, estimated = false, promoCode = null }) {
@@ -20,7 +19,7 @@ export default function CheckoutSummary({ items, pricing, estimated = false, pro
         {items.map((item) => (
           <li key={item.id} className="flex items-center gap-3 py-2 text-body text-ink first:pt-0">
             <span className="relative size-12 shrink-0 overflow-hidden rounded-md bg-surface-cream">
-              {item.image && <Image src={resizeImage(item.image, 120)} alt="" fill sizes="48px" unoptimized className="object-cover" />}
+              {item.image && <OptimizedImage src={item.image} alt="" fill sizes="48px" className="object-cover" />}
             </span>
             <span className="min-w-0 flex-1">
               {item.qty} × {item.name} <span className="text-ink-muted">({item.sizeLabel})</span>

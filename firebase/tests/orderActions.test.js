@@ -1,6 +1,6 @@
 'use strict';
 
-// Tests for staff cancelling an order and marking its refund done.
+// Tests for staff and customers cancelling an order. (Sending the refund to Razorpay is tested in refunds.test.js.)
 // Run: npm run test:orders   (uses the real Firestore emulator)
 
 const { describe, it, before, beforeEach } = require('node:test');
@@ -14,7 +14,6 @@ const { initializeApp, getApps } = fromFunctions('firebase-admin/app');
 const { getFirestore } = fromFunctions('firebase-admin/firestore');
 const { advanceOrder } = require('../functions/updateOrderStatus');
 const { cancelOrderTx } = require('../functions/cancelOrder');
-const { refundOrderTx } = require('../functions/processRefund');
 
 const RIDER = { name: 'Ravi', phone: '+91 98765 43210', vehicle: 'Bike KA-01' };
 
@@ -51,9 +50,79 @@ const get = async () => (await db.doc(`orders/${id}`).get()).data();
 const stockOf = async () => (await db.doc(`products/${pid}`).get()).get('stock');
 const advance = (status, rider) => advanceOrder(db, { orderId: id, status, rider, staffUid: 'staff1' });
 const cancel = (over = {}) => cancelOrderTx(db, { orderId: id, reason: 'Customer called to cancel', staffUid: 'staff1', ...over });
-const refund = (over = {}) => refundOrderTx(db, { orderId: id, note: '', staffUid: 'staff1', ...over });
 
 // ============================================================
+// ============================================================
+describe('cancelOrderTx (customer cancels their own order)', () => {
+  const mine = (over = {}) => cancelOrderTx(db, { orderId: id, reason: 'Customer: Changed my mind', customerUid: 'alice', ...over });
+
+  it('lets the owner cancel a new order: refund flagged, stock returned, marked as the customer', async () => {
+    const r = await mine();
+    assert.deepEqual([r.status, r.paymentStatus, r.restocked, r.replay], ['CANCELLED', 'REFUND_PENDING', true, false]);
+    const o = await get();
+    assert.equal(o.cancelledBy, 'customer');
+    assert.equal(o.updatedBy, 'alice');
+    assert.equal(o.cancelReason, 'Customer: Changed my mind');
+    assert.equal(await stockOf(), 7);
+  });
+
+  it('lets the owner cancel while it is being prepared', async () => {
+    await advance('PREPARING');
+    assert.equal((await mine()).status, 'CANCELLED');
+    assert.equal(await stockOf(), 7);
+  });
+
+  it('refuses once the order is packed, and changes nothing', async () => {
+    await advance('PREPARING');
+    await advance('PACKED');
+    await assert.rejects(() => mine(), /packed/);
+    const o = await get();
+    assert.equal(o.status, 'PACKED');
+    assert.equal(o.paymentStatus, 'PAID');
+    assert.equal(await stockOf(), 5);
+  });
+
+  it('refuses when it is out for delivery or delivered', async () => {
+    await advance('PREPARING');
+    await advance('PACKED');
+    await advance('OUT_FOR_DELIVERY', RIDER);
+    await assert.rejects(() => mine(), /packed/);
+    await db.doc(`orders/${id}`).update({ status: 'DELIVERED' });
+    await assert.rejects(() => mine(), /delivered order cannot be cancelled/);
+    assert.equal(await stockOf(), 5);
+  });
+
+  it("will not touch someone else's order, and says 'not found' so ids cannot be probed", async () => {
+    await assert.rejects(() => mine({ customerUid: 'mallory' }), /could not find that order/);
+    const o = await get();
+    assert.equal(o.status, 'PAYMENT_CONFIRMED');
+    assert.equal(await stockOf(), 5);
+  });
+
+  it('ignores a restock override: a customer cannot choose it', async () => {
+    const r = await mine({ restock: false });
+    assert.equal(r.restocked, true);
+    assert.equal(await stockOf(), 7);
+  });
+
+  it('returns stock only once even when the button is pressed three times at once', async () => {
+    const results = await Promise.all([mine(), mine(), mine()]);
+    assert.equal(results.filter((r) => !r.replay).length, 1);
+    assert.equal(await stockOf(), 7);
+  });
+
+  it('needs exactly one of staffUid or customerUid', async () => {
+    await assert.rejects(() => cancelOrderTx(db, { orderId: id, reason: 'x' }), /exactly one/);
+    await assert.rejects(() => cancelOrderTx(db, { orderId: id, reason: 'x', staffUid: 's', customerUid: 'alice' }), /exactly one/);
+  });
+
+  it('puts the order in the refund queue (autoRefund then sends the money back: see refunds.test.js)', async () => {
+    await mine();
+    const o = await get();
+    assert.deepEqual([o.status, o.paymentStatus], ['CANCELLED', 'REFUND_PENDING']);
+  });
+});
+
 describe('cancelOrderTx (staff cancel, starts the refund workflow)', () => {
   it('cancels, flags the refund, stamps it, and returns the boxes to stock (not packed yet)', async () => {
     const r = await cancel();
@@ -136,42 +205,5 @@ describe('cancelOrderTx (staff cancel, starts the refund workflow)', () => {
   it('skips a product that was deleted from the catalogue instead of failing', async () => {
     await db.doc(`products/${pid}`).delete();
     assert.equal((await cancel()).status, 'CANCELLED');
-  });
-});
-
-// ============================================================
-describe('refundOrderTx (marks the refund as done)', () => {
-  const makeCancelled = () => db.doc(`orders/${id}`).update({ status: 'CANCELLED', paymentStatus: 'REFUND_PENDING' });
-
-  it('moves REFUND_PENDING to REFUNDED and records who and when', async () => {
-    await makeCancelled();
-    const r = await refund({ note: 'Refunded in Razorpay dashboard' });
-    assert.deepEqual([r.paymentStatus, r.replay], ['REFUNDED', false]);
-    const o = await get();
-    assert.equal(o.paymentStatus, 'REFUNDED');
-    assert.equal(o.status, 'CANCELLED', 'status is untouched');
-    assert.equal(o.refundedBy, 'staff1');
-    assert.equal(o.refundNote, 'Refunded in Razorpay dashboard');
-    assert.ok(o.refundedAt);
-  });
-
-  it('works on orders the system cancelled for stock too', async () => {
-    await db.doc(`orders/${id}`).update({ status: 'CANCELLED', paymentStatus: 'REFUND_PENDING', cancelledBy: 'system' });
-    assert.equal((await refund()).paymentStatus, 'REFUNDED');
-  });
-
-  it('refuses an order that is not waiting for a refund', async () => {
-    await assert.rejects(() => refund(), /pending refund/); // still PAID and active
-    await db.doc(`orders/${id}`).update({ status: 'CANCELLED', paymentStatus: 'PAID' });
-    await assert.rejects(() => refund(), /pending refund/);
-    await assert.rejects(() => refundOrderTx(db, { orderId: 'nope', staffUid: 's' }), /could not find/);
-  });
-
-  it('is a harmless repeat the second time, even simultaneously', async () => {
-    await makeCancelled();
-    const results = await Promise.all([refund(), refund(), refund()]);
-    assert.equal(results.filter((r) => !r.replay).length, 1);
-    assert.equal((await refund()).replay, true);
-    assert.equal((await get()).paymentStatus, 'REFUNDED');
   });
 });

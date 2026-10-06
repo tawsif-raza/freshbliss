@@ -8,11 +8,14 @@ import Link from 'next/link';
 import Callout from '@/components/Callout';
 import CartLineItem from '@/components/CartLineItem';
 import CartSkeleton from '@/components/CartSkeleton';
+import FreeDeliveryProgress from '@/components/FreeDeliveryProgress';
 import SummaryRow from '@/components/SummaryRow';
+import { useCheckoutHref } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
 import { useProducts } from '@/lib/catalog';
 
 export default function CartPage() {
+  const checkoutHref = useCheckoutHref();
   const { items, subtotal, hydrated, catalogStatus, updateQuantity, removeFromCart, getMaxQuantity } = useCart();
   const { reload: reloadCatalogue } = useProducts();
 
@@ -59,18 +62,21 @@ export default function CartPage() {
           {/* items + summary */}
           {loaded && items.length > 0 && (
             <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-              <ul className="flex flex-col gap-4.5">
-                {items.map((item) => (
-                  <CartLineItem
-                    key={item.id}
-                    item={item}
-                    maxQty={getMaxQuantity(item.productId, item.size)}
-                    locked={false}
-                    onChangeQty={(qty) => updateQuantity(item.productId, item.size, qty)}
-                    onRemove={() => removeFromCart(item.productId, item.size)}
-                  />
-                ))}
-              </ul>
+              <div className="flex flex-col gap-4.5">
+                <FreeDeliveryProgress subtotal={subtotal} />
+                <ul className="flex flex-col gap-4.5">
+                  {items.map((item) => (
+                    <CartLineItem
+                      key={item.id}
+                      item={item}
+                      maxQty={getMaxQuantity(item.productId, item.size)}
+                      locked={false}
+                      onChangeQty={(qty) => updateQuantity(item.productId, item.size, qty)}
+                      onRemove={() => removeFromCart(item.productId, item.size)}
+                    />
+                  ))}
+                </ul>
+              </div>
 
               <aside aria-labelledby="summary-title" className="rounded-xl border border-line bg-surface-card p-6 shadow-card lg:sticky lg:top-24">
                 <h2 id="summary-title" className="text-heading-3 text-ink">
@@ -99,7 +105,7 @@ export default function CartPage() {
                   </span>
                 ) : (
                   <Link
-                    href="/checkout"
+                    href={checkoutHref}
                     className="mt-5 grid min-h-13 w-full place-items-center rounded-pill bg-gold-bright px-6 text-heading-3 text-on-gold motion-safe:transition-[filter] hover:brightness-95"
                   >
                     Proceed to Checkout

@@ -7,13 +7,14 @@
 //
 // Exports:
 //   hmacMatches     check an HMAC-SHA256 signature (used for both kinds of signature)
-//   confirmPayment  the Firestore transaction (stock, checkout, order)
+//   confirmPayment  the Firestore transaction (stock, promo usage, checkout, order)
 //   finalizeCheckout  confirmPayment + clearing the cart; what callers should use
 
 const crypto = require('node:crypto');
 const { HttpsError } = require('firebase-functions/v2/https');
 const { logger } = require('firebase-functions');
 const { FieldValue } = require('firebase-admin/firestore');
+const { readPromoClaim, writePromoClaim } = require('./promoLimits');
 
 const SIGNATURE_HEX = /^[0-9a-fA-F]{64}$/; // SHA-256 as hex
 
@@ -81,6 +82,7 @@ async function confirmPayment(db, { checkoutId, razorpayPaymentId, uid }) {
         uid: checkout.uid,
         status: existing.get('status'),
         paymentStatus: existing.get('paymentStatus'),
+        cancelReason: existing.get('cancelReason') ?? null,
         replay: true,
       };
     }
@@ -96,6 +98,11 @@ async function confirmPayment(db, { checkoutId, razorpayPaymentId, uid }) {
 
     const shortage = findShortage(checkout.items, productSnaps);
 
+    // A promo code with usage limits: read its counters in this same transaction, so two customers racing for the last
+    // use (or one customer paying twice) are serialised and only one gets it (shared/promoLimits.js).
+    const promoClaim = checkout.promo?.code ? await readPromoClaim(tx, db, checkout.promo.code, checkout.uid) : null;
+    const promoProblem = promoClaim?.problem ?? null;
+
     // ===== WRITES =====
     const now = FieldValue.serverTimestamp();
 
@@ -110,20 +117,22 @@ async function confirmPayment(db, { checkoutId, razorpayPaymentId, uid }) {
       pincode: checkout.pincode,
       address: checkout.address,
       note: checkout.note,
+      slot: checkout.slot ?? null, // the delivery window the customer chose (null = as soon as possible)
       payment: { ...checkout.payment, razorpayPaymentId },
       createdAt: now,
       updatedAt: now,
     };
 
-    if (shortage) {
-      // Someone else bought the last box while this customer was paying. We
-      // already have their money, so we cancel the order, leave stock alone,
-      // and flag it for refund (the refund itself is a later step).
+    if (shortage || promoProblem) {
+      // Someone else bought the last box (or used the last use of the promo code) while this customer was paying. We
+      // already have their money, so we cancel the order, leave stock and promo usage alone, and flag it for refund
+      // (autoRefund sends the money back).
+      const cancelReason = shortage ? `Out of stock: ${shortage}` : `Promo code limit: ${promoProblem.message}`;
       tx.create(orderRef, {
         ...orderBase,
         status: 'CANCELLED',
         paymentStatus: 'REFUND_PENDING',
-        cancelReason: `Out of stock: ${shortage}`,
+        cancelReason,
         cancelledBy: 'system',
         etaMinutes: null,
         etaTotal: null,
@@ -132,11 +141,11 @@ async function confirmPayment(db, { checkoutId, razorpayPaymentId, uid }) {
       tx.update(checkoutRef, {
         status: 'PAID',
         orderId: checkoutId,
-        outcome: 'OUT_OF_STOCK',
+        outcome: shortage ? 'OUT_OF_STOCK' : 'PROMO_LIMIT',
         'payment.razorpayPaymentId': razorpayPaymentId,
         paidAt: now,
       });
-      return { orderId: checkoutId, uid: checkout.uid, status: 'CANCELLED', paymentStatus: 'REFUND_PENDING', replay: false };
+      return { orderId: checkoutId, uid: checkout.uid, status: 'CANCELLED', paymentStatus: 'REFUND_PENDING', cancelReason, replay: false };
     }
 
     // Happy path 1: take the stock. We just read these exact docs inside this
@@ -146,6 +155,9 @@ async function confirmPayment(db, { checkoutId, razorpayPaymentId, uid }) {
     for (const snap of productSnaps) {
       tx.update(snap.ref, { stock: snap.get('stock') - wanted.get(snap.id), updatedAt: now });
     }
+
+    // Happy path 1b: count the promo use, in this same transaction as the order.
+    if (promoClaim) writePromoClaim(tx, promoClaim, { uid: checkout.uid, orderId: checkoutId });
 
     // Happy path 2: mark the checkout as paid so a repeat call does nothing.
     tx.update(checkoutRef, {
@@ -167,7 +179,7 @@ async function confirmPayment(db, { checkoutId, razorpayPaymentId, uid }) {
       timestamps: { PAYMENT_CONFIRMED: now },
     });
 
-    return { orderId: checkoutId, uid: checkout.uid, status: 'PAYMENT_CONFIRMED', paymentStatus: 'PAID', replay: false };
+    return { orderId: checkoutId, uid: checkout.uid, status: 'PAYMENT_CONFIRMED', paymentStatus: 'PAID', cancelReason: null, replay: false };
   });
 }
 

@@ -6,14 +6,23 @@
 //
 //   origin        text, for example "Ratnagiri, Konkan coast"
 //   calories      text, for example "About 45 kcal per 100 g". A whole number (the older format) is read as kcal per box
+//   storage       how to keep it, for chilled and frozen products, for example "Keep Refrigerated below 4°C"
 //   keyBenefits   a list of short phrases, for example ["High in vitamin C", "Rich in fibre"]
 
 const MAX_BENEFITS = 6;
+const MAX_STORAGE_LENGTH = 60;
 
 const cleanText = (value) => (typeof value === 'string' && value.trim() !== '' ? value.trim() : null);
 
 export function normaliseOrigin(value) {
   return cleanText(value);
+}
+
+// How a chilled or frozen product must be kept, as text ("Keep Frozen at -18°C"). Missing or malformed is null,
+// and the product page then shows no badge.
+export function normaliseStorage(value) {
+  const text = cleanText(value);
+  return text ? text.slice(0, MAX_STORAGE_LENGTH) : null;
 }
 
 export function normaliseCalories(value) {

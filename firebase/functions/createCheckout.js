@@ -20,8 +20,12 @@ const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { logger } = require('firebase-functions');
 const { defineSecret, defineString } = require('firebase-functions/params');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
-const Razorpay = require('razorpay');
+const { createRazorpay } = require('./shared/razorpayApi');
 const { razorpayKeyProblem } = require('./shared/razorpayMode');
+const { callableOptions } = require('./shared/hardening');
+const { enforce } = require('./shared/rateLimit');
+const { validateSlot } = require('./shared/slots');
+const { assertPromoUsable, whoIs } = require('./shared/promoLimits');
 
 // The key id is a normal param (it is public: the browser needs it); the key secret is a secret.
 // Local: functions/.env.local and functions/.secret.local (both git-ignored).
@@ -178,7 +182,10 @@ async function findZone(db, pincode) {
 }
 
 // Look up a promo code. Returns null when the customer did not use one.
-async function loadPromo(db, rawCode) {
+//   who   { uid, anonymous } (shared/promoLimits.js whoIs): whose usage limits to check. Throws a polite error if the
+//         code has reached its total limit, or this customer has used it as many times as they may. The limit is only
+//         READ here; it is enforced and counted when the order is confirmed (shared/payments.js).
+async function loadPromo(db, rawCode, who) {
   if (rawCode === null || rawCode === undefined || rawCode === '') return null;
   const code = String(rawCode).trim().toUpperCase();
   if (!PROMO_CODE.test(code)) throw fail('failed-precondition', 'That promo code is not valid.');
@@ -191,7 +198,9 @@ async function loadPromo(db, rawCode) {
   if (expiresAt && expiresAt.toMillis() < Date.now()) {
     throw fail('failed-precondition', 'That promo code has expired.');
   }
-  return { code, ...snap.data() };
+  const promo = { code, ...snap.data() };
+  await assertPromoUsable(db, promo, who);
+  return promo;
 }
 
 // Read the live product docs for every box in the cart.
@@ -201,6 +210,18 @@ async function loadProducts(db, lines) {
   const products = new Map();
   for (const s of snaps) if (s.exists) products.set(s.id, s.data());
   return products;
+}
+
+// The delivery slot the customer chose: null means "as soon as possible". Checked with the SERVER's clock,
+// so a slot that was open when the page loaded but has since closed is refused with a clear message.
+function readSlot(raw, now = new Date()) {
+  try {
+    return validateSlot(raw, now);
+  } catch (err) {
+    if (err && err.code === 'invalid') throw fail('invalid-argument', err.message);
+    if (err && err.code === 'gone') throw fail('failed-precondition', err.message);
+    throw err;
+  }
 }
 
 function readAddress(data) {
@@ -215,13 +236,15 @@ function readAddress(data) {
 
 exports.createCheckout = onCall(
   // Mumbai is the closest region to Bengaluru. The client must call the same region.
-  { region: 'asia-south1', secrets: [RAZORPAY_KEY_SECRET] },
+  callableOptions({ secrets: [RAZORPAY_KEY_SECRET] }),
   async (request) => {
     // Only signed-in customers can check out. We trust request.auth, nothing else.
     if (!request.auth) throw fail('unauthenticated', 'Please sign in to check out.');
     const uid = request.auth.uid;
     const address = readAddress(request.data);
     const db = getFirestore();
+    // Every call here can create a real Razorpay order, so it is rate limited (shared/rateLimit.js).
+    await enforce(db, request, 'createCheckout');
 
     // Safety guard: the key must belong to the mode this deployment was told to run in, so a
     // live key can never be used by accident (and a test key can never reach production unnoticed).
@@ -245,12 +268,13 @@ exports.createCheckout = onCall(
       throw fail('failed-precondition', 'Enter your delivery pincode first.');
     }
     const note = typeof cart.note === 'string' ? cart.note.slice(0, 200) : '';
+    const slot = readSlot(cart.slot);
 
     // 2. Read live data: products (with stock), zone for the pincode, promo.
     const [products, zone, promo] = await Promise.all([
       loadProducts(db, lines),
       findZone(db, pincode),
-      loadPromo(db, cart.promoCode),
+      loadPromo(db, cart.promoCode, whoIs(request.auth)),
     ]);
 
     // 3. Check stock and calculate the total from BACKEND prices.
@@ -261,7 +285,7 @@ exports.createCheckout = onCall(
     const checkoutId = checkoutRef.id;
     let razorpayOrder;
     try {
-      const razorpay = new Razorpay({ key_id: keyId, key_secret: RAZORPAY_KEY_SECRET.value() });
+      const razorpay = createRazorpay({ keyId, keySecret: RAZORPAY_KEY_SECRET.value() });
       razorpayOrder = await razorpay.orders.create({
         amount: amountPaise,
         currency: 'INR',
@@ -294,6 +318,7 @@ exports.createCheckout = onCall(
       pincode,
       address,
       note,
+      slot, // null = as soon as possible, else { date, id, label, startsAt }
       payment: {
         razorpayOrderId: razorpayOrder.id,
         amountPaise,
@@ -319,6 +344,7 @@ exports.createCheckout = onCall(
 // Exported so the pricing rules can be unit tested without Firebase, and so previewCheckout.js
 // can price a cart with exactly the same code (it must never disagree with what is charged).
 exports.normaliseLines = normaliseLines;
+exports.readSlot = readSlot;
 exports.priceCart = priceCart;
 exports.findZone = findZone;
 exports.loadPromo = loadPromo;

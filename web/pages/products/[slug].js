@@ -3,7 +3,8 @@
 // actually sell, a delivery estimate for the visitor's pincode, and expandable details (ingredients,
 // packaging), plus a "Harvest & Health" row (origin, calories, key benefits). Everything about the box is live: if the last one sells, the page says so.
 //
-// Origin, calories, benefits and packaging text appear only if the shop owner has added them to the product
+// Ingredients, nutrition, the farm story and shelf life are in the "Product Specifications" rows (components/ProductSpecifications.js).
+// Origin, calories, benefits, packaging and storage text appear only if the shop owner has added them to the product
 // in Firestore (see lib/catalog.js). A missing fact is left out, never made up.
 //
 // Below that: "Chef's Notes & Pairings" (a serving idea, lib/pairings.js), and search-engine structured data
@@ -12,23 +13,28 @@
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Accordion from '@/components/Accordion';
 import Callout from '@/components/Callout';
 import ChefsNotes from '@/components/ChefsNotes';
 import HarvestHealth from '@/components/HarvestHealth';
 import ProductGallery from '@/components/ProductGallery';
+import ProductSpecifications from '@/components/ProductSpecifications';
 import RelatedProducts from '@/components/RelatedProducts';
 import { ProductDetailSkeleton } from '@/components/ProductSkeleton';
 import QuantityStepper from '@/components/QuantityStepper';
+import Seo from '@/components/Seo';
 import SizeSelector from '@/components/SizeSelector';
 import StockBadge from '@/components/StockBadge';
+import StorageBadge from '@/components/StorageBadge';
 import ZoneStatus from '@/components/ZoneStatus';
 import { MAX_QTY_PER_LINE, useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
-import { useProducts } from '@/lib/catalog';
+import { useCatalog } from '@/lib/catalog';
 import { unitPrice } from '@/lib/pricing';
+import { pickRelated } from '@/lib/related';
 import { buildProductJsonLd, jsonLdString } from '@/lib/seo';
+import { fetchActiveProducts, fetchProduct } from '@/lib/serverCatalog';
 import { PINCODE, useSavedPincode, useZones } from '@/lib/zones';
 
 const DEFAULT_PACKAGING = 'Freshly cut and packed hygienically, with zero preservatives.';
@@ -91,19 +97,6 @@ function ProductDetail({ product, products, status }) {
   }
 
   const accordionItems = [
-    product.ingredients.length > 0 && {
-      id: 'ingredients',
-      title: 'Ingredients',
-      content: (
-        <ul className="flex flex-wrap gap-2">
-          {product.ingredients.map((ingredient) => (
-            <li key={ingredient} className="rounded-pill border border-line bg-surface-tag px-3 py-1 text-small text-brand-text">
-              {ingredient}
-            </li>
-          ))}
-        </ul>
-      ),
-    },
     { id: 'packaging', title: 'Packaging', content: <p>{product.packaging || DEFAULT_PACKAGING}</p> },
   ].filter(Boolean);
 
@@ -114,11 +107,17 @@ function ProductDetail({ product, products, status }) {
 
   return (
     <PageShell title={product.name}>
-      <Head>
-        <meta name="description" content={product.description || `${product.name} from FreshBliss`} />
+      <Seo
+        title={`${product.name} | FreshBliss`}
+        description={product.description || `${product.name} from FreshBliss`}
+        path={`/products/${product.id}`}
+        image={product.images[0]}
+        type="product"
+        product={{ price: price, inStock: product.stock > 0 }}
+      >
         {/* Structured data for search engines. The text is escaped (lib/seo.js), so it cannot close the tag early. */}
         <script key="product-jsonld" type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(buildProductJsonLd(product)) }} />
-      </Head>
+      </Seo>
 
       <div className="grid items-start gap-8.5 md:grid-cols-2">
         <ProductGallery images={product.images} name={product.name} illustrative={product.placeholderImages} />
@@ -135,6 +134,9 @@ function ProductDetail({ product, products, status }) {
           <p className="mt-4 text-kpi text-brand-text" aria-live="polite">
             ₹{price}
           </p>
+
+          {/* How to keep it (chilled and frozen products only; nothing is drawn without a storage note) */}
+          <StorageBadge storage={product.storage} className="mt-3" />
 
           <div className="mt-5">
             <SizeSelector sizes={product.sizes} basePrice={product.price} value={size} onChange={setChosenSize} disabled={soldOut} />
@@ -153,8 +155,10 @@ function ProductDetail({ product, products, status }) {
           <div className="mt-4 flex flex-wrap items-center gap-3">
             {/* The buy bar. On a phone it is fixed to the bottom of the screen (frosted glass), so Add to Cart is
                 always one tap away however far the visitor has scrolled; from tablet width up it is an ordinary
-                button in the page. (fb-sticky-cta makes the footer leave room for it: styles/globals.css.) */}
-            <div className="fb-no-print fb-sticky-cta fixed bottom-0 left-0 z-50 w-full border-t border-line/70 bg-surface-card/90 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-md md:relative md:z-auto md:w-auto md:border-none md:bg-transparent md:p-0 md:backdrop-blur-none">
+                button in the page (md:bottom-auto matters: a RELATIVE element keeps `bottom`, which would push the button up
+                over the quantity stepper). It sits just above the phone tab bar (components/MobileBottomNav.js), whose height is
+                --fb-bottom-nav-h. (fb-sticky-cta makes the footer leave room for it: styles/globals.css.) */}
+            <div className="fb-no-print fb-sticky-cta fixed bottom-[calc(var(--fb-bottom-nav-h)+env(safe-area-inset-bottom))] left-0 z-50 w-full border-t border-line/70 bg-surface-card/90 p-4 backdrop-blur-md md:relative md:bottom-auto md:left-auto md:z-auto md:w-auto md:border-none md:bg-transparent md:p-0 md:backdrop-blur-none">
               <div className="mx-auto flex max-w-xl items-center gap-4 md:mx-0 md:max-w-none">
                 <div className="shrink-0 md:hidden" aria-live="polite">
                   <p className="text-small text-ink-muted">{quantity > 1 ? `Total for ${quantity}` : 'Price'}</p>
@@ -209,8 +213,14 @@ function ProductDetail({ product, products, status }) {
         </div>
       </div>
 
+      {/* Cross-selling, right under the main details: other boxes that go with this one, each with a quick "+ Add" */}
+      <RelatedProducts product={product} products={products} status={status} onAdd={addToCart} />
+
       {/* Where it grew, its energy and its benefits (only the facts the shop has added) */}
       <HarvestHealth product={product} />
+
+      {/* Ingredients and allergens, nutrition, sourcing and shelf life (only the rows the shop has filled in) */}
+      <ProductSpecifications product={product} />
 
       <ChefsNotes slug={product.id} category={product.category} />
 
@@ -222,17 +232,36 @@ function ProductDetail({ product, products, status }) {
           <Accordion items={accordionItems} defaultOpenId={accordionItems[0].id} />
         </div>
       </section>
-
-      {/* Cross-selling: other boxes that go with this one, each with a quick "+ Add" */}
-      <RelatedProducts product={product} products={products} status={status} onAdd={addToCart} />
     </PageShell>
   );
 }
 
-export default function ProductPage() {
+// No box is built ahead of time; each one is built the first time it is asked for (fallback 'blocking': the visitor
+// waits for the finished page, never for a skeleton) and then kept, refreshed at most once a minute. A box that
+// does not exist or is switched off is a real 404 (pages/404.js), which is what search engines need to hear.
+export async function getStaticPaths() {
+  const products = await fetchActiveProducts();
+  return { paths: (products ?? []).map((p) => ({ params: { slug: p.id } })), fallback: 'blocking' };
+}
+
+// The box and the few suggestions shown under it are in the page already (so the first HTML is complete: title,
+// price, photos and structured data). The browser then switches to the live catalogue, so stock stays live.
+// If Firestore cannot be reached the page is built empty and the browser fills it in (as before), and is rebuilt
+// after 10 seconds. A failed lookup is never turned into a 404.
+export async function getStaticProps({ params }) {
+  const found = await fetchProduct(params.slug);
+  if (found.status === 'missing') return { notFound: true, revalidate: 60 };
+  if (found.status === 'error') return { props: { initialProduct: null, initialRelated: [] }, revalidate: 10 };
+  const all = await fetchActiveProducts();
+  return { props: { initialProduct: found.product, initialRelated: all ? pickRelated(all, found.product) : [] }, revalidate: 60 };
+}
+
+export default function ProductPage({ initialProduct, initialRelated }) {
   const router = useRouter();
-  const slug = router.isReady && typeof router.query.slug === 'string' ? router.query.slug : null;
-  const { products, status, reload } = useProducts();
+  const slug = initialProduct?.id ?? (router.isReady && typeof router.query.slug === 'string' ? router.query.slug : null);
+  // The box plus its suggestions: all the catalogue this page needs before the live one arrives.
+  const initialProducts = useMemo(() => (initialProduct ? [initialProduct, ...initialRelated] : null), [initialProduct, initialRelated]);
+  const { products, status, reload } = useCatalog(initialProducts);
   const product = slug ? products.find((p) => p.id === slug) : null;
 
   if (status === 'loading' || !slug) {

@@ -1,95 +1,29 @@
 // My orders: /account
-// The customer's own past orders, live from Firestore, newest first. Each has its status, date, items
-// and total, links to track it or print its receipt, and a one-click Reorder that puts the same boxes
-// back in the cart.
+// The customer's own past orders, live from Firestore, newest first. Filter chips (All Orders, In Progress,
+// Past 30 Days, Delivered, Cancelled) narrow the list. Each order has its status, date, items and total,
+// links to track it or print its receipt, and a one-click Reorder that puts the same boxes back in the cart.
 //
-// There is no login yet (see lib/auth.js): "my orders" means the orders placed from THIS browser.
-// Visiting this page never creates an account.
+// Above the orders sits the account card (components/auth/AccountCard.js): who is signed in, or a note to a guest. Orders
+// belong to an account. A signed-in customer sees them on every device; a guest sees the ones placed from THIS browser,
+// and signing in later keeps them (lib/auth.js). Visiting this page never creates an account.
 
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import { useMemo, useState } from 'react';
+import AccountCard from '@/components/auth/AccountCard';
+import DeleteAccountCard from '@/components/auth/DeleteAccountCard';
 import Callout from '@/components/Callout';
+import OrderFilterChips from '@/components/orders/OrderFilterChips';
+import OrderHistoryCard from '@/components/orders/OrderHistoryCard';
 import { useToast } from '@/components/ToastProvider';
 import { OrderListSkeleton } from '@/components/CartSkeleton';
 import { useCart } from '@/context/CartContext';
 import { useCartDrawer } from '@/context/CartDrawerContext';
 import { useProducts } from '@/lib/catalog';
+import { ORDER_FILTERS, countByFilter, filterOrders } from '@/lib/orderFilters';
 import { useMyOrders } from '@/lib/orders';
-import { statusLabel } from '@/lib/orderStatus';
-import { formatOrderDate, linesFromOrder, shortOrderNumber } from '@/lib/pricing';
-
-const capitalise = (s) => s.charAt(0).toUpperCase() + s.slice(1);
-
-// The status as a customer reads it, with the money side where it matters.
-function statusText(order) {
-  if (order.status === 'CANCELLED') {
-    if (order.paymentStatus === 'REFUND_PENDING') return 'Cancelled, refund on its way';
-    if (order.paymentStatus === 'REFUNDED') return 'Cancelled, refunded';
-    return 'Cancelled';
-  }
-  return statusLabel(order.status);
-}
-
-function OrderCard({ order, onReorder, reorderReady }) {
-  const placed = formatOrderDate(order.createdAt?.toDate?.());
-  const items = Array.isArray(order.items) ? order.items : [];
-  const total = order.pricing?.total;
-  const done = order.status === 'DELIVERED';
-  const cancelled = order.status === 'CANCELLED';
-
-  return (
-    <li className="rounded-xl border border-line bg-surface-card p-5 shadow-card">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-label text-gold">{shortOrderNumber(order.id)}</p>
-          {placed && <p className="mt-1 text-small text-ink-muted">{placed}</p>}
-        </div>
-        <span
-          className={`rounded-pill border px-3 py-1 text-small font-bold ${
-            cancelled ? 'border-danger bg-surface-danger text-danger' : done ? 'border-line bg-surface-tag text-brand-text' : 'border-gold bg-surface-callout text-ink'
-          }`}
-        >
-          {statusText(order)}
-        </span>
-      </div>
-
-      <ul className="mt-4 divide-y divide-line">
-        {items.map((i) => (
-          <li key={`${i.productId}:${i.size}`} className="flex justify-between gap-4 py-2 text-body text-ink first:pt-0 last:pb-0">
-            <span>
-              {i.qty} × {i.name} <span className="text-ink-muted">({capitalise(String(i.size))})</span>
-            </span>
-            <span className="font-bold">₹{i.lineTotal}</span>
-          </li>
-        ))}
-      </ul>
-
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
-        <p className="text-body text-ink">
-          Total <span className="text-kpi text-brand-text">₹{total}</span>
-        </p>
-        <div className="flex flex-wrap gap-3">
-          <Link href={`/orders/${order.id}`} className="inline-grid min-h-11 place-items-center rounded-pill border border-brand px-5 text-nav-link text-brand-text hover:bg-surface-cream">
-            {done || cancelled ? 'View order' : 'Track order'}
-          </Link>
-          <Link href={`/orders/${order.id}?receipt=1`} className="inline-grid min-h-11 place-items-center rounded-pill border border-brand px-5 text-nav-link text-brand-text hover:bg-surface-cream">
-            Receipt
-          </Link>
-          <button
-            type="button"
-            onClick={() => onReorder(order)}
-            disabled={!reorderReady}
-            className="min-h-11 rounded-pill bg-gold-bright px-5 text-nav-link text-on-gold hover:brightness-95 disabled:cursor-not-allowed disabled:bg-surface-sunken disabled:text-ink-muted disabled:hover:brightness-100"
-          >
-            Reorder
-          </button>
-        </div>
-      </div>
-
-    </li>
-  );
-}
+import { linesFromOrder, shortOrderNumber } from '@/lib/pricing';
 
 export default function AccountPage() {
   const router = useRouter();
@@ -98,6 +32,13 @@ export default function AccountPage() {
   const { addToCart } = useCart();
   const toast = useToast();
   const drawer = useCartDrawer();
+
+  // Which chip is chosen. "Now" is read once per visit so the 30-day window does not shift while the page is open.
+  const [filterId, setFilterId] = useState('all');
+  const [now] = useState(() => Date.now());
+  const counts = useMemo(() => countByFilter(orders, now), [orders, now]);
+  const shown = useMemo(() => filterOrders(orders, filterId, now), [orders, filterId, now]);
+  const filter = ORDER_FILTERS.find((f) => f.id === filterId) ?? ORDER_FILTERS[0];
 
   // Put an old order's boxes back in the cart, as far as they can still be bought. Each box goes through
   // the cart's own rules (stock, per-box limits), so nothing unavailable can slip in. The boxes are added
@@ -136,7 +77,7 @@ export default function AccountPage() {
       <div className="fb-container py-14.5">
         <p className="text-label text-gold">Your account</p>
         <h1 className="mt-2 text-heading-2 text-brand-text">My orders</h1>
-        <p className="mt-2 max-w-xl text-small text-ink-muted">Orders placed from this browser. Sign-in is coming; until then, clearing your browser data hides them.</p>
+        <AccountCard />
 
         <div className="mt-8.5">
           {status === 'loading' && <OrderListSkeleton />}
@@ -164,17 +105,32 @@ export default function AccountPage() {
 
           {status === 'ready' && orders.length > 0 && (
             <>
-              <p className="mb-4.5 text-small text-ink-muted">
-                {orders.length} {orders.length === 1 ? 'order' : 'orders'}, newest first
+              <OrderFilterChips filters={ORDER_FILTERS} counts={counts} value={filterId} onChange={setFilterId} />
+              <p role="status" className="mt-4.5 mb-4.5 text-small text-ink-muted">
+                {shown.length} {shown.length === 1 ? 'order' : 'orders'}
+                {filterId === 'all' ? ', newest first' : `: ${filter.label.toLowerCase()}`}
               </p>
-              <ul className="flex flex-col gap-4.5">
-                {orders.map((order) => (
-                  <OrderCard key={order.id} order={order} onReorder={reorder} reorderReady={catalogueStatus === 'ready'} />
-                ))}
-              </ul>
+              {shown.length === 0 ? (
+                <div className="rounded-xl border border-line bg-surface-card p-8 shadow-card">
+                  <h2 className="text-heading-3 text-ink">No orders here</h2>
+                  <p className="mt-1 text-body text-ink-muted">None of your orders match &quot;{filter.label}&quot;.</p>
+                  <button type="button" onClick={() => setFilterId('all')} className="mt-4 min-h-11 rounded-pill bg-brand px-6 text-nav-link text-on-brand hover:brightness-110">
+                    Show all orders
+                  </button>
+                </div>
+              ) : (
+                <ul className="flex flex-col gap-4.5">
+                  {shown.map((order) => (
+                    <OrderHistoryCard key={order.id} order={order} onReorder={reorder} reorderReady={catalogueStatus === 'ready'} />
+                  ))}
+                </ul>
+              )}
             </>
           )}
         </div>
+
+        {/* The right to erasure (DPDP). Asks for confirmation; keeps the shop's accounts, without the customer's details. */}
+        <DeleteAccountCard />
       </div>
     </>
   );

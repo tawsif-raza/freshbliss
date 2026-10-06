@@ -70,6 +70,7 @@ const EXCEL_COLUMNS = [
   'Total (INR)',
   'Razorpay payment ID',
   'Note',
+  'Delivery slot',
   // ---- live columns ----
   'Payment status',
   'Order status',
@@ -120,6 +121,14 @@ function formatIst(timestamp) {
   return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`;
 }
 
+// What the "Delivery slot" cell says: the window the customer chose ("2026-10-05 6 pm to 8 pm"), "As soon as possible"
+// when they chose none, and blank for an order made before slots existed (it has no `slot` field at all).
+function slotText(slot) {
+  if (slot === null) return 'As soon as possible';
+  if (slot && typeof slot.date === 'string' && typeof slot.label === 'string') return clip(`${slot.date} ${slot.label}`, 60);
+  return '';
+}
+
 // Turns one order into one row. The result is always EXCEL_COLUMNS.length long.
 //   customer: { name, phone } looked up from Firebase Auth (may be empty)
 // Money is written as NUMBERS so Excel can add it up.
@@ -144,6 +153,7 @@ function orderToRow(orderId, order, customer = {}) {
     pricing.total ?? 0,
     order.payment?.razorpayPaymentId || '',
     clip(order.note, 500),
+    slotText(order.slot),
     // ---- live columns (kept in step by excelSyncUpdate.js) ----
     order.paymentStatus || '',
     order.status || '',

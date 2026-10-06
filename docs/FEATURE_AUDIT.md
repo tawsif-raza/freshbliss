@@ -1,0 +1,162 @@
+# Feature audit and roadmap (October 2026)
+
+The forward plan (phases, workflow, owner decisions) is in `docs/ROADMAP.md`; this file is the detailed done/open list.
+
+What was checked, what has been added so far, and what is still open, in priority order. Each open item says
+**why** it matters and **what the change would touch**, so it can be scoped before it is built. Last reviewed 6 October 2026.
+
+## Status at a glance
+| Area | State |
+|---|---|
+| Money path, refunds, promo limits, sign-in, privacy erasure | Done and tested against the emulators and a fake Razorpay; **never run against real accounts** |
+| Delivery slots, self-cancel, terms and refund pages | Done |
+| Excel sheet (with slot column), error and low-stock alerts, PWA | Done |
+| Storefront frontend pass (home, shop sort, 404, footer) | Done; checkout, account and admin screens not yet audited in a browser |
+| Automatic checks (CI), developer guide, architecture description | Done 6 October 2026 (Phase 0 of the roadmap) |
+| Open, owner needed | Tax, refund window, real photos and logo, business details, Microsoft sign-in, e-mail/SMS provider (items 6, 12, 15 below) |
+| Open, no owner input | Browser audit of the money screens, browser tests, feedback form, theme chooser, scheduled refund re-check (items 13, 14, 16, 17) |
+
+## Audit: what is already strong
+- **Server-authoritative money path.** Clients never write prices, stock or order status. `createCheckout`
+  re-prices from products/zones/promos and creates the Razorpay order; `verifyPayment` (HMAC) and
+  `razorpayWebhook` both end in `finalizeCheckout`, a single idempotent Firestore transaction. This matches
+  Razorpay's own guidance (create the order on the server, verify the signature, use webhooks as the
+  source of truth). Amount-mismatch checks, event de-duplication and rate limits are in place.
+- **Rules + tests.** Firestore rules are covered by emulator tests; payments, orders and Excel sync have
+  their own suites.
+- **Free-tier friendly.** Next.js + Firebase + Excel/S3 sync keeps fixed cost near zero.
+
+## Added with delivery slots and cancellation
+| Feature | Why | Where |
+|---|---|---|
+| **Delivery slots** (ASAP, or a window today/tomorrow, 90-min lead, IST) | Baymard's checkout research: showing delivery dates/times is a top checkout-clarity item; grocery apps all offer slots | `firebase/functions/shared/slots.js` and `web/lib/slots.js` (identical logic, parity test), `createCheckout`, `previewCheckout`, rules `validSlot`, `components/checkout/SlotPicker.js`, receipt / order page / admin card |
+| **Customer self-cancel** (until packed, always restocks, sets REFUND_PENDING) | Removes support load; customers expect it; keeps the staff refund step | `cancelMyOrder` callable reusing `cancelOrderTx`, `components/orders/CancelOrderCard.js` |
+| **Terms and Cancellation & Refunds pages**, checkout consent line, footer + sitemap links | Needed before taking real payments; copy only states what the code does | `content/policies.js`, `pages/terms.js`, `pages/refunds.js` |
+| **FSSAI licence field** (receipt + footer, shown only when filled) | FSSAI requires the licence number on invoices and food-business listings | `content/business.js` -> `fssai` |
+| FAQ fix | The FAQ said orders cannot be cancelled once "Preparing"; the system now allows it until packed | `pages/faq.js` |
+
+## Also shipped, recorded here after the fact (found by the October 2026 re-audit)
+These were built in earlier sprints but never written down, so `docs/GO_LIVE.md` still described them as missing.
+- **Abuse protection:** per-account and per-address rate limits on the public functions (`functions/shared/rateLimit.js`,
+  server-only `rateLimits` collection with a TTL policy), and App Check (reCAPTCHA v3) behind the `ENFORCE_APP_CHECK` switch
+  (`shared/hardening.js`, `web/lib/firebaseClient.js`). Preflight refuses a live deploy with App Check off.
+- **Error alerts:** `npm run setup-alerts` creates an email channel and a Cloud Monitoring policy for any function `ERROR`
+  (`monitoring/alertPolicy.js`).
+- **Search and sharing:** server-built home, catalogue and product pages refreshed every 10 to 60 seconds, canonical and
+  Open Graph tags, JSON-LD, `sitemap.xml`, `robots.txt` (`lib/seo.js`, `lib/serverCatalog.js`).
+- **Enforced Content Security Policy** and security headers (`web/vercel.json`); still unproven against live traffic.
+
+**Re-audit fixes (October 2026):** `docs/GO_LIVE.md` gained the sections the code already pointed to (5.5 App Check, 11.1 alerts),
+the sign-in providers to enable, the new environment variables and functions, and corrected known gaps. The seed's Zone B
+now waives the fee from ₹499, matching the cart bar and ticker (before, the bar said "free delivery" and checkout charged
+₹30); `web/tests/freeDelivery.test.mjs` keeps the two equal.
+
+## Frontend pass (October 2026)
+A full audit of the storefront in a real browser (desktop, and a 390 px phone frame), then these changes. Tests: `web/tests/`.
+- **Bugs fixed:** the product page's *Add to Cart* button sat on top of the quantity stepper on every tablet and desktop (`md:relative`
+  kept the phone layout's `bottom` offset); the "Our Roots" photo was a dark alley, not produce; in `next dev` every server-rendered
+  page was empty when `web/.env.local` held the real project id (`lib/serverCatalog.js` now asks the emulator for its demo project);
+  the phone's category tabs showed a raw scrollbar; the ticker used emoji (against the design rules) and an unbacked "4.9/5" rating.
+- **New home sections** (the page is about 45% longer): a pincode check ("Do we deliver to you?", remembers the pincode for the
+  cart and checkout), Shop by category (photo tiles built from the live catalogue), How it works (4 steps), Everything a good fruit
+  order needs (6 service facts) and a closing call to action. All copy is in `content/storefront.js` and states only what the system does.
+- **Shop page:** sort (featured, price both ways, name) and an "In stock only" switch; sold-out boxes always stay last.
+- **Everywhere:** a back-to-top button, a tidier footer (brand and newsletter row, four short columns, Razorpay note), a helpful 404
+  with category links, and a correct heading outline on the shop page.
+- **Not done:** real product photos and the real logo (still placeholders), real reviews (the section stays hidden in production),
+  and a pass on the checkout, account and admin screens, which were not changed.
+
+## Open items, in priority order
+1. ~~**Real sign-in**~~ **Done (October 2026).** Google, Microsoft and phone sign-in on `/login`; a guest is linked to the
+   account (same uid), or, if that identity already has an account, their orders are moved by the `claimGuestOrders`
+   callable. Header Sign in / Sign out, checkout gate (`/login?next=/checkout`, with "Continue as guest"), account
+   card, terms line on the login page, privacy copy updated. Not yet run against a real Firebase project: switch on
+   Anonymous, Google, Microsoft and Phone under Authentication > Sign-in method first (`docs/GO_LIVE.md`).
+2. ~~**Automatic Razorpay refunds.**~~ **Done (October 2026).** Cancelling an order (customer, staff, or the system when a
+   box sells out mid-payment) triggers `autoRefund`, which asks Razorpay for a full normal-speed refund. The amount is
+   reserved in Firestore first and the call carries an `X-Refund-Idempotency` key, so a retry or a double trigger cannot
+   refund twice. Each refund is a document in `refunds/` (Razorpay refund id, amount, status, who asked, why); the order
+   keeps `refundIds`, `refundedPaise`, `refundPendingPaise`, `refundError`. `refund.created/processed/failed` webhooks move
+   the order to `REFUNDED` (or `PARTIALLY_REFUNDED` for a delivered order refunded in part) and also record refunds made by
+   hand in the dashboard. Staff get **Retry refund / Check status** on the Needs-refund card. Code: `functions/shared/refunds.js`,
+   `autoRefund.js`, `processRefund.js`. **Only tested against a fake Razorpay**; first real test is the rehearsal (`docs/GO_LIVE.md` s.9).
+   Follow-ups, small: (a) a scheduled job that re-checks refunds still pending after a day, for when a webhook is lost
+   (today staff press Check status); (b) an admin screen for partial refunds and a customer "return an item" request
+   (the server already accepts `processRefund({orderId, amount, requestId})`); (c) tell the customer by email/SMS when the
+   refund is processed.
+3. ~~**Payment capture mode.**~~ **Done in code; one dashboard check remains for you.** `razorpayWebhook` now creates an order
+   only on `order.paid` (money captured), no longer on `payment.authorized`, and refuses an `order.paid` whose payment says
+   `captured:false`. The browser callback (`verifyPayment`) still fires at authorization, so **Payment Capture must stay on
+   Automatic** in the Razorpay dashboard in both Test and Live mode (`docs/GO_LIVE.md` s.6). The code cannot read that setting.
+   If an uncaptured payment is ever auto-refunded, the refund webhook flags the still-active order with `refundAlert`.
+4. ~~**Promo usage limits**~~ **Done (October 2026).** `promoCodes/{CODE}` gains `globalMaxUses`, `maxUsesPerUser`,
+   `requiresSignIn` (optional) and a server-kept `usedCount`; per-customer use lives in `promoCodes/{CODE}/uses/{uid}`
+   (`count`, `orderIds`, `lastUsedAt`). `previewCheckout` and `createCheckout` read the counters and refuse an exhausted code
+   with a polite message ("You have already used the code X." / "This promo code has reached its usage limit." / "Sign in to
+   use this promo code."). The use is counted inside `confirmPayment`'s transaction, so a double click, a retried request, the
+   webhook arriving with the browser, or 8 buyers racing for 3 uses cannot exceed a limit; the loser is cancelled and
+   auto-refunded (`outcome: PROMO_LIMIT`). A mistyped limit refuses the code instead of making it unlimited. The checkout
+   page drops a code that became exhausted between Apply and Pay and explains why; it also no longer disables Pay after a
+   refused code. Local test orders count uses too. Code: `functions/shared/promoLimits.js`, `shared/payments.js`,
+   `createCheckout.js`, `previewCheckout.js`, `createMockOrder.js`; rules deny the new subcollection.
+   Limits: per ACCOUNT not per person (use `requiresSignIn`), a cancelled order does not give the use back, and **no admin
+   screen** (codes are edited in the Firestore console; see `docs/GO_LIVE.md` s.8.1b). Not run against real Firebase.
+5. ~~**DPDP Act consent / erasure**~~ **Done (October 2026).** A consent tick-box on `/login` (starts unticked; every sign-in method waits for it),
+   a privacy notice line at checkout, new "Your consent" and "Your rights and erasing your data" sections on `/privacy`, and a **Delete my data**
+   section on `/account` (type `DELETE` in a confirmation dialog) backed by the `requestDataErasure` callable. It never hard-deletes a
+   paid order, refund or payment record: it overwrites `address`, delivery `note`, staff-typed cancellation text and feedback comments with
+   `[REDACTED - DPDP ERASURE]`, replaces the customer's `uid` (and `claimedFrom`, `updatedBy`) with a keyed hash (HMAC-SHA256 with the
+   `ERASURE_HASH_KEY` secret), and keeps `items`, `pricing`, `status`, `paymentStatus`, the zone, the pincode and every Razorpay id. It also scrubs
+   the name, phone, address and note cells of the order's row in the Excel sheet (first, so a failure stops cleanly), re-keys the per-customer promo
+   use records, deletes the cart, wishlist and rate-limit counters, writes `erasureLog/{hash}` as proof (no personal data in it) and finally deletes
+   the Firebase Auth user. It **waits** while an order is still on the way or a payment may be in flight, refuses staff accounts, is rate limited, and is
+   safe to run again after a failure. The data model has no separate "user profile" document, so the cart and wishlist are the per-user documents. Code:
+   `functions/shared/erasure.js`, `shared/excelErasure.js`, `requestDataErasure.js`; web `components/auth/DeleteAccountCard.js`, `lib/erasure*.js`,
+   `pages/account/erased.js`. Tested by `tests/erasure.test.js` (21 emulator tests), `web/tests/erasure.test.mjs`, and rehearsal section 10 (real Auth emulator).
+   Limits (also in `docs/GO_LIVE.md` s.13): Razorpay's and Google's own copies are out of reach; old S3 versions need the lifecycle rule (s.7); consent is
+   not recorded per customer; no re-sign-in before erasing; erasing and re-registering gives a new account. **Needs the `ERASURE_HASH_KEY` secret before it will run.**
+6. **Tax decision.** Receipts print no tax line. Ask the accountant: GST registered? prices tax-inclusive? Then
+   store the breakdown on the order at `finalizeCheckout` time (cannot be reconstructed later).
+7. ~~**Reorder button**~~ **Done.** `/account` has a Reorder button on each past order (`components/orders/OrderHistoryCard.js`,
+   `linesFromOrder` in `lib/pricing.js`); the server re-prices anyway.
+8. ~~**PWA manifest + install prompt**~~ **Done, with a placeholder icon.** `web/public/manifest.webmanifest`, icons in `web/public/icons/`
+   (a gold "F" on brand green, made by `web/scripts/build-icons.mjs`), theme colour and iOS icon in `pages/_document.js`,
+   `web/tests/manifest.test.mjs`. **Replace the icons with the real logo when it exists.** Deliberately no service worker and no
+   custom install button: nothing is cached offline, so a stale price or order status can never be shown; the browser's own
+   "Install / Add to Home screen" works. Not tried on a real phone.
+9. ~~**Low-stock alert**~~ **Done (October 2026), as an email to one address, not to staff accounts.** `functions/lowStock.js` logs a
+   `Stock is low` WARNING when stock first falls to `LOW_STOCK_THRESHOLD` (default 5) and again at 0 (`shared/stockAlerts.js`
+   decides, so it fires once per crossing, not per sale); `monitoring/alertPolicy.js` turns it into the **FreshBliss: Low stock**
+   email policy that `npm run setup-alerts` now creates beside the error alert. Limits: one email an hour, so a busy evening
+   is one email; no in-dashboard banner; restocking is a Firestore console edit (there is no staff stock screen). Not run against
+   real Google Cloud.
+10. ~~**Excel sheet slot column**~~ **Done.** Column P "Delivery slot" (`2026-10-05 6 pm to 8 pm`, "As soon as possible", or blank for an
+    order made before slots existed). The three live columns moved from P-R to Q-S. **A sheet created before this change has the
+    old headers and the sync will refuse it** (`bad-headers`): move it aside in S3 so a fresh one is created, or insert the
+    column by hand. No sheet exists in production yet.
+11. **Subscriptions / loyalty** only after 1-3, they depend on stable identity and refunds.
+12. **Real content (roadmap Phase 1).** Placeholder photos and logo, empty business details (`web/content/business.js`: address, hours, contact,
+    FSSAI number), sample reviews (hidden in production), and FAQ promises that disagree with each other (delivery in "60 to 90 minutes" vs
+    "within the hour", "certified organic", the 12-hour refund). Customers will hold the shop to every word. Needs the owner's answers.
+13. **Browser audit of the money screens (roadmap Phase 2).** Cart, checkout, order tracking, account and admin were never looked at in a
+    browser the way the home and shop pages were; `web/pages/checkout/index.js` is the largest page. Then browser smoke tests that run in CI.
+14. **Feedback after delivery (roadmap Phase 3).** `firestore.rules` already accepts `feedback/{orderId}` for a delivered order and the
+    design system has a `FeedbackForm`, but no page writes it. Touches `web/pages/orders/[id].js`.
+15. **Messages to customers (roadmap Phase 3).** No e-mail or SMS for "order confirmed" or "refund processed" (also item 2c), and the newsletter box
+    in the footer saves nothing. Needs the owner to choose a provider, or to remove the box.
+16. **Theme choice (roadmap Phase 3).** Dark and high-contrast themes exist in `web/styles/tokens.css` but `web/pages/_document.js` fixes
+    `data-theme="light"` and there is no switch; the design brief asks for one.
+17. **Scheduled refund re-check and staff partial refunds** (item 2 follow-ups a and b).
+
+## Things to decide (not code)
+- How many days a refund takes, and any quality-complaint window. The FAQ currently promises a 12-hour
+  "no-questions-asked refund or replacement"; make sure the business can honour it, and keep the FAQ,
+  `content/policies.js` and the home-page FAQ saying the same thing.
+- Cash on delivery: not offered. It needs a staff "cash collected" step and a no-show policy.
+
+## Operational notes
+- The free-delivery amount is in the seed (`firebase/scripts/seed.js`) and in the web (`FREE_DELIVERY_THRESHOLD`); `web/tests/freeDelivery.test.mjs` keeps them equal.
+- Docs that name files are checked by `web/tests/docPaths.test.mjs`; rename or remove a file and the test names the doc to fix.
+- Slot windows are defined in **two files** (`firebase/functions/shared/slots.js`, `web/lib/slots.js`);
+  change both. `web/tests/slots.test.mjs` fails if they drift.
+- Never commit `functions/.env.local` / `.secret.local`.

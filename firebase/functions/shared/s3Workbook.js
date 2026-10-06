@@ -241,7 +241,7 @@ function plain(value) {
 }
 
 const MONEY_COLUMN = /\(INR\)$/;
-const COLUMN_WIDTHS = { 'Order ID': 26, 'Received (IST)': 18, Customer: 18, Phone: 15, Address: 38, Items: 38, Note: 28, 'Razorpay payment ID': 24, 'Last updated (IST)': 18 };
+const COLUMN_WIDTHS = { 'Order ID': 26, 'Received (IST)': 18, Customer: 18, Phone: 15, Address: 38, Items: 38, Note: 28, 'Delivery slot': 26, 'Razorpay payment ID': 24, 'Last updated (IST)': 18 };
 
 // The few things the Excel sync needs to do to the sheet. exceljs stays in here.
 class OrdersSheet {

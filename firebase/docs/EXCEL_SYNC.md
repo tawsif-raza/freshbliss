@@ -6,7 +6,7 @@ This page is for the people who **use** the Orders spreadsheet and the people wh
 
 ```
  Order created ──► new row added to orders.xlsx in S3        (excelSync)
- Order changes ──► columns P, Q, R of that row updated        (excelSyncUpdate)
+ Order changes ──► columns Q, R, S of that row updated        (excelSyncUpdate)
  AWS down ───────► nothing breaks; staff press "Retry Excel sync" afterwards
 ```
 
@@ -32,8 +32,8 @@ The copy you download is a snapshot. Download again for newer orders.
 
 | Columns | What they hold | When they are written |
 |---|---|---|
-| **A to O** (Order ID … Note) | Who ordered, what, where, how much | **Once**, when the order is created |
-| **P, Q, R** (Payment status, Order status, Last updated) | Where the order is now | **Every time** the order's status or payment status changes |
+| **A to P** (Order ID … Note, Delivery slot) | Who ordered, what, where, how much, and the delivery window they chose | **Once**, when the order is created |
+| **Q, R, S** (Payment status, Order status, Last updated) | Where the order is now | **Every time** the order's status or payment status changes |
 
 Statuses you will see in **Order status**: `PAYMENT_CONFIRMED`, `PREPARING`, `PACKED`, `OUT_FOR_DELIVERY`, `DELIVERED`, `CANCELLED`.
 Statuses in **Payment status**: `PAID`, `REFUND_PENDING`, `REFUNDED`.
@@ -50,7 +50,7 @@ Why: the sync works by downloading the file, changing one row and saving it back
 |---|---|
 | Download the file and do anything you like with your copy | Upload an edited file over `orders/orders.xlsx` |
 | Share a downloaded copy with your accountant | Make the bucket or file public |
-| Add columns **to the right of column R** in the live file (the sync never touches them) | Rename the `Orders` sheet, or move, delete or rename any of the first 18 headers |
+| Add columns **to the right of column S** in the live file (the sync never touches them) | Rename the `Orders` sheet, or move, delete or rename any of the first 19 headers |
 | | Delete a row in the live file (the sync will **not** add it back; see below) |
 
 **If you delete a row** in the live file, later status changes for that order are skipped on purpose (so a deliberate delete is never undone). The order's `excelSync` record shows `updateState: ROW_MISSING`. To get it back, add the row by hand.

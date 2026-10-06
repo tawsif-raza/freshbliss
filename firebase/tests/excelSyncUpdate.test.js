@@ -90,8 +90,8 @@ describe('reconcileOrder: updating the row', () => {
     const id = await seed(store);
     await store.staff((sheet) => {
       sheet.getRow(2).getCell(15).value = 'Staff typed this note by hand'; // a manual edit in the Note column
-      sheet.getRow(1).getCell(19).value = 'My column'; // a column staff added to the right
-      sheet.getRow(2).getCell(19).value = 'extra staff column';
+      sheet.getRow(1).getCell(EXCEL_COLUMNS.length + 1).value = 'My column'; // a column staff added to the right
+      sheet.getRow(2).getCell(EXCEL_COLUMNS.length + 1).value = 'extra staff column';
     });
     const before = await store.rowOf(id);
     await setOrder(id, { status: 'PREPARING' });
@@ -106,7 +106,7 @@ describe('reconcileOrder: updating the row', () => {
     assert.notEqual(row[UPDATED], '', 'last-updated time is written');
     for (let i = 0; i < FIRST_LIVE_COLUMN; i++) assert.deepEqual(row[i], before[i], `column ${EXCEL_COLUMNS[i]} untouched`);
     assert.equal(row[14], 'Staff typed this note by hand', 'a hand-edited cell survives');
-    assert.equal(row[18], 'extra staff column', 'an extra column to the right survives');
+    assert.equal(row[EXCEL_COLUMNS.length], 'extra staff column', 'an extra column to the right survives');
     assert.equal(store.puts - puts, 1, 'one save');
   });
 

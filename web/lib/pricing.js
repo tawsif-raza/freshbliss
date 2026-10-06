@@ -12,6 +12,16 @@ export function unitPrice(product, sizeId) {
   return size ? product.price + size.extra : null;
 }
 
+// How close a cart is to free delivery, for the progress bar in the cart. Whole rupees in, plain numbers out:
+//   percent    0 to 100, how full the bar is
+//   remaining  rupees still to add (0 once unlocked)
+//   unlocked   true once the subtotal reaches the threshold (same ">=" rule the server uses for freeDeliveryFrom)
+export function freeDeliveryProgress(subtotal, threshold) {
+  const have = Number.isFinite(subtotal) && subtotal > 0 ? subtotal : 0;
+  const remaining = Math.max(0, threshold - have);
+  return { percent: threshold > 0 ? Math.min(100, Math.round((have / threshold) * 100)) : 100, remaining, unlocked: remaining === 0 };
+}
+
 // Cart lines from a past order, for "Reorder": [{ productId, size, qty }]. Anything unreadable is dropped.
 export function linesFromOrder(order) {
   const items = Array.isArray(order?.items) ? order.items : [];

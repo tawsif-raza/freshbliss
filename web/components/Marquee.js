@@ -3,22 +3,31 @@
 // The list is drawn twice and the track slides left by exactly one copy, so the loop has no visible jump (the
 // keyframes are in styles/globals.css). The second copy is hidden from screen readers so each promise is read
 // once. The parent clips with overflow-hidden, so the moving track can never make the page scroll sideways.
-// It pauses while hovered, and for visitors who asked their device for less motion it stops and wraps into a
+// Like the hero, it is a dark band whose cream and deep green are fixed colours that do not change with the page
+// theme. It pauses while hovered, and for visitors who asked their device for less motion it stops and wraps into a
 // centred, static row (see .fb-marquee in globals.css).
 
+import { CalendarClock, Leaf, Sprout, Truck } from 'lucide-react';
 import { MARQUEE_ITEMS } from '@/content/storefront';
+
+// One icon per promise, chosen by its `id` (no emoji: the design rules forbid them, and they draw differently on every phone).
+const ICONS = { organic: Leaf, delivery: Truck, farm: Sprout, windows: CalendarClock };
 
 function Group({ hidden = false }) {
   return (
     <ul aria-hidden={hidden || undefined} className="fb-marquee-group flex shrink-0 items-center">
-      {MARQUEE_ITEMS.map((item) => (
-        <li key={item} className="px-6 text-nav-link whitespace-nowrap">
-          {item}
-          <span aria-hidden="true" className="ml-12 text-gold-bright">
-            •
-          </span>
-        </li>
-      ))}
+      {MARQUEE_ITEMS.map(({ id, text }) => {
+        const Icon = ICONS[id] ?? Leaf;
+        return (
+          <li key={id} className="flex items-center px-6 text-nav-link whitespace-nowrap">
+            <Icon size={18} strokeWidth={2} aria-hidden="true" className="mr-2.5 text-gold-bright" />
+            {text}
+            <span aria-hidden="true" className="ml-12 text-gold-bright">
+              •
+            </span>
+          </li>
+        );
+      })}
     </ul>
   );
 }

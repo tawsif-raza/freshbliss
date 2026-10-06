@@ -8,7 +8,7 @@ const assert = require('node:assert/strict');
 const { parseEnv, resolveProject, checkSettings } = require('../scripts/preflight');
 const { razorpayKeyProblem } = require('../functions/shared/razorpayMode');
 
-const GOOD = { RAZORPAY_KEY_ID: 'rzp_live_abc123', RAZORPAY_MODE: 'live', EXCEL_S3_BUCKET: 'freshbliss-orders', EXCEL_AWS_ACCESS_KEY_ID: 'AKIAEXAMPLE' };
+const GOOD = { RAZORPAY_KEY_ID: 'rzp_live_abc123', RAZORPAY_MODE: 'live', ENFORCE_APP_CHECK: 'true', EXCEL_S3_BUCKET: 'freshbliss-orders', EXCEL_AWS_ACCESS_KEY_ID: 'AKIAEXAMPLE' };
 const check = (env, extra = {}) => checkSettings({ alias: 'production', projectId: 'freshbliss-prod', env, envFile: '.env.production', ...extra });
 
 // ============================================================
@@ -93,13 +93,33 @@ describe('checkSettings', () => {
 
   it('wants the AWS key id when a bucket is set, and only warns when Excel sync is off', () => {
     assert.ok(check({ ...GOOD, EXCEL_AWS_ACCESS_KEY_ID: '' }).errors.some((e) => /EXCEL_AWS_ACCESS_KEY_ID/.test(e)));
-    const off = check({ RAZORPAY_KEY_ID: GOOD.RAZORPAY_KEY_ID, RAZORPAY_MODE: 'live' });
+    const off = check({ RAZORPAY_KEY_ID: GOOD.RAZORPAY_KEY_ID, RAZORPAY_MODE: 'live', ENFORCE_APP_CHECK: 'true' });
     assert.deepEqual(off.errors, []);
     assert.ok(off.warnings.some((w) => /Excel/.test(w)));
   });
 
+  it('REFUSES live (real money) mode without App Check, whether the switch is off or missing', () => {
+    for (const env of [{ ...GOOD, ENFORCE_APP_CHECK: 'false' }, { ...GOOD, ENFORCE_APP_CHECK: undefined }]) {
+      const r = check(env);
+      assert.ok(r.errors.some((e) => /ENFORCE_APP_CHECK is off while RAZORPAY_MODE is "live"/.test(e) && /section 5\.5/.test(e)));
+    }
+  });
+
+  it('only warns about App Check in test mode, so the rehearsal can start before the reCAPTCHA key exists', () => {
+    const r = check({ ...GOOD, RAZORPAY_MODE: 'test', RAZORPAY_KEY_ID: 'rzp_test_abc', ENFORCE_APP_CHECK: undefined });
+    assert.deepEqual(r.errors, []);
+    assert.ok(r.warnings.some((w) => /ENFORCE_APP_CHECK is off/.test(w)));
+  });
+
+  it('refuses a switch value that is not exactly true or false (a typo must not silently mean off)', () => {
+    for (const bad of ['yes', '1', 'True', 'on']) {
+      assert.ok(check({ ...GOOD, ENFORCE_APP_CHECK: bad }).errors.some((e) => /must be "true" or "false"/.test(e)), bad);
+    }
+    assert.deepEqual(check({ ...GOOD, ENFORCE_APP_CHECK: 'true' }).errors, []);
+  });
+
   it('refuses a secret written into the settings file, naming the fix', () => {
-    for (const name of ['RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET', 'EXCEL_AWS_SECRET_ACCESS_KEY']) {
+    for (const name of ['RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET', 'EXCEL_AWS_SECRET_ACCESS_KEY', 'ERASURE_HASH_KEY']) {
       const r = check({ ...GOOD, [name]: 'hunter2' });
       assert.ok(r.errors.some((e) => e.includes(name) && /Secret Manager/.test(e)));
       assert.ok(!JSON.stringify(r).includes('hunter2'), 'the value is never repeated');

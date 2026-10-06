@@ -1,4 +1,4 @@
-// "Add something with it": a sliding row of small product cards under a box's details, each with a quick
+// "Frequently Bought Together": a sliding row of small product cards under a box's details, each with a quick
 // "+ Add" button, so a customer can put a complementary box in the cart without leaving the page.
 //
 //   product    the box being viewed (it is never suggested to itself)
@@ -10,13 +10,12 @@
 // section is left out. On large screens arrows move the row; on touch screens it is a swipe, and the
 // cards snap into place. The row is a keyboard-reachable scroll area too.
 
-import Image from 'next/image';
+import OptimizedImage from '@/components/OptimizedImage';
 import Link from 'next/link';
 import { useRef } from 'react';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { MiniProductSkeleton } from '@/components/ProductSkeleton';
 import StockBadge from '@/components/StockBadge';
-import { resizeImage } from '@/lib/images';
 import { pickRelated } from '@/lib/related';
 
 function MiniCard({ product, onAdd }) {
@@ -28,7 +27,7 @@ function MiniCard({ product, onAdd }) {
     <li className="w-44 shrink-0 snap-start sm:w-52">
       <article aria-label={name} className="flex h-full flex-col overflow-hidden rounded-xl border border-line bg-surface-card shadow-card">
         <Link href={href} className="relative block aspect-[4/3] bg-surface-cream" tabIndex={-1} aria-hidden="true">
-          {image ? <Image src={resizeImage(image, 420)} alt="" fill sizes="208px" unoptimized className="object-cover" /> : <span className="grid h-full place-items-center text-[12px] text-ink-muted">Photo coming soon</span>}
+          {image ? <OptimizedImage src={image} alt="" fill sizes="208px" className="object-cover" /> : <span className="grid h-full place-items-center text-[12px] text-ink-muted">Photo coming soon</span>}
         </Link>
         <div className="flex flex-1 flex-col gap-2 p-3">
           <h3 className="text-nav-link text-ink">
@@ -81,8 +80,8 @@ export default function RelatedProducts({ product, products, status, onAdd }) {
       <div className="flex items-end justify-between gap-4">
         <div>
           <p className="text-label text-gold">Pairs well</p>
-          <h2 id="related-title" className="mt-1 text-heading-3 text-ink">
-            Add something with it
+          <h2 id="related-title" className="mt-1 font-serif text-heading-3 text-ink">
+            Frequently Bought Together
           </h2>
         </div>
         {status === 'ready' && related.length > 2 && (

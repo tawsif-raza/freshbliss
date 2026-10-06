@@ -1,0 +1,78 @@
+# Runs every automatic check on every pull request and every push to `main`, so a red change is seen before it can reach `main`
+# (which Vercel publishes to the live shop). Same commands as docs/DEVELOPING.md, section "Checks before you commit".
+# Nothing here touches real Firebase, Razorpay, AWS or Vercel: the backend tests use the local Firebase emulator, and
+# the storefront is built with made-up public Firebase values.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A newer push to the same branch replaces a run that is still going.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    name: Storefront (tests, lint, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            web/package-lock.json
+            firebase/package-lock.json
+      - run: npm ci
+      # web/tests/freeDelivery.test.mjs loads firebase/scripts/seed.js to compare its delivery zones, and that file needs
+      # the Firebase packages.
+      - run: npm ci
+        working-directory: firebase
+      - run: npm test
+      - run: npx eslint .
+      - name: Production build
+        run: npm run build
+        env:
+          # Public web config only (never secrets). Made-up values: the build must not need a real project.
+          NEXT_PUBLIC_FIREBASE_API_KEY: ci-placeholder
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ci-placeholder.firebaseapp.com
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: ci-placeholder
+          NEXT_PUBLIC_FIREBASE_APP_ID: ci-placeholder
+
+  firebase:
+    name: Backend (rules, payments, orders, unit, Excel)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: firebase
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            firebase/package-lock.json
+            firebase/functions/package-lock.json
+      # The Firestore emulator is a Java program.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - run: npm ci
+        working-directory: firebase/functions
+      - run: npm test

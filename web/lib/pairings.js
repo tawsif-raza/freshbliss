@@ -5,7 +5,8 @@
 // These are fixed suggestions written by hand, not generated from the box's contents, and they are
 // serving ideas only (no health claims). Check them against what is really in your boxes before launch.
 //
-//   getPairingSuggestion(slug, category) -> { title, blurb, time, ingredients: [3 strings], steps: [2 strings] }
+//   getPairingSuggestion(slug, category) -> { title, blurb, time, ingredients: [3 strings], steps: [2 strings] },
+//   or null for a product that needs no recipe (milk, ice cream, juice, a ready-cut bowl)
 
 const MANGO = {
   title: 'Mango Coconut Chia Pudding',
@@ -39,6 +40,10 @@ const DEFAULT = {
   steps: ['Toss the fruit gently with the lime juice in a large bowl.', 'Tear the mint over the top and serve straight away, or chilled.'],
 };
 
+// Boxes in these categories are already ready to eat or drink, so the "Fresh Artisanal Fruit Salad" default would
+// make no sense under them (a fruit salad suggested for a bottle of milk). They get no recipe card at all.
+const NO_PAIRING = ['ice cream', 'dairy', 'beverages', 'cut fruits'];
+
 const RULES = [
   [MANGO, ['mango']],
   [CITRUS, ['citrus', 'immunity']],
@@ -48,5 +53,8 @@ const RULES = [
 const pick = (text) => RULES.find(([, words]) => words.some((w) => text.includes(w)))?.[0] ?? null;
 
 export function getPairingSuggestion(slug, category) {
-  return pick(String(slug ?? '').toLowerCase()) ?? pick(String(category ?? '').toLowerCase()) ?? DEFAULT;
+  const categoryText = String(category ?? '').toLowerCase();
+  const found = pick(String(slug ?? '').toLowerCase()) ?? pick(categoryText);
+  if (found) return found;
+  return NO_PAIRING.includes(categoryText) ? null : DEFAULT;
 }

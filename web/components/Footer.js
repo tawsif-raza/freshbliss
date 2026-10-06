@@ -1,6 +1,6 @@
 // The site footer: the brand and a newsletter box, quick links, the Bengaluru delivery footprint, and
-// opening hours and contact details. It stacks into one column on phones, two on tablets, four on wide
-// screens. Colours come from the design tokens (deep green ground, gold accents).
+// opening hours and contact details. The brand and newsletter have a row of their own; below it the link columns stack into
+// one column on phones (two for the shop links), two on tablets, four on wide screens. Colours come from the design tokens (deep green ground, gold accents).
 //
 // Honest by design:
 //   - The newsletter box only checks the address looks right. Nothing is saved or sent anywhere yet, and it
@@ -68,7 +68,7 @@ function Heading({ children }) {
   return <h2 className="text-label text-gold-bright">{children}</h2>;
 }
 
-const linkClass = 'inline-flex min-h-11 items-center text-body text-on-hero hover:text-on-brand hover:underline';
+const linkClass = 'inline-flex min-h-11 items-center lg:min-h-9 text-body text-on-hero hover:text-on-brand hover:underline';
 
 export default function Footer() {
   const { zones } = useZones();
@@ -77,20 +77,21 @@ export default function Footer() {
 
   return (
     <footer className="fb-no-print mt-14.5 bg-hero-deep text-on-hero">
-      <div className="fb-container grid gap-10 py-14.5 sm:grid-cols-2 lg:grid-cols-4">
-        {/* brand + newsletter */}
-        <div className="sm:col-span-2 lg:col-span-1">
-          <p className="font-serif text-[28px] leading-none font-bold text-on-brand">{BUSINESS.name}</p>
-          <p className="mt-3 max-w-xs text-body text-on-hero">Freshly sliced. Perfectly packed. Always.</p>
-          <div className="mt-6">
-            <Newsletter />
+      <div className="fb-container py-14.5">
+        {/* brand + newsletter: a row of their own, so the link columns below stay narrow and short */}
+        <div className="grid gap-8 border-b border-on-hero/15 pb-10 lg:grid-cols-2 lg:items-end lg:gap-16">
+          <div>
+            <p className="font-serif text-[28px] leading-none font-bold text-on-brand">{BUSINESS.name}</p>
+            <p className="mt-3 max-w-md text-body text-on-hero">Freshly sliced. Perfectly packed. Always.</p>
           </div>
+          <Newsletter />
         </div>
 
-        {/* quick links */}
-        <nav aria-label="Footer">
-          <Heading>Quick links</Heading>
-          <ul className="mt-3 flex flex-col">
+        <div className="mt-10 grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
+        {/* shop links: two across on a phone, so the list is half as tall */}
+        <nav aria-label="Shop">
+          <Heading>Shop</Heading>
+          <ul className="mt-3 grid grid-cols-2 gap-x-4 sm:grid-cols-1">
             <li>
               <Link href="/products" className={linkClass}>
                 Shop all boxes
@@ -103,19 +104,36 @@ export default function Footer() {
                 </Link>
               </li>
             ))}
+          </ul>
+        </nav>
+
+        {/* help and policies */}
+        <nav aria-label="Help and policies">
+          <Heading>Help</Heading>
+          <ul className="mt-3 flex flex-col">
             <li>
               <Link href="/account" className={linkClass}>
                 My account
               </Link>
             </li>
             <li>
-              <Link href="/privacy" className={linkClass}>
-                Privacy Policy
+              <Link href="/faq" className={linkClass}>
+                FAQ
               </Link>
             </li>
             <li>
-              <Link href="/faq" className={linkClass}>
-                FAQ
+              <Link href="/refunds" className={linkClass}>
+                Cancellation &amp; Refunds
+              </Link>
+            </li>
+            <li>
+              <Link href="/terms" className={linkClass}>
+                Terms of Service
+              </Link>
+            </li>
+            <li>
+              <Link href="/privacy" className={linkClass}>
+                Privacy Policy
               </Link>
             </li>
           </ul>
@@ -173,12 +191,16 @@ export default function Footer() {
             <p className="mt-3 text-body text-on-hero">Track any order live from My orders.</p>
           )}
         </div>
+        </div>
       </div>
 
       <div className="border-t border-on-hero/15">
         <div className="fb-container flex flex-col gap-1 py-5 text-small text-on-hero sm:flex-row sm:items-center sm:justify-between">
-          <p>© {BUSINESS.legalName || BUSINESS.name}. All rights reserved.</p>
-          <p>Fresh fruit boxes, delivered in Bengaluru.</p>
+          <p>
+            © {BUSINESS.legalName || BUSINESS.name}. All rights reserved.
+            {BUSINESS.fssai && <span className="block sm:inline sm:ml-3">FSSAI Lic. No. {BUSINESS.fssai}</span>}
+          </p>
+          <p>Fresh fruit boxes, delivered in Bengaluru. Payments secured by Razorpay.</p>
         </div>
       </div>
     </footer>

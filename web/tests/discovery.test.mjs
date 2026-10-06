@@ -42,6 +42,10 @@ describe('pairings', () => {
     assert.equal(getPairingSuggestion('new-box', 'Immunity').title, 'Morning Ginger Citrus Detox Shot');
     assert.equal(getPairingSuggestion('mango-season-box', 'Immunity').title, 'Mango Coconut Chia Pudding'); // the slug wins
     assert.equal(getPairingSuggestion('new-box', 'Fresh').title, 'Fresh Artisanal Fruit Salad');
+    // milk, ice cream, juice and a ready-cut bowl get no recipe card (a fruit salad under milk would be silly)
+    for (const category of ['Ice Cream', 'Dairy', 'Beverages', 'Cut Fruits']) assert.equal(getPairingSuggestion('some-new-product', category), null, category);
+    assert.equal(getPairingSuggestion('a2-organic-farm-milk', 'Dairy'), null);
+    assert.equal(getPairingSuggestion('mango-lassi', 'Beverages').title, 'Mango Coconut Chia Pudding'); // a keyword in the slug still wins
     for (const slug of ['mango-x', 'citrus-x', 'berry-x', 'other']) {
       const r = getPairingSuggestion(slug);
       assert.equal(r.ingredients.length, 3);

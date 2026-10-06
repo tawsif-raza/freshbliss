@@ -21,6 +21,8 @@ const {
   collection,
   query,
   where,
+  orderBy,
+  limit,
   getDoc,
   getDocs,
   setDoc,
@@ -64,7 +66,11 @@ beforeEach(async () => {
     await setDoc(doc(db, 'deliveryZones/A'), { name: 'Zone A', fee: 0, active: true });
     await setDoc(doc(db, 'checkouts/c1'), { uid: 'alice', status: 'CREATED' });
     await setDoc(doc(db, 'promoCodes/WELCOME'), { type: 'percent', value: 10, active: true });
+    await setDoc(doc(db, 'promoCodes/WELCOME/uses/alice'), { count: 1 });
     await setDoc(doc(db, 'paymentEvents/evt1'), { processedAt: 1 });
+    await setDoc(doc(db, 'refunds/order-alice_full_1'), { orderId: 'order-alice', amountPaise: 34800, status: 'PENDING' });
+    await setDoc(doc(db, 'rateLimits/createCheckout__uid__alice'), { count: 1, windowStart: 1 });
+    await setDoc(doc(db, 'erasureLog/erased_abc'), { state: 'COMPLETED' });
     await setDoc(doc(db, 'orders/order-alice'), orderFor('alice', 'PREPARING'));
     await setDoc(doc(db, 'orders/order-alice-delivered'), orderFor('alice', 'DELIVERED'));
     await setDoc(doc(db, 'orders/order-bob'), orderFor('bob', 'DELIVERED'));
@@ -79,6 +85,7 @@ function orderFor(uid, status) {
     status,
     paymentStatus: 'PAID',
     pricing: { subtotal: 149, discount: 0, deliveryFee: 30, tip: 0, total: 179 },
+    createdAt: new Date('2026-10-01T10:00:00Z'), // real orders always have one (the My orders query sorts on it)
   };
 }
 
@@ -132,7 +139,13 @@ describe('default deny', () => {
     'orders/new-order',
     'checkouts/c2',
     'promoCodes/FREE100',
+    'promoCodes/WELCOME/uses/alice', // a customer must not reset their own promo usage count
+    'promoCodes/WELCOME/uses/new-user',
     'paymentEvents/evt2',
+    'refunds/order-alice_full_1', // the refund ledger: a customer must not be able to edit their own refund record
+    'refunds/new-refund',
+    'rateLimits/createCheckout__uid__alice', // the rate-limit counters: a customer must not be able to reset their own
+    'erasureLog/erased_abc', // the proof an erasure happened: nobody may edit or remove it
     'excelSync/order-1', // the Excel copy ledger
     'some-unknown-collection/x', // a collection the rules never mention
   ];
@@ -146,7 +159,7 @@ describe('default deny', () => {
   }
 
   it('blocks all reads of server-only data, even for staff', async () => {
-    for (const p of ['checkouts/c1', 'promoCodes/WELCOME', 'paymentEvents/evt1', 'excelSync/order-1', 'some-unknown-collection/x']) {
+    for (const p of ['checkouts/c1', 'promoCodes/WELCOME', 'promoCodes/WELCOME/uses/alice', 'paymentEvents/evt1', 'refunds/order-alice_full_1', 'rateLimits/createCheckout__uid__alice', 'erasureLog/erased_abc', 'excelSync/order-1', 'some-unknown-collection/x']) {
       await assertFails(getDoc(doc(asUser('alice'), p)));
       await assertFails(getDoc(doc(asStaff(), p)));
     }
@@ -272,6 +285,18 @@ describe('order privacy', () => {
     const q = query(collection(asUser('alice'), 'orders'), where('uid', '==', 'alice'));
     const snap = await assertSucceeds(getDocs(q));
     assert.equal(snap.size, 2);
+  });
+
+  it('lets the owner run the exact query the My orders page uses (uid filter, newest first, limited)', async () => {
+    const q = query(collection(asUser('alice'), 'orders'), where('uid', '==', 'alice'), orderBy('createdAt', 'desc'), limit(50));
+    const snap = await assertSucceeds(getDocs(q));
+    assert.equal(snap.size, 2);
+    assert.ok(snap.docs.every((d) => d.data().uid === 'alice'));
+  });
+
+  it("blocks that same query when it asks for someone else's orders", async () => {
+    const q = query(collection(asUser('bob'), 'orders'), where('uid', '==', 'alice'), orderBy('createdAt', 'desc'), limit(50));
+    await assertFails(getDocs(q));
   });
 
   it("blocks another signed-in user from reading someone else's order", async () => {
@@ -450,6 +475,18 @@ describe('carts', () => {
 
   it('rejects a client-made updatedAt', async () => {
     await assertFails(setDoc(doc(asUser('alice'), 'carts/alice'), validCart({ updatedAt: new Date() })));
+  });
+
+  it('accepts a delivery slot (or null for as-soon-as-possible) and nothing else in its place', async () => {
+    const ref = doc(asUser('alice'), 'carts/alice');
+    await assertSucceeds(setDoc(ref, validCart({ slot: { date: '2026-10-05', id: '1900-2100' } })));
+    await assertSucceeds(setDoc(ref, validCart({ slot: null })));
+    await assertFails(setDoc(ref, validCart({ slot: 'evening' })));
+    await assertFails(setDoc(ref, validCart({ slot: { date: '5 Oct', id: '1900-2100' } })));
+    await assertFails(setDoc(ref, validCart({ slot: { date: '2026-10-05', id: 'x' } })));
+    await assertFails(setDoc(ref, validCart({ slot: { date: '2026-10-05' } })));
+    await assertFails(setDoc(ref, validCart({ slot: { date: '2026-10-05', id: '1900-2100', fee: 0 } })));
+    await assertFails(setDoc(ref, validCart({ slot: [] })));
   });
 });
 

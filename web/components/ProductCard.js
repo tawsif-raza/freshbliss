@@ -13,7 +13,7 @@
 // size) and the price for the chosen size. The photo and the name open the product page. The motion stops for
 // visitors who asked their device for less motion.
 
-import Image from 'next/image';
+import OptimizedImage from '@/components/OptimizedImage';
 import Link from 'next/link';
 import { useId, useState } from 'react';
 import SizeSelector from '@/components/SizeSelector';
@@ -67,12 +67,11 @@ export default function ProductCard({ product, wishlisted = false, onToggleWishl
       <div className="relative aspect-[4/3] overflow-hidden bg-surface-cream">
         <Link href={href} tabIndex={-1} aria-hidden="true" className="absolute inset-0 block">
           {image ? (
-            <Image
+            <OptimizedImage
               src={image}
               alt=""
               fill
               sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-              unoptimized
               className="object-cover motion-safe:transition-transform motion-safe:duration-500 motion-safe:ease-out motion-safe:group-hover:scale-105"
             />
           ) : (

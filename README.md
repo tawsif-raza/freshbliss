@@ -40,3 +40,7 @@ A delivery app needs more than a catalogue. Every customer path should offer: a 
 ## Accessibility
 
 Build to WCAG 2.1 AA. Wrap every page in `A11yProvider` and put `A11yPanel` in the navigation so customers can choose High contrast, reduced motion and larger text; include the skip link and give the page `<main id="fbs-main">`. Motion is always optional: honor `prefers-reduced-motion`, never gate checkout on an animation, and give the 3D view a static photo fallback. Interactive controls are at least 44px tall, carry a visible `focus-ring`, and convey state with text as well as color. The `contrast` theme is an added theme, not a re-tint of the brand: text is 7:1 or better and borders 3:1 or better; keep `gold-bright` to fills and hero surfaces.
+
+## Running the project
+
+This file is the design brief. To run the shop on your own computer and check a change, see `docs/DEVELOPING.md`; for what is done and what is next, `docs/ROADMAP.md`.

@@ -11,6 +11,7 @@
 //
 // It prints only what the order really holds. It has no tax line (see content/business.js).
 
+import { slotText } from '@/lib/slots';
 import { useEffect, useId, useRef } from 'react';
 import SummaryRow from '@/components/SummaryRow';
 import { BUSINESS } from '@/content/business';
@@ -19,7 +20,7 @@ import { feeLabel } from '@/lib/zoneMatch';
 
 const capitalise = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
-const PAYMENT_STATUS = { PAID: 'Paid', PAID_MOCK: 'Test order', REFUND_PENDING: 'Refund pending', REFUNDED: 'Refunded' };
+const PAYMENT_STATUS = { PAID: 'Paid', PAID_MOCK: 'Test order', REFUND_PENDING: 'Refund pending', REFUNDED: 'Refunded', PARTIALLY_REFUNDED: 'Partly refunded' };
 
 export default function OrderReceipt({ order, open, onClose }) {
   const dialogRef = useRef(null);
@@ -58,6 +59,7 @@ export default function OrderReceipt({ order, open, onClose }) {
               {BUSINESS.legalName && <p className="mt-1 text-small text-ink">{BUSINESS.legalName}</p>}
               {BUSINESS.address && <p className="text-small text-ink-muted">{BUSINESS.address}</p>}
               {BUSINESS.gstin && <p className="text-small text-ink-muted">GSTIN: {BUSINESS.gstin}</p>}
+              {BUSINESS.fssai && <p className="text-small text-ink-muted">FSSAI Lic. No.: {BUSINESS.fssai}</p>}
               {BUSINESS.contact && <p className="text-small text-ink-muted">{BUSINESS.contact}</p>}
             </div>
             <div className="text-right">
@@ -75,6 +77,7 @@ export default function OrderReceipt({ order, open, onClose }) {
             <p className="text-small text-ink-muted">
               {order.zone?.name ? `${order.zone.name}, ` : ''}Pincode {order.pincode}
             </p>
+            {order.slot && <p className="text-small text-ink-muted">Delivery time: {slotText(order.slot)}</p>}
           </section>
 
           <table className="mt-5 w-full border-collapse text-left text-body text-ink">

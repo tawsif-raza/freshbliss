@@ -18,13 +18,16 @@
 
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { getFirestore } = require('firebase-admin/firestore');
-const { normaliseLines, priceCart, findZone, loadPromo, loadProducts, ALLOWED_TIPS, PINCODE } = require('./createCheckout');
+const { normaliseLines, priceCart, findZone, loadPromo, loadProducts, readSlot, ALLOWED_TIPS, PINCODE } = require('./createCheckout');
+const { callableOptions } = require('./shared/hardening');
+const { enforce, assertNotBlocked, recordFailure } = require('./shared/rateLimit');
+const { whoIs } = require('./shared/promoLimits');
 
 const fail = (code, message) => new HttpsError(code, message);
 
 // The work, apart from Firebase, so it can be tested.
 //   request  { auth, data: { items, pincode, tip, promoCode } }
-//   deps     { db } so tests can use a fake database
+//   deps     { db } so tests can use a fake database; { onBadPromo } is called when a promo code is not usable
 async function quoteCart(request, deps = {}) {
   if (!request.auth) throw fail('unauthenticated', 'Please sign in to check out.');
   const data = request.data || {};
@@ -36,11 +39,13 @@ async function quoteCart(request, deps = {}) {
     throw fail('failed-precondition', 'Enter your delivery pincode first.');
   }
 
+  const slot = readSlot(data.slot, deps.now); // a closed or made-up slot is refused here, so the page can say so early
+
   const db = deps.db || getFirestore();
   const [products, zone, promo] = await Promise.all([
     loadProducts(db, lines),
     findZone(db, data.pincode), // "We don't deliver to this pincode yet."
-    loadPromoQuietly(db, data.promoCode),
+    loadPromoQuietly(db, data.promoCode, whoIs(request.auth), deps.onBadPromo),
   ]);
 
   const { items, pricing } = priceCart({ lines, products, zone, promo, tip });
@@ -49,20 +54,38 @@ async function quoteCart(request, deps = {}) {
     pricing,
     zone: { id: zone.id, name: zone.name ?? null, etaMin: zone.etaMin ?? null, etaMax: zone.etaMax ?? null },
     promo: promo ? { code: promo.code, type: promo.type, value: promo.value } : null,
+    slot,
   };
 }
 
-// loadPromo, but every way of being "not a usable code" gives the same answer.
-async function loadPromoQuietly(db, rawCode) {
+// loadPromo, but every way of being "not a usable code" gives the same answer: a wrong, switched-off or expired code
+// is just "not valid". The exception is a usage limit ("already used", "reached its limit"): the customer needs to be
+// told, and it leaks nothing, because they only hear "already used" for a code they used themselves, and "reached its
+// limit" is about a code that no longer works for anyone. It is not counted as a wrong guess.
+async function loadPromoQuietly(db, rawCode, who, onBadPromo) {
   try {
-    return await loadPromo(db, rawCode);
+    return await loadPromo(db, rawCode, who);
   } catch (err) {
-    if (err instanceof HttpsError && err.code === 'failed-precondition') throw fail('failed-precondition', 'That promo code is not valid.');
+    if (err instanceof HttpsError && err.details?.promoLimit) throw err;
+    if (err instanceof HttpsError && err.code === 'failed-precondition') {
+      await onBadPromo?.(); // a wrong, switched-off or expired code all count as a wrong guess
+      throw fail('failed-precondition', 'That promo code is not valid.');
+    }
     throw err;
   }
 }
 
-exports.previewCheckout = onCall({ region: 'asia-south1' }, (request) => quoteCart(request));
+// Wrapped in rate limits (shared/rateLimit.js): a normal checkout is far under them, a script trying promo codes is not.
+// Wrong codes are counted separately, and once a caller has used up their wrong guesses even a right code waits.
+exports.previewCheckout = onCall(callableOptions(), async (request) => {
+  if (request.auth) {
+    const db = getFirestore();
+    await enforce(db, request, 'previewCheckout');
+    if (request.data?.promoCode) await assertNotBlocked(db, request, 'badPromo');
+    return quoteCart(request, { db, onBadPromo: () => recordFailure(db, request, 'badPromo') });
+  }
+  return quoteCart(request); // signed out: refused inside quoteCart
+});
 
 // Exported for the tests.
 exports.quoteCart = quoteCart;

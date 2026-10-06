@@ -6,7 +6,7 @@ import { usePersistedList } from '@/lib/usePersistedList';
 const STORAGE_KEY = 'freshbliss:wishlist:v1';
 
 // Same cap as the Firestore rules (wishlists/{uid}.productIds is at most 100).
-export const MAX_WISHLIST = 100;
+const MAX_WISHLIST = 100;
 
 const SAFE_ID = /^[A-Za-z0-9_-]{1,100}$/;
 

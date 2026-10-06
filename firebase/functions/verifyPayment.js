@@ -16,6 +16,7 @@
 // of the two arrives first wins and the other is a harmless no-op.
 
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { callableOptions } = require('./shared/hardening');
 const { logger } = require('firebase-functions');
 const { defineSecret } = require('firebase-functions/params');
 const { getFirestore } = require('firebase-admin/firestore');
@@ -46,7 +47,7 @@ function readInput(data) {
 }
 
 exports.verifyPayment = onCall(
-  { region: 'asia-south1', secrets: [RAZORPAY_KEY_SECRET] },
+  callableOptions({ secrets: [RAZORPAY_KEY_SECRET] }),
   async (request) => {
     if (!request.auth) throw fail('unauthenticated', 'Please sign in.');
     const uid = request.auth.uid;
@@ -86,9 +87,11 @@ exports.verifyPayment = onCall(
       status: result.status,
       paymentStatus: result.paymentStatus,
       message:
-        result.status === 'CANCELLED'
-          ? 'Sorry, an item sold out while you were paying. Your payment will be refunded.'
-          : 'Payment confirmed.',
+        result.status !== 'CANCELLED'
+          ? 'Payment confirmed.'
+          : /^Promo code/.test(result.cancelReason || '')
+            ? 'Sorry, that promo code reached its usage limit while you were paying, so we could not take this order. Your payment will be refunded. You can order again without the code.'
+            : 'Sorry, an item sold out while you were paying. Your payment will be refunded.',
     };
   },
 );

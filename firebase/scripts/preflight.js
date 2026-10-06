@@ -14,6 +14,7 @@
 // What it catches:
 //   - the alias is missing, or points at a "demo-" project (those only exist in the emulator)
 //   - RAZORPAY_KEY_ID missing, or not matching RAZORPAY_MODE (a live key with mode test, or the reverse)
+//   - App Check switched off while Razorpay is in live (real money) mode
 //   - an emulator-only setting (EXCEL_S3_ENDPOINT) left in the production file
 //   - a secret written into the plain settings file instead of Secret Manager
 //   - AWS settings half filled in
@@ -28,7 +29,7 @@ const { razorpayKeyProblem } = require('../functions/shared/razorpayMode');
 const ROOT = path.join(__dirname, '..'); // the firebase/ folder
 
 // Secrets live in Secret Manager. They must never be in a settings file.
-const SECRETS = ['RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET', 'EXCEL_AWS_SECRET_ACCESS_KEY'];
+const SECRETS = ['RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET', 'EXCEL_AWS_SECRET_ACCESS_KEY', 'ERASURE_HASH_KEY'];
 
 // ---------- small pure helpers (tested in tests/preflight.test.js) ----------
 
@@ -77,6 +78,16 @@ function checkSettings({ alias, projectId, env, envFile, secretsMissing = [] }) 
     if (problem) errors.push(problem);
   }
   if (mode === 'test') warnings.push('RAZORPAY_MODE is "test": customers will NOT be charged real money. That is right for a rehearsal, wrong for launch.');
+
+  // App Check (functions/shared/hardening.js). With real money it is not optional.
+  const appCheck = (env.ENFORCE_APP_CHECK || 'false').trim();
+  if (!['true', 'false'].includes(appCheck)) {
+    errors.push(`ENFORCE_APP_CHECK must be "true" or "false" (it is "${appCheck}").`);
+  } else if (appCheck === 'false') {
+    const how = 'Set ENFORCE_APP_CHECK=true after doing docs/GO_LIVE.md section 5.5 (the reCAPTCHA key).';
+    if (mode === 'live') errors.push(`ENFORCE_APP_CHECK is off while RAZORPAY_MODE is "live". Anyone could script the checkout against real money. ${how}`);
+    else warnings.push(`ENFORCE_APP_CHECK is off: scripts and other websites can call your checkout functions. Fine for a first test, not for launch. ${how}`);
+  }
 
   if (env.EXCEL_S3_ENDPOINT) errors.push('EXCEL_S3_ENDPOINT is set. It is only for a local S3 look-alike and would send orders to the wrong place. Remove it.');
   if (env.EXCEL_S3_BUCKET) {
@@ -140,7 +151,7 @@ function main(argv) {
 
   const secretsMissing = [];
   if (!flag('--skip-secrets')) {
-    const needed = ['RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET', ...(env.EXCEL_S3_BUCKET ? ['EXCEL_AWS_SECRET_ACCESS_KEY'] : [])];
+    const needed = ['RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET', 'ERASURE_HASH_KEY', ...(env.EXCEL_S3_BUCKET ? ['EXCEL_AWS_SECRET_ACCESS_KEY'] : [])];
     for (const name of needed) if (!secretExists(name, projectId)) secretsMissing.push(name);
   }
 

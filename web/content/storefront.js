@@ -4,6 +4,8 @@
 // hour, hygiene, no preservatives, the FAQ answers). Make sure every one is true for the business as
 // it really runs. See docs/GO_LIVE.md.
 
+import { ROOTS_IMAGE } from '../lib/images.js'; // relative on purpose: the tests load this file in plain Node, which does not know the @/ alias
+
 // ---------- the hero ----------
 
 // The visitor can flip between these. Each can send them to a category of boxes below.
@@ -33,16 +35,20 @@ export const TRUST_BADGES = ['1-Hour Delivery in Bengaluru', 'Fresh & Hygienic',
 
 // ---------- the category tabs ----------
 
-// `category` is the value of a product's `category` field in Firestore. A tab with no products shows
-// a friendly message instead of an empty grid.
+// `categories` lists the values of a product's `category` field in Firestore that the tab shows (one tab can
+// cover several: see lib/categories.js). "All" has none. A tab with no products shows a friendly message
+// instead of an empty grid.
 export const CATEGORIES = [
-  { id: 'all', label: 'All', category: null },
-  { id: 'fresh', label: 'Fresh Boxes', category: 'Fresh' },
-  { id: 'fitness', label: 'Fitness Packs', category: 'Fitness' },
-  { id: 'ramadan', label: 'Ramadan Specials', category: 'Ramadan' },
-  { id: 'exotics', label: 'Exotics', category: 'Exotics' },
-  { id: 'immunity', label: 'Immunity', category: 'Immunity' },
-  { id: 'combos', label: 'Combos', category: 'Combos' },
+  { id: 'all', label: 'All', categories: [] },
+  { id: 'fresh', label: 'Fresh Boxes', categories: ['Fresh'] },
+  { id: 'fitness', label: 'Fitness Packs', categories: ['Fitness'] },
+  { id: 'ramadan', label: 'Ramadan Specials', categories: ['Ramadan'] },
+  { id: 'exotics', label: 'Exotics', categories: ['Exotics'] },
+  { id: 'immunity', label: 'Immunity', categories: ['Immunity'] },
+  { id: 'seasonal', label: 'Seasonal', categories: ['Seasonal'] },
+  { id: 'chilled', label: 'Chilled & Dairy', categories: ['Ice Cream', 'Dairy', 'Cut Fruits'] },
+  { id: 'beverages', label: 'Beverages', categories: ['Beverages'] },
+  { id: 'combos', label: 'Combos', categories: ['Combos'] },
 ];
 
 export const FEATURED_LIMIT = 8; // boxes shown on the home page before "See all boxes"
@@ -95,25 +101,78 @@ export const TESTIMONIALS = [
   },
 ];
 
+// ---------- free delivery ----------
+
+// The subtotal (whole rupees) at which the cart's progress bar says delivery is free. It is a PREVIEW message only:
+// the server decides the real fee per delivery zone (a zone's `freeDeliveryFrom`, firebase/functions/createCheckout.js).
+// REVIEW BEFORE LAUNCH: keep this equal to `freeDeliveryFrom` on the zones that charge a fee, and to the ₹499 wording in
+// the ticker below and in the FAQ (pages/faq.js), or the bar will promise something checkout does not give.
+export const FREE_DELIVERY_THRESHOLD = 499;
+
 // ---------- the ticker under the banner ----------
 
 // REVIEW BEFORE LAUNCH: each line is a promise, so make sure it is true. In particular, check the free
 // delivery line against the delivery zones (Zone B charges a fee today) and the rating against real reviews.
+// The icons are chosen in components/Marquee.js by `id` (the design rules allow no emoji). There is no "average rating" line
+// on purpose: it would be a number with no real reviews behind it. "Pick your delivery window" is a feature the checkout has.
 export const MARQUEE_ITEMS = [
-  '🌿 100% Organic & Pesticide-Free',
-  '🚚 Free Bengaluru Delivery over ₹500',
-  '👨‍🌾 Farm to Doorstep in 12 Hours',
-  '⭐ 4.9/5 Average Rating',
+  { id: 'organic', text: '100% Organic & Pesticide-Free' },
+  { id: 'delivery', text: 'Free Bengaluru Delivery over ₹499' },
+  { id: 'farm', text: 'Farm to Doorstep in 12 Hours' },
+  { id: 'windows', text: 'Pick your delivery window' },
 ];
+
+// ---------- how it works ----------
+
+// The four steps of an order, on the home page (components/HowItWorks.js). Each describes what the shop really does today
+// (check against pages/checkout, pages/orders and firebase/functions before changing a word). Icons are chosen there by `id`.
+export const HOW_IT_WORKS = {
+  eyebrow: 'How it works',
+  title: 'From the box to your door in four steps',
+  intro: 'No account needed to start. You see every price before you pay.',
+  steps: [
+    { id: 'choose', title: 'Choose your box', text: 'Pick a box and a size, and add it to your cart. Chilled boxes say how they must be kept.' },
+    { id: 'slot', title: 'Pick when it arrives', text: 'Enter your pincode to see the delivery fee, then choose as soon as possible or a delivery window today or tomorrow.' },
+    { id: 'pay', title: 'Pay securely online', text: 'Pay through Razorpay. The total, with delivery and any tip, is on the Pay button before you tap it.' },
+    { id: 'track', title: 'Follow it live', text: 'Watch your order move from confirmed to out for delivery. You can cancel until it is packed.' },
+  ],
+};
+
+// ---------- why FreshBliss (features) ----------
+
+// What the shop does for the customer, as plain facts. No numbers and no promises about speed beyond what the rest of the site
+// already says. Icons are chosen in components/WhyFreshBliss.js by `id`.
+export const WHY_FRESHBLISS = {
+  eyebrow: 'Made easy',
+  title: 'Everything a good fruit order needs',
+  intro: 'Small things that make ordering and receiving easier.',
+  items: [
+    { id: 'tracking', title: 'Live order tracking', text: 'See each step as it happens, without refreshing the page.' },
+    { id: 'windows', title: 'Delivery windows', text: 'Choose a window that suits you, today or tomorrow, or ask for it as soon as possible.' },
+    { id: 'cancel', title: 'Cancel until packed', text: 'Change your mind before your box is packed and cancel it yourself. The refund goes back to how you paid.' },
+    { id: 'secure', title: 'Secure payments', text: 'You pay online through Razorpay. Prices are checked by our server, never by your browser.' },
+    { id: 'reorder', title: 'Reorder in one tap', text: 'Sign in once and put a favourite box back in your cart from My orders.' },
+    { id: 'storage', title: 'Clear storage labels', text: 'Chilled and frozen boxes show the temperature they must be kept at, so nothing is a surprise.' },
+  ],
+};
+
+// ---------- the closing call to action ----------
+
+export const FINAL_CTA = {
+  eyebrow: 'Ready when you are',
+  title: 'Your next box is a minute away',
+  text: 'Choose a box, pick a time and follow it to your door.',
+};
 
 // ---------- our roots ----------
 
+// The photo is a placeholder from lib/images.js (a basket of fruit); the caption says what it shows, not where it came from.
 export const OUR_ROOTS = {
   eyebrow: 'Our roots',
   title: 'Sourced with Purpose',
   text: 'We partner directly with independent farmers across Karnataka and Maharashtra to bring you produce that actually tastes like nature intended.',
-  image: 'https://images.unsplash.com/photo-1595841696677-6489ff3f8cd1?auto=format&fit=crop&w=1200&q=80',
-  imageAlt: 'Fresh produce from one of our partner farms',
+  image: ROOTS_IMAGE,
+  imageAlt: 'A basket of fresh fruit: grapes, mango, kiwi, pineapple and plums',
 };
 
 // ---------- questions ----------
