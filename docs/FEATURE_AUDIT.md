@@ -1,5 +1,7 @@
 # Feature audit and roadmap (October 2026)
 
+The forward plan (phases, workflow, owner decisions) is in `docs/ROADMAP.md`; this file is the detailed done/open list.
+
 What was checked, what was added in this pass, and what is still open, in priority order. Each open item says
 **why** it matters and **what the change would touch**, so it can be scoped before it is built.
 

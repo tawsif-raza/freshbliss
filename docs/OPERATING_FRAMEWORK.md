@@ -60,6 +60,7 @@ Pick the top open item and cut it down to a sprint that fits one commit.
   `docs/FEATURE_AUDIT.md`. Do not guess them in code.
 
 ## Where things are
+- `docs/ROADMAP.md`: where the project stands, how work runs from here, and the phases ahead. Read it first.
 - `docs/FEATURE_AUDIT.md`: what is strong, what shipped, the prioritised open list.
 - `docs/GO_LIVE.md`: deploying with real money, and the known gaps.
 - `web/CLAUDE.md` / `web/AGENTS.md`: conventions for the Next.js storefront.
