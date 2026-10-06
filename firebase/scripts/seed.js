@@ -207,12 +207,14 @@ function buildProducts() {
   ];
 }
 
-// 5600xx = Zone A (free), any other 560xxx = Zone B (Rs 30). The lowest
+// 5600xx = Zone A (free), any other 560xxx = Zone B (Rs 30, free from Rs 499). The lowest
 // priority number is checked first, so Zone A wins over the wider Zone B.
+// Zone B's freeDeliveryFrom must equal FREE_DELIVERY_THRESHOLD in web/content/storefront.js: the cart's "free delivery"
+// bar and the ticker promise that amount, and web/tests/freeDelivery.test.mjs fails if the two drift apart.
 function buildZones() {
   return [
     { id: 'A', name: 'Zone A', fee: 0, etaMin: 30, etaMax: 45, match: { regex: '^5600\\d{2}$' }, priority: 1, freeDeliveryFrom: null, active: true },
-    { id: 'B', name: 'Zone B', fee: 30, etaMin: 45, etaMax: 60, match: { regex: '^560\\d{3}$' }, priority: 2, freeDeliveryFrom: null, active: true },
+    { id: 'B', name: 'Zone B', fee: 30, etaMin: 45, etaMax: 60, match: { regex: '^560\\d{3}$' }, priority: 2, freeDeliveryFrom: 499, active: true },
   ];
 }
 

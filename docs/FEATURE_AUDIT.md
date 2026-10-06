@@ -22,6 +22,22 @@ What was checked, what was added in this pass, and what is still open, in priori
 | **FSSAI licence field** (receipt + footer, shown only when filled) | FSSAI requires the licence number on invoices and food-business listings | `content/business.js` -> `fssai` |
 | FAQ fix | The FAQ said orders cannot be cancelled once "Preparing"; the system now allows it until packed | `pages/faq.js` |
 
+## Also shipped, recorded here after the fact (found by the October 2026 re-audit)
+These were built in earlier sprints but never written down, so `docs/GO_LIVE.md` still described them as missing.
+- **Abuse protection:** per-account and per-address rate limits on the public functions (`functions/shared/rateLimit.js`,
+  server-only `rateLimits` collection with a TTL policy), and App Check (reCAPTCHA v3) behind the `ENFORCE_APP_CHECK` switch
+  (`shared/hardening.js`, `web/lib/firebaseClient.js`). Preflight refuses a live deploy with App Check off.
+- **Error alerts:** `npm run setup-alerts` creates an email channel and a Cloud Monitoring policy for any function `ERROR`
+  (`monitoring/alertPolicy.js`).
+- **Search and sharing:** server-built home, catalogue and product pages refreshed every 10 to 60 seconds, canonical and
+  Open Graph tags, JSON-LD, `sitemap.xml`, `robots.txt` (`lib/seo.js`, `lib/serverCatalog.js`).
+- **Enforced Content Security Policy** and security headers (`web/vercel.json`); still unproven against live traffic.
+
+**Re-audit fixes (this pass):** `docs/GO_LIVE.md` gained the sections the code already pointed to (5.5 App Check, 11.1 alerts),
+the sign-in providers to enable, the new environment variables and functions, and corrected known gaps. The seed's Zone B
+now waives the fee from ₹499, matching the cart bar and ticker (before, the bar said "free delivery" and checkout charged
+₹30); `web/tests/freeDelivery.test.mjs` keeps the two equal.
+
 ## Open items, in priority order
 1. ~~**Real sign-in**~~ **Done (October 2026).** Google, Microsoft and phone sign-in on `/login`; a guest is linked to the
    account (same uid), or, if that identity already has an account, their orders are moved by the `claimGuestOrders`
@@ -73,7 +89,8 @@ What was checked, what was added in this pass, and what is still open, in priori
    not recorded per customer; no re-sign-in before erasing; erasing and re-registering gives a new account. **Needs the `ERASURE_HASH_KEY` secret before it will run.**
 6. **Tax decision.** Receipts print no tax line. Ask the accountant: GST registered? prices tax-inclusive? Then
    store the breakdown on the order at `finalizeCheckout` time (cannot be reconstructed later).
-7. **Reorder button** on past orders (re-add the same boxes to the cart; server re-prices anyway).
+7. ~~**Reorder button**~~ **Done.** `/account` has a Reorder button on each past order (`components/orders/OrderHistoryCard.js`,
+   `linesFromOrder` in `lib/pricing.js`); the server re-prices anyway.
 8. **PWA manifest + install prompt** (cheap; phones are the main device).
 9. **Low-stock alert to staff** (a function trigger when stock crosses a threshold).
 10. **Excel sheet slot column** (orders now carry `slot`; the sheet does not export it yet).
