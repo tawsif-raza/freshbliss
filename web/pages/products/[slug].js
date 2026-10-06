@@ -155,9 +155,10 @@ function ProductDetail({ product, products, status }) {
           <div className="mt-4 flex flex-wrap items-center gap-3">
             {/* The buy bar. On a phone it is fixed to the bottom of the screen (frosted glass), so Add to Cart is
                 always one tap away however far the visitor has scrolled; from tablet width up it is an ordinary
-                button in the page. It sits just above the phone tab bar (components/MobileBottomNav.js), whose height is
+                button in the page (md:bottom-auto matters: a RELATIVE element keeps `bottom`, which would push the button up
+                over the quantity stepper). It sits just above the phone tab bar (components/MobileBottomNav.js), whose height is
                 --fb-bottom-nav-h. (fb-sticky-cta makes the footer leave room for it: styles/globals.css.) */}
-            <div className="fb-no-print fb-sticky-cta fixed bottom-[calc(var(--fb-bottom-nav-h)+env(safe-area-inset-bottom))] left-0 z-50 w-full border-t border-line/70 bg-surface-card/90 p-4 backdrop-blur-md md:relative md:z-auto md:w-auto md:border-none md:bg-transparent md:p-0 md:backdrop-blur-none">
+            <div className="fb-no-print fb-sticky-cta fixed bottom-[calc(var(--fb-bottom-nav-h)+env(safe-area-inset-bottom))] left-0 z-50 w-full border-t border-line/70 bg-surface-card/90 p-4 backdrop-blur-md md:relative md:bottom-auto md:left-auto md:z-auto md:w-auto md:border-none md:bg-transparent md:p-0 md:backdrop-blur-none">
               <div className="mx-auto flex max-w-xl items-center gap-4 md:mx-0 md:max-w-none">
                 <div className="shrink-0 md:hidden" aria-live="polite">
                   <p className="text-small text-ink-muted">{quantity > 1 ? `Total for ${quantity}` : 'Price'}</p>

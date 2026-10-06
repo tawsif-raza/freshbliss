@@ -47,6 +47,9 @@ export const HERO_IMAGES = {
   ramadan: photo(PHOTO.fruitBasket, 1600),
 };
 
+// The "Our roots" photo on the home page (content/storefront.js).
+export const ROOTS_IMAGE = photo(PHOTO.fruitBasket, 1200);
+
 // The Featured Product Promo banner on the home page (components/FeaturedPromo.js): a halved kiwi.
 export const PROMO_IMAGE = photo(PHOTO.kiwi, 800);
 

@@ -38,6 +38,21 @@ the sign-in providers to enable, the new environment variables and functions, an
 now waives the fee from ₹499, matching the cart bar and ticker (before, the bar said "free delivery" and checkout charged
 ₹30); `web/tests/freeDelivery.test.mjs` keeps the two equal.
 
+## Frontend pass (October 2026)
+A full audit of the storefront in a real browser (desktop, and a 390 px phone frame), then these changes. Tests: `web/tests/`.
+- **Bugs fixed:** the product page's *Add to Cart* button sat on top of the quantity stepper on every tablet and desktop (`md:relative`
+  kept the phone layout's `bottom` offset); the "Our Roots" photo was a dark alley, not produce; in `next dev` every server-rendered
+  page was empty when `web/.env.local` held the real project id (`lib/serverCatalog.js` now asks the emulator for its demo project);
+  the phone's category tabs showed a raw scrollbar; the ticker used emoji (against the design rules) and an unbacked "4.9/5" rating.
+- **New home sections** (the page is about 45% longer): a pincode check ("Do we deliver to you?", remembers the pincode for the
+  cart and checkout), Shop by category (photo tiles built from the live catalogue), How it works (4 steps), Everything a good fruit
+  order needs (6 service facts) and a closing call to action. All copy is in `content/storefront.js` and states only what the system does.
+- **Shop page:** sort (featured, price both ways, name) and an "In stock only" switch; sold-out boxes always stay last.
+- **Everywhere:** a back-to-top button, a tidier footer (brand and newsletter row, four short columns, Razorpay note), a helpful 404
+  with category links, and a correct heading outline on the shop page.
+- **Not done:** real product photos and the real logo (still placeholders), real reviews (the section stays hidden in production),
+  and a pass on the checkout, account and admin screens, which were not changed.
+
 ## Open items, in priority order
 1. ~~**Real sign-in**~~ **Done (October 2026).** Google, Microsoft and phone sign-in on `/login`; a guest is linked to the
    account (same uid), or, if that identity already has an account, their orders are moved by the `claimGuestOrders`

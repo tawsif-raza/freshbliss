@@ -74,6 +74,20 @@
   animation-play-state: paused;
 }
 
+/* The category tabs (components/CategoryTabs.js) scroll sideways on a phone: no scrollbar, and a fade at the right edge. */
+.fb-tabs-scroll {
+  scrollbar-width: none;
+}
+.fb-tabs-scroll::-webkit-scrollbar {
+  display: none;
+}
+@media (max-width: 639px) {
+  .fb-tabs-scroll {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
+  }
+}
+
 /* The fruit on the home page promo banner (components/FeaturedPromo.js) drifts up and down. */
 @keyframes fb-float {
   0%,
@@ -165,6 +179,16 @@
 @media (max-width: 767px) {
   .fb-has-bottom-nav {
     padding-bottom: calc(var(--fb-bottom-nav-h) + env(safe-area-inset-bottom));
+  }
+}
+
+/* The back-to-top button (components/BackToTop.js) floats above the phone tab bar, and higher still when the product page's buy bar is there. */
+@media (max-width: 767px) {
+  .fb-back-to-top {
+    bottom: calc(var(--fb-bottom-nav-h) + env(safe-area-inset-bottom) + 1rem);
+  }
+  body:has(.fb-sticky-cta) .fb-back-to-top {
+    bottom: calc(var(--fb-bottom-nav-h) + env(safe-area-inset-bottom) + 6.5rem);
   }
 }
 

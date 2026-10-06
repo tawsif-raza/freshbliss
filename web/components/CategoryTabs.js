@@ -23,7 +23,13 @@ export default function CategoryTabs({ tabs, value, onChange, counts = {}, panel
   }
 
   return (
-    <div role="tablist" aria-label={label} className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
+    // On a phone the tabs scroll sideways. The browser's own scrollbar is hidden (it looks like a stray control), and the
+    // right edge fades out (a mask, so it works on any page colour) to show that there are more tabs to swipe to.
+    <div
+      role="tablist"
+      aria-label={label}
+      className="fb-tabs-scroll -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
+    >
       {tabs.map((tab, i) => {
         const selected = tab.id === value;
         return (

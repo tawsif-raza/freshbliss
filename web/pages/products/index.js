@@ -5,12 +5,14 @@ import { useMemo, useState } from 'react';
 import CategoryTabs from '@/components/CategoryTabs';
 import ProductGrid from '@/components/ProductGrid';
 import Seo from '@/components/Seo';
+import ShopToolbar from '@/components/ShopToolbar';
 import { CATEGORIES } from '@/content/storefront';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
 import { useCatalog } from '@/lib/catalog';
 import { countByTab, productsInTab } from '@/lib/categories';
 import { fetchActiveProducts } from '@/lib/serverCatalog';
+import { filterInStock, sortProducts } from '@/lib/sort';
 
 // Built on the server and refreshed at most once a minute, like the home page (pages/index.js).
 export async function getStaticProps() {
@@ -23,13 +25,15 @@ export default function ProductsPage({ initialProducts }) {
   const { addToCart } = useCart();
   const wishlist = useWishlist();
 
-  // Boxes you can buy first; sold-out ones last. Array.sort is stable, so each
-  // group keeps Firestore's order.
-  const ordered = useMemo(() => [...products].sort((a, b) => Number(a.stock <= 0) - Number(b.stock <= 0)), [products]);
+  // Boxes you can buy first; sold-out ones last (lib/sort.js keeps that true for every sort order).
+  const ordered = useMemo(() => sortProducts(products, 'featured'), [products]);
 
   const [categoryId, setCategoryId] = useState('all');
+  const [sort, setSort] = useState('featured');
+  const [inStockOnly, setInStockOnly] = useState(false);
   const category = CATEGORIES.find((c) => c.id === categoryId) ?? CATEGORIES[0];
-  const shown = useMemo(() => productsInTab(ordered, category), [ordered, category]);
+  // The tab's boxes, narrowed and ordered as the visitor asked. The tab counts stay the full counts, so a tab is never a surprise.
+  const shown = useMemo(() => sortProducts(filterInStock(productsInTab(ordered, category), inStockOnly), sort), [ordered, category, inStockOnly, sort]);
   const counts = useMemo(() => countByTab(ordered, CATEGORIES), [ordered]);
 
   return (
@@ -51,10 +55,10 @@ export default function ProductsPage({ initialProducts }) {
         </div>
 
         <div id="shop-panel" role="tabpanel" aria-labelledby={`tab-${categoryId}`} className="mt-8.5">
-          {status === 'ready' && shown.length > 0 && (
-            <p className="mb-4.5 text-small text-ink-muted">
-              {shown.length} {shown.length === 1 ? 'box' : 'boxes'}
-            </p>
+          {/* The box names below are h3s; this keeps the outline h1 > h2 > h3 for screen-reader users. */}
+          <h2 className="sr-only">{category.label}</h2>
+          {status === 'ready' && productsInTab(ordered, category).length > 0 && (
+            <ShopToolbar count={shown.length} sort={sort} onSort={setSort} inStockOnly={inStockOnly} onInStockOnly={setInStockOnly} />
           )}
           <ProductGrid
             products={shown}
@@ -63,9 +67,11 @@ export default function ProductsPage({ initialProducts }) {
             wishlist={wishlist}
             onAdd={addToCart}
             empty={
-              categoryId === 'all'
-                ? { title: 'No fruit boxes are available right now.', text: 'Please check back soon.' }
-                : { title: `No ${category.label.toLowerCase()} right now.`, text: 'Try another category.' }
+              inStockOnly && productsInTab(ordered, category).length > 0
+                ? { title: 'Everything here is sold out right now.', text: 'Turn off "In stock only" to see the sold-out boxes.' }
+                : categoryId === 'all'
+                  ? { title: 'No fruit boxes are available right now.', text: 'Please check back soon.' }
+                  : { title: `No ${category.label.toLowerCase()} right now.`, text: 'Try another category.' }
             }
           />
         </div>

@@ -55,11 +55,16 @@ export function productFromDocument(doc) {
 
 // Mirrors lib/firebaseClient.js: `next dev` talks to the local emulator, production to the real project.
 // FIRESTORE_EMULATOR_HOST (the standard variable) also points a production build at an emulator, for testing.
+//
+// In `next dev` the emulator holds the project "demo-freshbliss" (the id lib/firebaseClient.js hard-codes for the browser), NOT
+// the real project id that a developer may have in web/.env.local for production builds. Asking the emulator for that real id
+// returned an empty shop on every server-rendered page while developing, so the dev default always uses the demo id. Only an
+// explicit FIRESTORE_EMULATOR_HOST (a production build pointed at an emulator) falls back to NEXT_PUBLIC_FIREBASE_PROJECT_ID.
 export function restTarget(env = process.env) {
-  const emulatorHost =
-    env.FIRESTORE_EMULATOR_HOST ||
-    (env.NODE_ENV === 'development' && env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS !== 'false' ? `${env.NEXT_PUBLIC_EMULATOR_HOST || '127.0.0.1'}:8080` : '');
-  if (emulatorHost) return { origin: `http://${emulatorHost}`, projectId: env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'demo-freshbliss' };
+  if (env.FIRESTORE_EMULATOR_HOST) return { origin: `http://${env.FIRESTORE_EMULATOR_HOST}`, projectId: env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'demo-freshbliss' };
+  if (env.NODE_ENV === 'development' && env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS !== 'false') {
+    return { origin: `http://${env.NEXT_PUBLIC_EMULATOR_HOST || '127.0.0.1'}:8080`, projectId: 'demo-freshbliss' };
+  }
   const projectId = env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
   return projectId ? { origin: 'https://firestore.googleapis.com', projectId } : null;
 }

@@ -8,7 +8,7 @@ import { FREE_DELIVERY_THRESHOLD, MARQUEE_ITEMS } from '../content/storefront.js
 describe('free delivery copy', () => {
   it('the ticker and the FAQ quote the same threshold as the cart bar', () => {
     const amount = `₹${FREE_DELIVERY_THRESHOLD}`;
-    assert.ok(MARQUEE_ITEMS.some((line) => line.includes('Free Bengaluru Delivery') && line.includes(amount)), 'ticker line');
+    assert.ok(MARQUEE_ITEMS.some(({ text }) => text.includes('Free Bengaluru Delivery') && text.includes(amount)), 'ticker line');
     const faq = readFileSync(new URL('../pages/faq.js', import.meta.url), 'utf8');
     assert.ok(faq.includes(`orders of ${amount} or more qualify for free delivery`), 'FAQ answer');
   });

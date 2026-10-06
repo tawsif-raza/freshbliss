@@ -2,6 +2,7 @@ import '@/styles/globals.css';
 import { Playfair_Display, Plus_Jakarta_Sans } from 'next/font/google';
 import { useRouter } from 'next/router';
 import SignInGate from '@/components/auth/SignInGate';
+import BackToTop from '@/components/BackToTop';
 import CartDrawer from '@/components/CartDrawer';
 import CommandPalette from '@/components/CommandPalette';
 import ErrorBoundary from '@/components/ErrorBoundary';
@@ -54,7 +55,7 @@ export default function App({ Component, pageProps }) {
                   </a>
                   <RouteProgress />
                   {!Component.bare && <SiteHeader />}
-                  <main id="fbs-main" className="flex-1">
+                  <main id="fbs-main" tabIndex={-1} className="flex-1 focus:outline-none">
                     <ErrorBoundary resetKey={router.asPath}>
                       <SignInGate>
                         <Component {...pageProps} />
@@ -63,6 +64,7 @@ export default function App({ Component, pageProps }) {
                   </main>
                   {!Component.bare && <Footer />}
                   {!Component.bare && <MobileBottomNav />}
+                  {!Component.bare && <BackToTop />}
                   <CartDrawer />
                   <CommandPalette />
                 </WishlistProvider>

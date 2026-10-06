@@ -82,6 +82,11 @@ describe('where the server asks', () => {
     assert.deepEqual(restTarget({ NODE_ENV: 'development' }), { origin: 'http://127.0.0.1:8080', projectId: 'demo-freshbliss' });
     assert.equal(restTarget({ NODE_ENV: 'development', NEXT_PUBLIC_USE_FIREBASE_EMULATORS: 'false', NEXT_PUBLIC_FIREBASE_PROJECT_ID: 'real' }).origin, 'https://firestore.googleapis.com');
   });
+  it('`next dev` asks for the demo project of the emulator, even when .env.local holds the real project id', () => {
+    const env = { NODE_ENV: 'development', NEXT_PUBLIC_FIREBASE_PROJECT_ID: 'freshbliss' };
+    assert.deepEqual(restTarget(env), { origin: 'http://127.0.0.1:8080', projectId: 'demo-freshbliss' });
+  });
+
   it('FIRESTORE_EMULATOR_HOST points even a production build at an emulator (for testing)', () => {
     assert.deepEqual(restTarget({ ...PROD, FIRESTORE_EMULATOR_HOST: '127.0.0.1:18080' }), { origin: 'http://127.0.0.1:18080', projectId: 'freshbliss-prod' });
   });
