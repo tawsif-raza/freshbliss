@@ -32,8 +32,14 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: |
+            web/package-lock.json
+            firebase/package-lock.json
       - run: npm ci
+      # web/tests/freeDelivery.test.mjs loads firebase/scripts/seed.js to compare its delivery zones, and that file needs
+      # the Firebase packages.
+      - run: npm ci
+        working-directory: firebase
       - run: npm test
       - run: npx eslint .
       - name: Production build
