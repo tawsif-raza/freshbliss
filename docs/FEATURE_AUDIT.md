@@ -2,8 +2,19 @@
 
 The forward plan (phases, workflow, owner decisions) is in `docs/ROADMAP.md`; this file is the detailed done/open list.
 
-What was checked, what was added in this pass, and what is still open, in priority order. Each open item says
-**why** it matters and **what the change would touch**, so it can be scoped before it is built.
+What was checked, what has been added so far, and what is still open, in priority order. Each open item says
+**why** it matters and **what the change would touch**, so it can be scoped before it is built. Last reviewed 6 October 2026.
+
+## Status at a glance
+| Area | State |
+|---|---|
+| Money path, refunds, promo limits, sign-in, privacy erasure | Done and tested against the emulators and a fake Razorpay; **never run against real accounts** |
+| Delivery slots, self-cancel, terms and refund pages | Done |
+| Excel sheet (with slot column), error and low-stock alerts, PWA | Done |
+| Storefront frontend pass (home, shop sort, 404, footer) | Done; checkout, account and admin screens not yet audited in a browser |
+| Automatic checks (CI), developer guide, architecture description | Done 6 October 2026 (Phase 0 of the roadmap) |
+| Open, owner needed | Tax, refund window, real photos and logo, business details, Microsoft sign-in, e-mail/SMS provider (items 6, 12, 15 below) |
+| Open, no owner input | Browser audit of the money screens, browser tests, feedback form, theme chooser, scheduled refund re-check (items 13, 14, 16, 17) |
 
 ## Audit: what is already strong
 - **Server-authoritative money path.** Clients never write prices, stock or order status. `createCheckout`
@@ -15,7 +26,7 @@ What was checked, what was added in this pass, and what is still open, in priori
   their own suites.
 - **Free-tier friendly.** Next.js + Firebase + Excel/S3 sync keeps fixed cost near zero.
 
-## Added in this pass
+## Added with delivery slots and cancellation
 | Feature | Why | Where |
 |---|---|---|
 | **Delivery slots** (ASAP, or a window today/tomorrow, 90-min lead, IST) | Baymard's checkout research: showing delivery dates/times is a top checkout-clarity item; grocery apps all offer slots | `firebase/functions/shared/slots.js` and `web/lib/slots.js` (identical logic, parity test), `createCheckout`, `previewCheckout`, rules `validSlot`, `components/checkout/SlotPicker.js`, receipt / order page / admin card |
@@ -35,7 +46,7 @@ These were built in earlier sprints but never written down, so `docs/GO_LIVE.md`
   Open Graph tags, JSON-LD, `sitemap.xml`, `robots.txt` (`lib/seo.js`, `lib/serverCatalog.js`).
 - **Enforced Content Security Policy** and security headers (`web/vercel.json`); still unproven against live traffic.
 
-**Re-audit fixes (this pass):** `docs/GO_LIVE.md` gained the sections the code already pointed to (5.5 App Check, 11.1 alerts),
+**Re-audit fixes (October 2026):** `docs/GO_LIVE.md` gained the sections the code already pointed to (5.5 App Check, 11.1 alerts),
 the sign-in providers to enable, the new environment variables and functions, and corrected known gaps. The seed's Zone B
 now waives the fee from ₹499, matching the cart bar and ticker (before, the bar said "free delivery" and checkout charged
 ₹30); `web/tests/freeDelivery.test.mjs` keeps the two equal.
@@ -124,6 +135,18 @@ A full audit of the storefront in a real browser (desktop, and a 390 px phone fr
     old headers and the sync will refuse it** (`bad-headers`): move it aside in S3 so a fresh one is created, or insert the
     column by hand. No sheet exists in production yet.
 11. **Subscriptions / loyalty** only after 1-3, they depend on stable identity and refunds.
+12. **Real content (roadmap Phase 1).** Placeholder photos and logo, empty business details (`web/content/business.js`: address, hours, contact,
+    FSSAI number), sample reviews (hidden in production), and FAQ promises that disagree with each other (delivery in "60 to 90 minutes" vs
+    "within the hour", "certified organic", the 12-hour refund). Customers will hold the shop to every word. Needs the owner's answers.
+13. **Browser audit of the money screens (roadmap Phase 2).** Cart, checkout, order tracking, account and admin were never looked at in a
+    browser the way the home and shop pages were; `web/pages/checkout/index.js` is the largest page. Then browser smoke tests that run in CI.
+14. **Feedback after delivery (roadmap Phase 3).** `firestore.rules` already accepts `feedback/{orderId}` for a delivered order and the
+    design system has a `FeedbackForm`, but no page writes it. Touches `web/pages/orders/[id].js`.
+15. **Messages to customers (roadmap Phase 3).** No e-mail or SMS for "order confirmed" or "refund processed" (also item 2c), and the newsletter box
+    in the footer saves nothing. Needs the owner to choose a provider, or to remove the box.
+16. **Theme choice (roadmap Phase 3).** Dark and high-contrast themes exist in `web/styles/tokens.css` but `web/pages/_document.js` fixes
+    `data-theme="light"` and there is no switch; the design brief asks for one.
+17. **Scheduled refund re-check and staff partial refunds** (item 2 follow-ups a and b).
 
 ## Things to decide (not code)
 - How many days a refund takes, and any quality-complaint window. The FAQ currently promises a 12-hour
@@ -132,6 +155,8 @@ A full audit of the storefront in a real browser (desktop, and a 390 px phone fr
 - Cash on delivery: not offered. It needs a staff "cash collected" step and a no-show policy.
 
 ## Operational notes
+- The free-delivery amount is in the seed (`firebase/scripts/seed.js`) and in the web (`FREE_DELIVERY_THRESHOLD`); `web/tests/freeDelivery.test.mjs` keeps them equal.
+- Docs that name files are checked by `web/tests/docPaths.test.mjs`; rename or remove a file and the test names the doc to fix.
 - Slot windows are defined in **two files** (`firebase/functions/shared/slots.js`, `web/lib/slots.js`);
   change both. `web/tests/slots.test.mjs` fails if they drift.
 - Never commit `functions/.env.local` / `.secret.local`.

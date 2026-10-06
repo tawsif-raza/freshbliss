@@ -27,6 +27,8 @@ Contents: [1. The website today](#1-the-website-today) · [2. How we got here](#
   rehearsal 35/35; lint clean; production build passes. **Nothing has run against real Firebase, Razorpay, AWS or Vercel.**
 
 ### Gaps found in this audit
+**Status, 6 October 2026:** A1, A2 and A6 are fixed (Phase 0 below); A3 waits for the owner to merge the pull request. The rest are open.
+
 | # | Gap | Why it matters | Where |
 |---|---|---|---|
 | A1 | `FreshBliss_Master_Architecture.md` is out of date (says CSP is report-only and there is no server rendering; lists 3 secrets, not 4; Excel is 18 columns with live P–R, now 19 with live Q–S; nothing on App Check, rate limits, alerts, low stock, PWA, sign-in, erasure) | It is the system description a new contributor reads first | chapters 5–6 |
@@ -59,12 +61,23 @@ Contents: [1. The website today](#1-the-website-today) · [2. How we got here](#
   (`web/tests/freeDelivery.test.mjs`), the Excel columns in `firebase/docs/AWS_SETUP.md`.
 - **"Copy states only what the code does"**, now enforced for the home page by `web/tests/homeContent.test.mjs`.
 
+### Audit of the process documents (6 October 2026)
+`docs/OPERATING_FRAMEWORK.md` and `docs/FEATURE_AUDIT.md` were checked line by line against the repository. What was wrong, and what changed:
+| Document | Finding | Fix |
+|---|---|---|
+| OPERATING_FRAMEWORK | Said "commit locally" and that pushing needs the owner's say-so, but work had been pushed on the owner's approval; no rule for the pull-request route to `main` | Standing rule now allows pushing a feature branch and opening a pull request; merging, deploying and real accounts stay with the owner |
+| OPERATING_FRAMEWORK | The loop never mentioned the roadmap, CI, a browser look at UI changes, branches, or commit hygiene | Added to the Plan, Execute and Review steps |
+| OPERATING_FRAMEWORK | The commands table lacked the full backend run, the build, the rehearsal and `npm run dev`; the parity-test rule named only delivery slots | Table completed; rule lists every parity and copy test |
+| FEATURE_AUDIT | Headings said "this pass" for three different passes; done and open items were mixed with no summary; roadmap gaps (real content, browser audit, feedback, messages, themes) were not tracked here | Added "Status at a glance", renamed the headings, added open items 12 to 17 |
+| FEATURE_AUDIT | The free-delivery duplication was not listed in the operational notes | Added, with the new doc-path test |
+| Both | Nothing stopped a doc from naming a file that no longer exists (the architecture description did for months) | `web/tests/docPaths.test.mjs` checks every file a doc names |
+
 ### What slipped, and the fix
 | What slipped | Fix (section 3) |
 |---|---|
 | Docs drifted from code (GO_LIVE lacked the App Check and alerts sections the code pointed to; the architecture doc is still stale) | Docs change in the same commit; Phase 0 rewrites the architecture chapters |
 | Early commits mixed many concerns with vague titles ("Auto-Phase 1", "UI Overhaul") | One concern per commit; the title says what changed |
-| Nothing ran the tests automatically | CI on every push |
+| Nothing ran the tests automatically | CI on every pull request and every push to `main` |
 | A dev-only bug (`web/lib/serverCatalog.js` asked the emulator for the real project id) hid for days because local dev was not smoke-tested after `web/.env.local` was added | Browser smoke pass in every UI sprint; developer guide |
 
 ---
@@ -90,12 +103,12 @@ Contents: [1. The website today](#1-the-website-today) · [2. How we got here](#
 Each item says what it touches. Items in a phase can be done in any order; phases are in priority order.
 
 ### Phase 0 – Housekeeping (no owner input needed)
-| Item | Touches |
-|---|---|
-| CI workflow (A2) | new `.github/workflows/ci.yml` |
-| Bring the architecture doc up to date (A1), reusing GO_LIVE sections 4–5 and FEATURE_AUDIT | `FreshBliss_Master_Architecture.md` |
-| Developer guide (A6): `npm run dev`, emulators and seed, tests, which env file does what | new `docs/DEVELOPING.md`, link from `README.md` |
-| Open the pull request `feature/slots-cancel-compliance → main`; the owner reviews and merges (A3) | GitHub |
+| Item | Touches | Status |
+|---|---|---|
+| CI workflow (A2) | new `.github/workflows/ci.yml` | Written; the storefront build was checked with its exact commands; the first real run happens on GitHub when the pull request opens |
+| Bring the architecture doc up to date (A1), reusing GO_LIVE sections 4–5 and FEATURE_AUDIT | `FreshBliss_Master_Architecture.md` | Done (6 Oct); guarded by `web/tests/docPaths.test.mjs` |
+| Developer guide (A6): `npm run dev`, emulators and seed, tests, which env file does what | new `docs/DEVELOPING.md`, link from `README.md` | Done (6 Oct) |
+| Open the pull request `feature/slots-cancel-compliance → main`; the owner reviews and merges (A3) | GitHub | Opened for review; **merging is the owner's call** |
 
 ### Phase 1 – Launch readiness (needs the owner's content and accounts)
 | Item | Touches |
