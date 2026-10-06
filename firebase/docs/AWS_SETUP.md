@@ -104,12 +104,12 @@ Optional: `EXCEL_S3_KEY` is the file's path inside the bucket (default `orders/o
 - [ ] **5.4** Check the record of what happened. In the Firestore emulator UI (<http://localhost:4000/firestore>) open the **`excelSync`** collection and find a document named after the order id:
   - `state: DONE` means the row was added.
   - `state: FAILED` means it was not. The `error.message` and `error.hint` fields say why.
-- [ ] **5.5** Change the test order's status (for example press **Mark as Preparing** on the staff dashboard). Within a few seconds, download the file again: columns **P, Q and R** on that order's row have changed. The rest of the row stays as it was.
+- [ ] **5.5** Change the test order's status (for example press **Mark as Preparing** on the staff dashboard). Within a few seconds, download the file again: columns **Q, R and S** on that order's row have changed. The rest of the row stays as it was.
 - [ ] **5.6** The function's log (shown in the emulator terminal, and under **Functions → Logs** in production) says either `excelSync: order added to Excel.` or `excelSync: could not add the order to Excel. The order itself is fine.` with the reason and a hint.
 
 ### The sheet
 
-The first sheet is called **`Orders`**. Its first row holds these **18 headers, in exactly this order** (created for you; do not rename or move them):
+The first sheet is called **`Orders`**. Its first row holds these **19 headers, in exactly this order** (created for you; do not rename or move them):
 
 | Col | Header |
 |---|---|
@@ -128,11 +128,12 @@ The first sheet is called **`Orders`**. Its first row holds these **18 headers, 
 | M | Total (INR) |
 | N | Razorpay payment ID |
 | O | Note |
-| P | Payment status |
-| Q | Order status |
-| R | Last updated (IST) |
+| P | Delivery slot |
+| Q | Payment status |
+| R | Order status |
+| S | Last updated (IST) |
 
-> **Columns P, Q and R are "live".** They change as the order moves along (see [how rows are kept up to date](EXCEL_SYNC.md)). Everything else is written once, when the order is created. You can add your own columns **to the right of R**; the sync never touches them.
+> **Columns Q, R and S are "live".** They change as the order moves along (see [how rows are kept up to date](EXCEL_SYNC.md)). Everything else is written once, when the order is created. You can add your own columns **to the right of S**; the sync never touches them.
 
 > The columns come from `EXCEL_COLUMNS` in `functions/excelSync.js`. If you add a column in the code later, add it at the **end** here too.
 

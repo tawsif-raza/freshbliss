@@ -99,14 +99,14 @@ describe('adding a row', () => {
     const store = fakeStore();
     await add(store, 'o1');
     await store.staff((sheet, wb) => {
-      sheet.getRow(1).getCell(19).value = 'My notes';
-      sheet.getRow(2).getCell(19).value = 'call back';
+      sheet.getRow(1).getCell(EXCEL_COLUMNS.length + 1).value = 'My notes';
+      sheet.getRow(2).getCell(EXCEL_COLUMNS.length + 1).value = 'call back';
       wb.addWorksheet('Summary').getRow(1).getCell(1).value = 'totals here';
     });
     await add(store, 'o2');
     const rows = await store.rows();
-    assert.equal(rows[0][18], 'call back');
-    assert.equal((await store.worksheet()).getRow(1).getCell(19).value, 'My notes');
+    assert.equal(rows[0][EXCEL_COLUMNS.length], 'call back');
+    assert.equal((await store.worksheet()).getRow(1).getCell(EXCEL_COLUMNS.length + 1).value, 'My notes');
     const wb = await store.workbook();
     assert.equal(wb.getWorksheet('Summary').getRow(1).getCell(1).value, 'totals here');
   });

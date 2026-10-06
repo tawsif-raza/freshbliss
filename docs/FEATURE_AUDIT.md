@@ -91,9 +91,16 @@ now waives the fee from ₹499, matching the cart bar and ticker (before, the ba
    store the breakdown on the order at `finalizeCheckout` time (cannot be reconstructed later).
 7. ~~**Reorder button**~~ **Done.** `/account` has a Reorder button on each past order (`components/orders/OrderHistoryCard.js`,
    `linesFromOrder` in `lib/pricing.js`); the server re-prices anyway.
-8. **PWA manifest + install prompt** (cheap; phones are the main device).
+8. ~~**PWA manifest + install prompt**~~ **Done, with a placeholder icon.** `web/public/manifest.webmanifest`, icons in `web/public/icons/`
+   (a gold "F" on brand green, made by `web/scripts/build-icons.mjs`), theme colour and iOS icon in `pages/_document.js`,
+   `web/tests/manifest.test.mjs`. **Replace the icons with the real logo when it exists.** Deliberately no service worker and no
+   custom install button: nothing is cached offline, so a stale price or order status can never be shown; the browser's own
+   "Install / Add to Home screen" works. Not tried on a real phone.
 9. **Low-stock alert to staff** (a function trigger when stock crosses a threshold).
-10. **Excel sheet slot column** (orders now carry `slot`; the sheet does not export it yet).
+10. ~~**Excel sheet slot column**~~ **Done.** Column P "Delivery slot" (`2026-10-05 6 pm to 8 pm`, "As soon as possible", or blank for an
+    order made before slots existed). The three live columns moved from P-R to Q-S. **A sheet created before this change has the
+    old headers and the sync will refuse it** (`bad-headers`): move it aside in S3 so a fresh one is created, or insert the
+    column by hand. No sheet exists in production yet.
 11. **Subscriptions / loyalty** only after 1-3, they depend on stable identity and refunds.
 
 ## Things to decide (not code)
