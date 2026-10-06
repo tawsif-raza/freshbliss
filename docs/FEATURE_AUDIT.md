@@ -96,7 +96,12 @@ now waives the fee from ₹499, matching the cart bar and ticker (before, the ba
    `web/tests/manifest.test.mjs`. **Replace the icons with the real logo when it exists.** Deliberately no service worker and no
    custom install button: nothing is cached offline, so a stale price or order status can never be shown; the browser's own
    "Install / Add to Home screen" works. Not tried on a real phone.
-9. **Low-stock alert to staff** (a function trigger when stock crosses a threshold).
+9. ~~**Low-stock alert**~~ **Done (October 2026), as an email to one address, not to staff accounts.** `functions/lowStock.js` logs a
+   `Stock is low` WARNING when stock first falls to `LOW_STOCK_THRESHOLD` (default 5) and again at 0 (`shared/stockAlerts.js`
+   decides, so it fires once per crossing, not per sale); `monitoring/alertPolicy.js` turns it into the **FreshBliss: Low stock**
+   email policy that `npm run setup-alerts` now creates beside the error alert. Limits: one email an hour, so a busy evening
+   is one email; no in-dashboard banner; restocking is a Firestore console edit (there is no staff stock screen). Not run against
+   real Google Cloud.
 10. ~~**Excel sheet slot column**~~ **Done.** Column P "Delivery slot" (`2026-10-05 6 pm to 8 pm`, "As soon as possible", or blank for an
     order made before slots existed). The three live columns moved from P-R to Q-S. **A sheet created before this change has the
     old headers and the sync will refuse it** (`bad-headers`): move it aside in S3 so a fresh one is created, or insert the

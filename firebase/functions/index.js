@@ -23,6 +23,7 @@ exports.cancelOrder = require('./cancelOrder').cancelOrder;
 exports.cancelMyOrder = require('./cancelOrder').cancelMyOrder; // the customer's own cancel, until the order is packed
 exports.processRefund = require('./processRefund').processRefund; // staff: retry, check or partially refund through Razorpay
 exports.autoRefund = require('./autoRefund').autoRefund; // sends a cancelled order's refund to Razorpay by itself
+exports.lowStock = require('./lowStock').lowStock; // logs a warning when a box is running out (an email alert watches for it)
 exports.claimGuestOrders = require('./claimGuestOrders').claimGuestOrders; // moves a guest's orders to the account they sign in to
 exports.requestDataErasure = require('./requestDataErasure').requestDataErasure; // DPDP: anonymises the caller's data (keeps the books) and closes the account
 

@@ -1,7 +1,8 @@
 'use strict';
 
-// setup-alerts: creates (or reuses) the email notification channel and the "Cloud Function errors" alert policy in
-// Google Cloud Monitoring, so an ERROR in any function emails you (docs/GO_LIVE.md, section 11.1).
+// setup-alerts: creates (or reuses) the email notification channel and two alert policies in Google Cloud Monitoring:
+// "Cloud Function errors" (an ERROR in any function emails you) and "Low stock" (a box is running out; see
+// functions/lowStock.js). docs/GO_LIVE.md, section 11.1.
 //
 //   npm run setup-alerts -- --email you@example.com                    the project aliased "production"
 //   npm run setup-alerts -- --email you@example.com --project staging  another alias from .firebaserc
@@ -15,7 +16,13 @@ const fs = require('node:fs');
 const os = require('node:os');
 const { spawnSync } = require('node:child_process');
 const { resolveProject } = require('./preflight');
-const { POLICY_NAME, buildPolicy } = require('../monitoring/alertPolicy');
+const { POLICY_NAME, buildPolicy, STOCK_POLICY_NAME, buildStockPolicy } = require('../monitoring/alertPolicy');
+
+// Every policy this script keeps in step: [name, builder].
+const POLICIES = [
+  [POLICY_NAME, buildPolicy],
+  [STOCK_POLICY_NAME, buildStockPolicy],
+];
 
 const ROOT = path.join(__dirname, '..');
 const CHANNEL_NAME = 'FreshBliss alerts (email)';
@@ -51,8 +58,8 @@ function main(argv) {
   }
 
   if (dryRun) {
-    console.log(`Would use project ${projectId}, create an email channel for ${email} (if there is none), and this policy:\n`);
-    console.log(JSON.stringify(buildPolicy({ channelNames: [`projects/${projectId}/notificationChannels/<channel id>`] }), null, 2));
+    console.log(`Would use project ${projectId}, create an email channel for ${email} (if there is none), and these ${POLICIES.length} policies:\n`);
+    for (const [, build] of POLICIES) console.log(JSON.stringify(build({ channelNames: [`projects/${projectId}/notificationChannels/<channel id>`] }), null, 2));
     return 0;
   }
 
@@ -68,18 +75,21 @@ function main(argv) {
       console.log(`Created an email channel for ${email}.`);
     }
 
-    // 2. The policy (updated in place if it exists, so running this again after a change is safe).
-    const policy = buildPolicy({ channelNames: [channel.name] });
-    const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'freshbliss-alert-')), 'policy.json');
-    fs.writeFileSync(file, JSON.stringify(policy));
-    const existing = listJson(['alpha', 'monitoring', 'policies', 'list', ...base]).find((p) => p.displayName === POLICY_NAME);
-    if (existing) {
-      gcloud(['alpha', 'monitoring', 'policies', 'update', existing.name, ...base, `--policy-from-file=${file}`]);
-      console.log(`Updated the alert policy "${POLICY_NAME}".`);
-    } else {
-      gcloud(['alpha', 'monitoring', 'policies', 'create', ...base, `--policy-from-file=${file}`]);
-      console.log(`Created the alert policy "${POLICY_NAME}".`);
-    }
+    // 2. The policies (each updated in place if it exists, so running this again after a change is safe).
+    const existingPolicies = listJson(['alpha', 'monitoring', 'policies', 'list', ...base]);
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'freshbliss-alert-'));
+    POLICIES.forEach(([name, build], i) => {
+      const file = path.join(dir, `policy-${i}.json`);
+      fs.writeFileSync(file, JSON.stringify(build({ channelNames: [channel.name] })));
+      const existing = existingPolicies.find((p) => p.displayName === name);
+      if (existing) {
+        gcloud(['alpha', 'monitoring', 'policies', 'update', existing.name, ...base, `--policy-from-file=${file}`]);
+        console.log(`Updated the alert policy "${name}".`);
+      } else {
+        gcloud(['alpha', 'monitoring', 'policies', 'create', ...base, `--policy-from-file=${file}`]);
+        console.log(`Created the alert policy "${name}".`);
+      }
+    });
     console.log(`\nDone. Check it in Google Cloud Console > Monitoring > Alerting (project ${projectId}), then send a test (docs/GO_LIVE.md, section 11.1).`);
     return 0;
   } catch (err) {

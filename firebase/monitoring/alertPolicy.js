@@ -38,4 +38,37 @@ function buildPolicy({ channelNames = [] } = {}) {
   };
 }
 
-module.exports = { POLICY_NAME, LOG_FILTER, buildPolicy };
+// ---------- low stock ----------
+
+// A second, separate policy for "a box is running out" (functions/lowStock.js writes the log line). It is its own policy
+// so a restock reminder never hides, or is hidden by, a real failure, and so the shop can switch it off on its own.
+const STOCK_POLICY_NAME = 'FreshBliss: Low stock';
+
+// The WARNING that lowStock.js logs: { event: 'LOW_STOCK' | 'OUT_OF_STOCK', productId, name, stock }.
+const STOCK_LOG_FILTER = ['(resource.type="cloud_run_revision" OR resource.type="cloud_function")', 'severity=WARNING', 'jsonPayload.event=("LOW_STOCK" OR "OUT_OF_STOCK")'].join(' AND ');
+
+const STOCK_DOCUMENTATION = [
+  'A FreshBliss box is running low or has sold out.',
+  '',
+  '1. Open Logs Explorer for this project and run the query below: each line names the product (`name`, `productId`) and the `stock` left.',
+  '2. `LOW_STOCK` means it just fell to the warning level; `OUT_OF_STOCK` means customers now see "Out of stock".',
+  "3. Restock by editing the product's `stock` in the Firestore console (the storefront and the staff dashboard cannot change stock).",
+  '',
+  `Query: ${STOCK_LOG_FILTER}`,
+].join('\n');
+
+// Same shape as buildPolicy. At most one email an hour, so a busy evening that empties several boxes is one email whose
+// logs list them all, and it closes by itself after a day without a new alert.
+function buildStockPolicy({ channelNames = [] } = {}) {
+  return {
+    displayName: STOCK_POLICY_NAME,
+    combiner: 'OR',
+    conditions: [{ displayName: 'A box is running low or sold out', conditionMatchedLog: { filter: STOCK_LOG_FILTER } }],
+    alertStrategy: { notificationRateLimit: { period: '3600s' }, autoClose: '86400s' },
+    notificationChannels: channelNames,
+    documentation: { content: STOCK_DOCUMENTATION, mimeType: 'text/markdown' },
+    enabled: true,
+  };
+}
+
+module.exports = { POLICY_NAME, LOG_FILTER, buildPolicy, STOCK_POLICY_NAME, STOCK_LOG_FILTER, buildStockPolicy };

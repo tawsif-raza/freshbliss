@@ -23,6 +23,7 @@ const EXPECTED = [
   'autoRefund',
   'claimGuestOrders',
   'requestDataErasure',
+  'lowStock',
   'excelSync',
   'excelSyncUpdate',
   'retryExcelSync',
