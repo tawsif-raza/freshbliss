@@ -182,14 +182,47 @@
   }
 }
 
-/* The back-to-top button (components/BackToTop.js) floats above the phone tab bar, and higher still when the product page's buy bar is there. */
+/* The buttons floating in the bottom-right corner share one starting height, --fb-float-bottom: the chat button
+   (components/ChatAssistant.js) sits on it, its window opens above it, and the back-to-top button
+   (components/BackToTop.js) stacks just above it. On a phone that height clears the tab bar, and the product page's
+   buy bar when it is there. */
+:root {
+  --fb-float-bottom: 1.5rem;
+}
 @media (max-width: 767px) {
-  .fb-back-to-top {
-    bottom: calc(var(--fb-bottom-nav-h) + env(safe-area-inset-bottom) + 1rem);
+  :root {
+    --fb-float-bottom: calc(var(--fb-bottom-nav-h) + env(safe-area-inset-bottom) + 1rem);
   }
-  body:has(.fb-sticky-cta) .fb-back-to-top {
-    bottom: calc(var(--fb-bottom-nav-h) + env(safe-area-inset-bottom) + 6.5rem);
+  body:has(.fb-sticky-cta) {
+    --fb-float-bottom: calc(var(--fb-bottom-nav-h) + env(safe-area-inset-bottom) + 6.5rem);
   }
+}
+.fb-chat-launcher {
+  bottom: var(--fb-float-bottom);
+}
+.fb-back-to-top {
+  bottom: calc(var(--fb-float-bottom) + 4.5rem);
+}
+.fb-chat-panel {
+  bottom: calc(var(--fb-float-bottom) + 4.25rem);
+  height: min(37rem, calc(100dvh - var(--fb-float-bottom) - 5.5rem));
+}
+
+/* The chat window's "typing" dots rise and fall one after another (the delay is set on each dot). */
+@keyframes fb-typing {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+.fb-typing-dot {
+  animation: fb-typing 1.1s ease-in-out infinite;
 }
 
 /* On a phone the product page has a buy bar fixed to the bottom of the screen (class fb-sticky-cta). Leave room

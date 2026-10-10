@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import SignInGate from '@/components/auth/SignInGate';
 import BackToTop from '@/components/BackToTop';
 import CartDrawer from '@/components/CartDrawer';
+import ChatAssistant from '@/components/ChatAssistant';
 import CommandPalette from '@/components/CommandPalette';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import Footer from '@/components/Footer';
@@ -65,6 +66,7 @@ export default function App({ Component, pageProps }) {
                   {!Component.bare && <Footer />}
                   {!Component.bare && <MobileBottomNav />}
                   {!Component.bare && <BackToTop />}
+                  {!Component.bare && <ChatAssistant />}
                   <CartDrawer />
                   <CommandPalette />
                 </WishlistProvider>
