@@ -8,14 +8,15 @@
 //
 // ONE listener serves every component. It listens for ID-token changes rather than sign-in changes, because linking a
 // guest to Google or a phone number keeps the same account and fires only the first (lib/auth.js).
+//
+// This provider wraps every page, so it loads the Firebase SDK itself once the page is on screen instead of importing it:
+// otherwise every page would wait for the SDK (the largest piece of JavaScript on the site) before it could respond to a
+// tap. Until it has loaded, the status is 'loading', which every component already handles.
 
 import { useRouter } from 'next/router';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { onIdTokenChanged } from 'firebase/auth';
 import { useToast } from '@/components/ToastProvider';
-import { signOutUser } from '@/lib/auth';
 import { guestCheckoutAllowed, loginHref } from '@/lib/authHelpers';
-import { auth } from '@/lib/firebaseClient';
 
 const AuthContext = createContext({ status: 'loading', user: null });
 
@@ -24,14 +25,23 @@ const statusOf = (user) => (!user ? 'signedOut' : user.isAnonymous ? 'guest' : '
 export function AuthProvider({ children }) {
   const [state, setState] = useState({ status: 'loading', user: null });
 
-  useEffect(
-    () =>
-      onIdTokenChanged(auth, (user) => {
-        // A new object every time, so a profile change (name, linked provider) reaches the components too.
-        setState({ status: statusOf(user), user });
-      }),
-    [],
-  );
+  useEffect(() => {
+    let stop = null;
+    let cancelled = false;
+    Promise.all([import('firebase/auth'), import('@/lib/firebaseClient')])
+      .then(([{ onIdTokenChanged }, { auth }]) => {
+        if (cancelled) return;
+        stop = onIdTokenChanged(auth, (user) => {
+          // A new object every time, so a profile change (name, linked provider) reaches the components too.
+          setState({ status: statusOf(user), user });
+        });
+      })
+      .catch((err) => console.error('Could not load sign-in:', err));
+    return () => {
+      cancelled = true;
+      stop?.();
+    };
+  }, []);
 
   const value = useMemo(() => state, [state]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -50,6 +60,7 @@ export function useSignOut() {
     if (busy) return;
     setBusy(true);
     try {
+      const { signOutUser } = await import('@/lib/auth');
       await signOutUser();
       toast.success('You are signed out.');
       if (/^\/(account|orders|admin)(\/|$)/.test(router.pathname)) router.push('/');

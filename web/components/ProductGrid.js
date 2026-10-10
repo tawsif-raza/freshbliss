@@ -8,7 +8,7 @@
 
 import ProductCard from '@/components/ProductCard';
 import { ProductGridSkeleton } from '@/components/ProductSkeleton';
-import { usingEmulators } from '@/lib/firebaseClient';
+import { usingEmulators } from '@/lib/firebaseEnv';
 
 // A warning callout: danger rule on the danger surface.
 function LoadError({ onRetry }) {

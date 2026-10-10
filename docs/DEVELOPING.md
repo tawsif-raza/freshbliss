@@ -37,6 +37,7 @@ What to know while it runs:
 - **Becoming staff** (to open `/admin/orders`): open `/admin/orders` and press **Enable dev staff mode** (it calls `devGrantStaff`, emulator only), or run `npm run set-admin -- <uid>` in `firebase/` (see the top of `firebase/scripts/setAdmin.js`).
 - **Reset the data** by stopping and starting `npm run dev` (the emulator forgets everything, and the seed runs again). `npm run seed` in `firebase/` re-seeds a running emulator, which also resets stock.
 - The product pages are built on the server from Firestore, so they show the seeded boxes only once the seed has finished (a few seconds after start).
+- **The first visit to each page is slow in development** (Next compiles a page the first time it is asked for: from a few seconds to half a minute on Windows). The `warm` line in the output opens the main pages once in the background (`web/scripts/warm-dev.mjs`); wait for `warm-up: done` and pages open instantly. This is development only: in production every page is built ahead of time. On Windows, much of the compile time is Microsoft Defender scanning every file Next reads; adding the project folder to Defender's exclusions (Windows Security > Virus & threat protection > Exclusions) makes development noticeably faster. That is a security setting, so it is your call.
 
 ## Checks before you commit
 Run every one that your change could affect; CI (`.github/workflows/ci.yml`) runs them all on every pull request and on every push to `main`.

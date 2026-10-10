@@ -9,6 +9,7 @@ import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 import { connectAuthEmulator, getAuth } from 'firebase/auth';
 import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
 import { connectFunctionsEmulator, getFunctions } from 'firebase/functions';
+import { usingEmulators } from './firebaseEnv';
 
 // Cloud Functions are deployed to Mumbai (see firebase/functions). The client
 // must ask the same region or calls will not find the function.
@@ -18,9 +19,9 @@ const FUNCTIONS_REGION = 'asia-south1';
 const EMULATOR_HOST = process.env.NEXT_PUBLIC_EMULATOR_HOST || '127.0.0.1';
 const PORTS = { auth: 9099, firestore: 8080, functions: 5001 };
 
-// On in development unless NEXT_PUBLIC_USE_FIREBASE_EMULATORS=false. Always off in production.
-export const usingEmulators =
-  process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS !== 'false';
+// On in development unless NEXT_PUBLIC_USE_FIREBASE_EMULATORS=false. Always off in production. Defined in lib/firebaseEnv.js
+// (no Firebase import there), so code that only needs this flag can import it without loading the SDK.
+export { usingEmulators };
 
 function readConfig() {
   if (usingEmulators) {

@@ -30,7 +30,7 @@ import TipSelector from '@/components/checkout/TipSelector';
 import { useCart } from '@/context/CartContext';
 import { ADDRESS_LIMITS, DEFAULT_ADDRESS_TYPE, addressErrors, formatAddress } from '@/lib/address';
 import { isPromoLimitError } from '@/lib/errors';
-import { usingEmulators } from '@/lib/firebaseClient';
+import { usingEmulators } from '@/lib/firebaseEnv';
 import { previewTotals } from '@/lib/pricing';
 import { slotChoice } from '@/lib/slots';
 import { CheckoutError, friendlyError, loadRazorpay, previewPricing, runCheckout, runMockCheckout, verifyPayment } from '@/lib/razorpayCheckout';

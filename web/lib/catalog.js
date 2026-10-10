@@ -6,10 +6,12 @@
 // is on screen, and keeps the last data so the next page opens instantly.
 //
 // Prices and stock shown here are previews: the server re-checks both at checkout.
+//
+// The Firebase SDK is loaded when the listener first starts, not with the page: it is the largest piece of JavaScript on
+// the site, and the shop pages already arrive with the catalogue in them (lib/serverCatalog.js), so the page can draw and
+// respond to taps without waiting for it. The live data takes over a moment later.
 
 import { useSyncExternalStore } from 'react';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
-import { db } from './firebaseClient';
 import { normaliseProduct } from './product';
 
 // ---------- the shared listener ----------
@@ -17,6 +19,7 @@ import { normaliseProduct } from './product';
 const LOADING = Object.freeze({ products: [], status: 'loading', error: null });
 let state = LOADING; // replaced (never edited) on every change, so React can compare by identity
 let stopListening = null;
+let starting = false; // the SDK is being loaded for a listener that has not started yet
 const subscribers = new Set();
 
 function publish(next) {
@@ -25,19 +28,29 @@ function publish(next) {
 }
 
 function startListening() {
-  if (stopListening) return;
-  // The `active == true` filter is required: the security rules only let customers read active
-  // products, and a query must prove it stays inside that.
-  const q = query(collection(db, 'products'), where('active', '==', true));
-  stopListening = onSnapshot(
-    q,
-    (snap) => publish({ products: snap.docs.map((d) => normaliseProduct(d.id, d.data())).filter(Boolean), status: 'ready', error: null }),
-    (error) => {
-      stopListening?.();
-      stopListening = null; // allow "Try again" to start a fresh listener
+  if (stopListening || starting) return;
+  starting = true;
+  Promise.all([import('firebase/firestore'), import('./firebaseClient')])
+    .then(([{ collection, onSnapshot, query, where }, { db }]) => {
+      starting = false;
+      if (stopListening || subscribers.size === 0) return; // everyone left while the SDK was loading
+      // The `active == true` filter is required: the security rules only let customers read active
+      // products, and a query must prove it stays inside that.
+      const q = query(collection(db, 'products'), where('active', '==', true));
+      stopListening = onSnapshot(
+        q,
+        (snap) => publish({ products: snap.docs.map((d) => normaliseProduct(d.id, d.data())).filter(Boolean), status: 'ready', error: null }),
+        (error) => {
+          stopListening?.();
+          stopListening = null; // allow "Try again" to start a fresh listener
+          publish({ products: [], status: 'error', error });
+        },
+      );
+    })
+    .catch((error) => {
+      starting = false; // the SDK could not be downloaded (offline): "Try again" retries
       publish({ products: [], status: 'error', error });
-    },
-  );
+    });
 }
 
 function subscribe(notify) {
