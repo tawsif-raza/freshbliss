@@ -1,8 +1,30 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { TIP_OPTIONS, freeDeliveryProgress, unitPrice, linesFromOrder, maskPaymentId, shortOrderNumber, previewTotals, formatOrderDate } from '../lib/pricing.js';
+import { TIP_OPTIONS, freeDeliveryProgress, unitPrice, regularUnitPrice, percentOff, linesFromOrder, maskPaymentId, shortOrderNumber, previewTotals, formatOrderDate } from '../lib/pricing.js';
 
 const product = { price: 149, sizes: [{ id: 'regular', label: 'Regular', extra: 0 }, { id: 'large', label: 'Large', extra: 50 }] };
+
+describe('offer prices', () => {
+  it('gives the regular price for a size while on offer, and null otherwise', () => {
+    const onOffer = { ...product, price: 127, compareAtPrice: 149 };
+    assert.equal(regularUnitPrice(onOffer, 'regular'), 149);
+    assert.equal(regularUnitPrice(onOffer, 'large'), 199); // the size extra is the same either way
+    assert.equal(regularUnitPrice(onOffer, 'huge'), null);
+    assert.equal(regularUnitPrice(product, 'regular'), null); // not on offer
+    assert.equal(regularUnitPrice({ ...product, compareAtPrice: 149 }, 'regular'), null); // "regular" equal to price is no offer
+    assert.equal(regularUnitPrice({ ...product, compareAtPrice: 100 }, 'regular'), null); // nor is a lower one
+  });
+
+  it('rounds the percentage down, so the label never promises more than the real saving', () => {
+    assert.equal(percentOff(100, 85), 15);
+    assert.equal(percentOff(149, 127), 14); // 14.77%
+    assert.equal(percentOff(20, 17), 15);
+    assert.equal(percentOff(100, 100), 0);
+    assert.equal(percentOff(100, 120), 0);
+    assert.equal(percentOff(0, 0), 0);
+    assert.equal(percentOff(null, 85), 0);
+  });
+});
 
 describe('prices', () => {
   it('adds the size difference to the base price', () => {

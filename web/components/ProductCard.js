@@ -10,16 +10,18 @@
 // The look: a cream-white card with a hairline border. On hover it lifts a little and its shadow deepens, and
 // the photo inside zooms slowly while the card keeps its shape (the photo sits in an overflow-hidden frame).
 // A floating gold badge sits on the photo. Shows a live stock badge, a size row (when there is more than one
-// size) and the price for the chosen size. The photo and the name open the product page. The motion stops for
+// size) and the price for the chosen size (with the regular price crossed out while the box is on offer:
+// components/PriceTag.js). The photo and the name open the product page. The motion stops for
 // visitors who asked their device for less motion.
 
 import OptimizedImage from '@/components/OptimizedImage';
 import Link from 'next/link';
 import { useId, useState } from 'react';
+import PriceTag from '@/components/PriceTag';
 import SizeSelector from '@/components/SizeSelector';
 import StockBadge from '@/components/StockBadge';
 import { badgeFor } from '@/lib/badges';
-import { unitPrice } from '@/lib/pricing';
+import { regularUnitPrice, unitPrice } from '@/lib/pricing';
 
 function HeartIcon({ filled }) {
   // Outline heart, 1.75px stroke (Lucide-style). The brand has not supplied icons yet.
@@ -49,6 +51,7 @@ export default function ProductCard({ product, wishlisted = false, onToggleWishl
 
   const [size, setSize] = useState(sizes[0].id);
   const price = unitPrice(product, size) ?? product.price;
+  const regular = regularUnitPrice(product, size); // null unless the box is on offer
 
   const titleId = useId();
 
@@ -122,7 +125,7 @@ export default function ProductCard({ product, wishlisted = false, onToggleWishl
         {sizes.length > 1 && <SizeSelector sizes={sizes} basePrice={product.price} value={size} onChange={setSize} disabled={soldOut} />}
 
         <div className="mt-auto flex items-center justify-between gap-2 pt-3">
-          <p className={`font-serif text-[30px] leading-none font-bold ${soldOut ? 'text-ink-muted' : 'text-brand-text'}`}>₹{price}</p>
+          <PriceTag price={price} regular={regular} muted={soldOut} />
           <button
             type="button"
             onClick={handleAdd}

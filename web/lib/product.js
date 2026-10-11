@@ -34,6 +34,10 @@ const isImageUrl = (u) => typeof u === 'string' && /^https?:\/\/\S+$/i.test(u.tr
 //                 LIST of item names; `ingredientsText` is the full declaration as one line of text
 //   storage       how a chilled or frozen product must be kept, for example "Keep Frozen at -18°C". It is
 //                 shown as a temperature badge on the product page (lib/harvest.js)
+//   compareAtPrice  the product's REGULAR price in whole rupees, while it is on offer (the Ramadan prices, say). It is
+//                 shown crossed out next to `price`, with the saving. `price` is still the only figure anyone is charged
+//                 (the server never reads compareAtPrice), so the offer shown can never differ from what is paid. Ignored
+//                 unless it is a whole number above `price`. Remove it to end the offer.
 export function normaliseProduct(id, data) {
   if (!Number.isInteger(data.price) || data.price < 0) return null;
 
@@ -55,6 +59,7 @@ export function normaliseProduct(id, data) {
     description: typeof data.description === 'string' ? data.description : '',
     ingredients: Array.isArray(data.ingredients) ? data.ingredients.filter((i) => typeof i === 'string') : [],
     price: data.price, // whole rupees
+    compareAtPrice: Number.isInteger(data.compareAtPrice) && data.compareAtPrice > data.price ? data.compareAtPrice : null,
     stock: Number.isInteger(data.stock) ? Math.max(0, data.stock) : 0,
     badge: typeof data.badge === 'string' && data.badge !== '' ? data.badge : null,
     category,

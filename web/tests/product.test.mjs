@@ -5,6 +5,13 @@ import { normaliseProduct } from '../lib/product.js';
 const base = { price: 199, stock: 4, name: 'Classic Fresh Mix', category: 'Fresh' };
 
 describe('normaliseProduct', () => {
+  it('keeps a regular price only when it is a whole number above the price (an offer)', () => {
+    assert.equal(normaliseProduct('a', { ...base, compareAtPrice: 249 }).compareAtPrice, 249);
+    for (const compareAtPrice of [undefined, null, 199, 150, 249.5, '249', -1]) {
+      assert.equal(normaliseProduct('a', { ...base, compareAtPrice }).compareAtPrice, null, String(compareAtPrice));
+    }
+  });
+
   it('refuses a product that cannot be priced', () => {
     for (const price of [undefined, null, '199', 19.5, -1]) assert.equal(normaliseProduct('x', { ...base, price }), null);
   });

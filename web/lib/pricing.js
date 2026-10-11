@@ -12,6 +12,22 @@ export function unitPrice(product, sizeId) {
   return size ? product.price + size.extra : null;
 }
 
+// The regular price of one box in a size while the product is on offer: what it normally costs, shown crossed out
+// beside unitPrice(). The size's extra is the same either way, so the saving in rupees is the same for every size.
+// null when the product is not on offer or the size does not exist.
+export function regularUnitPrice(product, sizeId) {
+  if (!Number.isInteger(product.compareAtPrice) || product.compareAtPrice <= product.price) return null;
+  const size = product.sizes.find((s) => s.id === sizeId);
+  return size ? product.compareAtPrice + size.extra : null;
+}
+
+// The saving as a whole percentage of the regular price, rounded DOWN so the label never promises more than the real
+// saving (₹100 down to ₹85 is "15% off"; ₹149 down to ₹127 is 14.7%, so "14% off"). 0 when there is no saving.
+export function percentOff(regular, now) {
+  if (!Number.isFinite(regular) || !Number.isFinite(now) || regular <= 0 || now >= regular) return 0;
+  return Math.floor(((regular - now) / regular) * 100);
+}
+
 // How close a cart is to free delivery, for the progress bar in the cart. Whole rupees in, plain numbers out:
 //   percent    0 to 100, how full the bar is
 //   remaining  rupees still to add (0 once unlocked)

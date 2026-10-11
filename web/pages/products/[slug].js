@@ -18,6 +18,7 @@ import Accordion from '@/components/Accordion';
 import Callout from '@/components/Callout';
 import ChefsNotes from '@/components/ChefsNotes';
 import HarvestHealth from '@/components/HarvestHealth';
+import PriceTag from '@/components/PriceTag';
 import ProductGallery from '@/components/ProductGallery';
 import ProductSpecifications from '@/components/ProductSpecifications';
 import RelatedProducts from '@/components/RelatedProducts';
@@ -31,7 +32,7 @@ import ZoneStatus from '@/components/ZoneStatus';
 import { MAX_QTY_PER_LINE, useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
 import { useCatalog } from '@/lib/catalog';
-import { unitPrice } from '@/lib/pricing';
+import { regularUnitPrice, unitPrice } from '@/lib/pricing';
 import { pickRelated } from '@/lib/related';
 import { buildProductJsonLd, jsonLdString } from '@/lib/seo';
 import { fetchActiveProducts, fetchProduct } from '@/lib/serverCatalog';
@@ -83,6 +84,7 @@ function ProductDetail({ product, products, status }) {
 
   const soldOut = product.stock <= 0;
   const price = unitPrice(product, size) ?? product.price;
+  const regular = regularUnitPrice(product, size); // null unless the box is on offer
   const wishlisted = wishlist.isWishlisted(product.id);
 
   function handleAdd() {
@@ -131,9 +133,9 @@ function ProductDetail({ product, products, status }) {
           <h1 className="mt-3 text-heading-2 text-brand-text">{product.name}</h1>
           {product.description && <p className="mt-2 text-lead text-ink-muted">{product.description}</p>}
 
-          <p className="mt-4 text-kpi text-brand-text" aria-live="polite">
-            ₹{price}
-          </p>
+          <div className="mt-4" aria-live="polite">
+            <PriceTag price={price} regular={regular} size="page" />
+          </div>
 
           {/* How to keep it (chilled and frozen products only; nothing is drawn without a storage note) */}
           <StorageBadge storage={product.storage} className="mt-3" />
