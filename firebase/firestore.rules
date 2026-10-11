@@ -43,6 +43,13 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // The website's policies (Terms, Refunds, Privacy, Shipping...): public reading, like any policy page, and the
+    // server reads them without credentials to build the pages. Written only by the seed or the console.
+    match /policies/{policyId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // ---------- carts (owner only, shape-checked) ----------
 
     // A cart is only the customer's intent. The server re-reads prices and

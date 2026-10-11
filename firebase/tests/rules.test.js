@@ -220,6 +220,13 @@ describe('products and delivery zones', () => {
     await assertSucceeds(getDoc(doc(anon(), 'deliveryZones/A')));
     await assertFails(updateDoc(doc(asUser('alice'), 'deliveryZones/A'), { fee: 0 }));
   });
+
+  it('lets anyone read the policies but nobody change them, staff included', async () => {
+    await assertSucceeds(getDoc(doc(anon(), 'policies/terms')));
+    await assertFails(setDoc(doc(asUser('alice'), 'policies/terms'), { title: 'x', sections: [] }));
+    await assertFails(setDoc(doc(asStaff(), 'policies/refunds'), { title: 'x', sections: [] }));
+    await assertFails(deleteDoc(doc(asStaff(), 'policies/privacy')));
+  });
 });
 
 // ============================================================

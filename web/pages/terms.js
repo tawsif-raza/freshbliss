@@ -1,17 +1,15 @@
-// The terms page: /terms. Wording in content/policies.js.
+// The terms page: /terms. The wording comes from the `policies` collection in Firestore when it holds an approved
+// version (not placeholder), otherwise from the built-in copy in content/policies.js (lib/policies.js chooseBuiltIn).
 
 import PolicyPage from '@/components/PolicyPage';
-import { TERMS_SECTIONS } from '@/content/policies';
+import { chooseBuiltIn } from '@/lib/policies';
+import { fetchPolicy } from '@/lib/serverPolicies';
 
-export default function TermsPage() {
-  return (
-    <PolicyPage
-      slug="terms"
-      kicker="The small print"
-      title="Terms of Service"
-      description="The terms for ordering fresh fruit boxes from FreshBliss."
-      lead="The terms for ordering from us, in plain words."
-      sections={TERMS_SECTIONS}
-    />
-  );
+export async function getStaticProps() {
+  const found = await fetchPolicy('terms');
+  return { props: { policy: chooseBuiltIn('terms', found.status === 'found' ? found.policy : null) }, revalidate: 300 };
+}
+
+export default function TermsPage({ policy }) {
+  return <PolicyPage slug="terms" {...policy} />;
 }

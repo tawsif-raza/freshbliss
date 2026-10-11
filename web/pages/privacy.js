@@ -1,12 +1,20 @@
 // The privacy page: /privacy
-// What the shop collects, why, and where it is kept. The wording is in content/privacy.js.
+// What the shop collects, why, and where it is kept. The wording comes from the `policies` collection in Firestore when it
+// holds an approved version (not placeholder), otherwise from the built-in copy in content/privacy.js (lib/policies.js).
 
 import Head from 'next/head';
 import Link from 'next/link';
 import { BUSINESS } from '@/content/business';
-import { PRIVACY_SECTIONS, PRIVACY_UPDATED } from '@/content/privacy';
+import { chooseBuiltIn } from '@/lib/policies';
+import { fetchPolicy } from '@/lib/serverPolicies';
 
-export default function PrivacyPage() {
+export async function getStaticProps() {
+  const found = await fetchPolicy('privacy');
+  const { sections, updated } = chooseBuiltIn('privacy', found.status === 'found' ? found.policy : null);
+  return { props: { sections, updated }, revalidate: 300 };
+}
+
+export default function PrivacyPage({ sections, updated }) {
   return (
     <>
       <Head>
@@ -18,9 +26,9 @@ export default function PrivacyPage() {
           <p className="text-label text-gold">Your information</p>
           <h1 className="mt-2 text-heading-2 text-brand-text">Privacy</h1>
           <p className="mt-2 text-lead text-ink-muted">What {BUSINESS.legalName || BUSINESS.name} collects when you order, why, and where it is kept.</p>
-          <p className="mt-1 text-small text-ink-muted">Last updated {PRIVACY_UPDATED}</p>
+          <p className="mt-1 text-small text-ink-muted">Last updated {updated}</p>
 
-          {PRIVACY_SECTIONS.map((section) => (
+          {sections.map((section) => (
             <section key={section.id} aria-labelledby={`privacy-${section.id}`} className="mt-8.5">
               <h2 id={`privacy-${section.id}`} className="text-heading-3 text-ink">
                 {section.title}

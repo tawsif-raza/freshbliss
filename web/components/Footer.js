@@ -143,6 +143,11 @@ export default function Footer() {
                 Privacy Policy
               </Link>
             </li>
+            <li>
+              <Link href="/policies" className={linkClass}>
+                All policies
+              </Link>
+            </li>
           </ul>
         </nav>
 

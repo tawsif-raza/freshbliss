@@ -1,7 +1,8 @@
 'use strict';
 
 // Seed script: fills Firestore with launch products, delivery zones and one
-// demo promo code so the UI has something to show.
+// demo promo code so the UI has something to show, plus (emulator only) every
+// website policy, most of them placeholder text (scripts/policies.js).
 //
 //   npm run seed                 -> seeds the LOCAL EMULATOR (default, safe)
 //   npm run seed -- --remote     -> seeds a real project (guarded, see below)
@@ -17,6 +18,7 @@
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { resolveTarget: resolveTargetFor } = require('./lib/target');
+const { allPolicies } = require('./policies');
 
 // ---------- the data ----------
 
@@ -619,6 +621,18 @@ async function main() {
     buildPromos().map(({ code, ...rest }) => ({ id: code, data: rest })),
     opts,
   );
+  // Policies hold placeholder text (scripts/policies.js), so they go to the emulator only: a real project gets its policies
+  // written by hand once the business has approved the wording.
+  if (target.remote) {
+    console.log('  policies: skipped (placeholder text is for the local emulator only)');
+  } else {
+    await writeDocs(
+      db,
+      'policies',
+      (await allPolicies()).map(({ id, ...rest }) => ({ id, data: { ...rest, updatedAt: now } })),
+      opts,
+    );
+  }
   console.log('Done.');
 }
 

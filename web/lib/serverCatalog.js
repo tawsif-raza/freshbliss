@@ -69,9 +69,9 @@ export function restTarget(env = process.env) {
   return projectId ? { origin: 'https://firestore.googleapis.com', projectId } : null;
 }
 
-const documentsUrl = (t) => `${t.origin}/v1/projects/${encodeURIComponent(t.projectId)}/databases/(default)/documents`;
+export const documentsUrl = (t) => `${t.origin}/v1/projects/${encodeURIComponent(t.projectId)}/databases/(default)/documents`;
 
-async function request(url, init, fetchImpl) {
+export async function request(url, init, fetchImpl) {
   return fetchImpl(url, { ...init, signal: AbortSignal.timeout(TIMEOUT_MS), headers: { 'content-type': 'application/json' } });
 }
 

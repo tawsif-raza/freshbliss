@@ -30,7 +30,7 @@ From the repository root:
 npm run dev
 ```
 
-This starts, together: the Firebase emulators (Firestore 8080, Auth 9099, Functions 5001, emulator console at http://localhost:4000), the seed (products, delivery zones, a demo promo code), and the storefront at **http://localhost:3000**. Stop everything with Ctrl+C.
+This starts, together: the Firebase emulators (Firestore 8080, Auth 9099, Functions 5001, emulator console at http://localhost:4000), the seed (products, delivery zones, a demo promo code, and every website policy at `/policies`, most of them placeholder text), and the storefront at **http://localhost:3000**. Stop everything with Ctrl+C.
 
 What to know while it runs:
 - **Checkout does not use Razorpay locally.** The Pay button calls `createMockOrder`, an emulator-only function that writes a real order priced by the real code, with status `PREPARING` and payment `PAID_MOCK` (no stock taken). It can never run in production.

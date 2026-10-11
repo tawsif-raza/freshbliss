@@ -1,24 +1,35 @@
-// Shared layout for the plain-text policy pages (/terms, /refunds). The wording lives in content/policies.js.
+// Shared layout for the plain-text policy pages (/terms, /refunds and every /policies/<id>). The wording comes from the
+// `policies` collection in Firestore, or the built-in copy in content/policies.js (lib/policies.js decides which).
+//
+// A policy marked `placeholder` is dummy text: it carries a warning banner and is hidden from search engines.
 
 import Head from 'next/head';
 import Link from 'next/link';
 import { BUSINESS } from '@/content/business';
 import { POLICIES_UPDATED } from '@/content/policies';
 
-export default function PolicyPage({ slug, kicker, title, description, lead, sections }) {
+export default function PolicyPage({ slug, kicker, title, description, lead, sections, updated = POLICIES_UPDATED, placeholder = false }) {
   const contact = BUSINESS.contact || BUSINESS.supportEmail;
   return (
     <>
       <Head>
         <title>{`${title} | ${BUSINESS.name}`}</title>
         <meta name="description" content={description} />
+        {placeholder && <meta name="robots" content="noindex" />}
       </Head>
       <div className="fb-container py-14.5">
         <article className="max-w-3xl">
           <p className="text-label text-gold">{kicker}</p>
           <h1 className="mt-2 text-heading-2 text-brand-text">{title}</h1>
           <p className="mt-2 text-lead text-ink-muted">{lead}</p>
-          <p className="mt-1 text-small text-ink-muted">Last updated {POLICIES_UPDATED}</p>
+          {updated && <p className="mt-1 text-small text-ink-muted">Last updated {updated}</p>}
+
+          {placeholder && (
+            <p role="note" className="mt-5 rounded-xl border border-gold bg-surface-callout p-4 text-body text-ink">
+              <strong>Placeholder text, not in force.</strong> This page is a draft for testing the website. It has not been reviewed and does not
+              describe a promise from {BUSINESS.name}. Anything in [square brackets] is still to be decided.
+            </p>
+          )}
 
           {sections.map((section) => (
             <section key={section.id} aria-labelledby={`${slug}-${section.id}`} className="mt-8.5">
