@@ -12,6 +12,7 @@ import CustomerReviews from '@/components/CustomerReviews';
 import FeaturedPromo from '@/components/FeaturedPromo';
 import FinalCta from '@/components/FinalCta';
 import { Faq } from '@/components/HomeSections';
+import HealthBenefits from '@/components/HealthBenefits';
 import HowItWorks from '@/components/HowItWorks';
 import Marquee from '@/components/Marquee';
 import OurRoots from '@/components/OurRoots';
@@ -126,6 +127,7 @@ export default function HomePage({ initialProducts }) {
       <WhyFreshBliss />
       <CustomerReviews />
       <Faq zones={zones} />
+      <HealthBenefits products={status === 'ready' ? ordered : []} />
       <OurRoots />
       <FinalCta />
     </>
