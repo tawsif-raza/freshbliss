@@ -150,6 +150,7 @@ export default function SiteHeader() {
               <NavLink href="/faq">
                 FAQ
               </NavLink>
+              <NavLink href="/contact">Contact</NavLink>
               <SignInOut />
             </nav>
             <nav aria-label="Your lists" className="flex items-center gap-1 sm:gap-3">

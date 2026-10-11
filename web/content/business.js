@@ -16,10 +16,10 @@
 export const BUSINESS = {
   name: 'FreshBliss',
   legalName: '', // for example "FreshBliss Foods Private Limited"
-  address: '', // for example "Indiranagar, Bengaluru 560038"
+  address: 'Jayanagar, Bengaluru 560011', // for example "Indiranagar, Bengaluru 560038"
   gstin: '', // printed on the receipt as "GSTIN: ..." when filled in
   fssai: '', // 14-digit FSSAI licence/registration number. FSSAI requires it on invoices/receipts and shop listings of food businesses; printed on the receipt and in the footer when filled in
-  supportEmail: 'support@freshbliss.in', // make sure this mailbox exists and is read
-  contact: '', // a phone number or email customers can reach
+  supportEmail: 'tawsifk35@outlook.com', // make sure this mailbox exists and is read
+  contact: '+91 93372 33661', // a phone number or email customers can reach. With the +91, the Contact Us page also offers WhatsApp
   hours: '', // for example "Every day, 9 am to 9 pm"
 };

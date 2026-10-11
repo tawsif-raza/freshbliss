@@ -11,9 +11,10 @@
 
 import Link from 'next/link';
 import { useId, useState } from 'react';
-import { Clock, Mail, MapPin } from 'lucide-react';
+import { Clock, Mail, MapPin, Phone } from 'lucide-react';
 import { CATEGORIES } from '@/content/storefront';
 import { BUSINESS } from '@/content/business';
+import { phoneNumber } from '@/lib/contact';
 import { describeEta, feeLabel, useZones } from '@/lib/zones';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -74,6 +75,7 @@ export default function Footer() {
   const { zones } = useZones();
   const categories = CATEGORIES.filter((c) => c.id !== 'all');
   const hasContact = BUSINESS.hours || BUSINESS.contact || BUSINESS.address;
+  const phone = phoneNumber(BUSINESS.contact); // null when `contact` is an email address
 
   return (
     <footer className="fb-no-print mt-14.5 bg-hero-deep text-on-hero">
@@ -119,6 +121,11 @@ export default function Footer() {
             <li>
               <Link href="/faq" className={linkClass}>
                 FAQ
+              </Link>
+            </li>
+            <li>
+              <Link href="/contact" className={linkClass}>
+                Contact Us
               </Link>
             </li>
             <li>
@@ -182,8 +189,15 @@ export default function Footer() {
               )}
               {BUSINESS.contact && (
                 <li className="flex items-start gap-2">
-                  <Mail size={18} aria-hidden="true" className="mt-1 shrink-0 text-gold-bright" />
-                  <span>{BUSINESS.contact}</span>
+                  {/* `contact` may be a phone number or an email address: the icon and the link follow what it is */}
+                  {phone ? (
+                    <Phone size={18} aria-hidden="true" className="mt-1 shrink-0 text-gold-bright" />
+                  ) : (
+                    <Mail size={18} aria-hidden="true" className="mt-1 shrink-0 text-gold-bright" />
+                  )}
+                  <a href={phone ? `tel:${phone}` : `mailto:${BUSINESS.contact}`} className="underline-offset-4 hover:underline">
+                    {BUSINESS.contact}
+                  </a>
                 </li>
               )}
             </ul>

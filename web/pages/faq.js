@@ -6,6 +6,7 @@
 // which must say the same thing.
 
 import Head from 'next/head';
+import Link from 'next/link';
 import { Mail } from 'lucide-react';
 import AccordionItem from '@/components/AccordionItem';
 import { BUSINESS } from '@/content/business';
@@ -119,6 +120,13 @@ export default function FaqPage() {
             <Mail size={18} aria-hidden="true" />
             Email {BUSINESS.supportEmail}
           </a>
+          <p className="mt-4 text-body text-on-hero">
+            Or{' '}
+            <Link href="/contact" className="font-bold text-on-brand underline underline-offset-4">
+              see every way to contact us
+            </Link>
+            .
+          </p>
         </section>
       </div>
     </>

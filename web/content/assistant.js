@@ -63,7 +63,10 @@ export const TOPICS = [
     id: 'human',
     pattern: /\b(human|person|agent|call|phone|email|contact|support|complain\w*)\b/,
     text: 'Happy to get you to a person. Most questions are answered in the FAQ, and our support team reads every email.',
-    links: [{ label: 'Read the FAQ', href: '/faq' }],
+    links: [
+      { label: 'Contact us', href: '/contact' },
+      { label: 'Read the FAQ', href: '/faq' },
+    ],
     emailSupport: true, // adds an "Email support" button using BUSINESS.supportEmail
   },
 ];
