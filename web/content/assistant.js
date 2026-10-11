@@ -112,7 +112,7 @@ export const TOPICS = [
   {
     id: 'slots',
     pattern: /\b(slots?|time ?slots?|delivery (time|window)s?|when do you deliver|what time|schedule\w*|tomorrow|tonight|morning|evening|deliver today)\b/,
-    text: `You choose a two-hour delivery window at checkout, between ${deliveryHours}, today or tomorrow. A window can be booked until ${LEAD_MINUTES} minutes before it starts.`,
+    text: `At checkout, choose "As soon as possible" or a two-hour window from ${deliveryHours}, today or tomorrow. A window can be booked until ${LEAD_MINUTES} minutes before it starts.`,
     links: [{ label: 'Shipping & delivery', href: '/policies/shipping' }],
     related: ['What does delivery cost?', 'Track my order'],
   },

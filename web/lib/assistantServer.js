@@ -135,7 +135,7 @@ export function buildKnowledge({ products = [], zones = [], policies = BUILT_IN_
 
   return [
     `SHOP: ${BUSINESS.name}, fresh fruit, cut fruit and drinks delivered in Bengaluru, India. Contact: ${contact.join('; ') || 'the Contact page'}.`,
-    `DELIVERY: selected Bengaluru pincodes only (check on the home page or at checkout). ${zoneLines.length ? `Zones: ${zoneLines.join('. ')}.` : `Free delivery from ₹${FREE_DELIVERY_THRESHOLD} where a fee applies.`} Two-hour windows ${windowLabel({ startHour: WINDOWS[0].startHour, endHour: WINDOWS[WINDOWS.length - 1].endHour })} IST, today or tomorrow, bookable until ${LEAD_MINUTES} min before.`,
+    `DELIVERY: selected Bengaluru pincodes only (check on the home page or at checkout). ${zoneLines.length ? `Zones: ${zoneLines.join('. ')}.` : `Free delivery from ₹${FREE_DELIVERY_THRESHOLD} where a fee applies.`} Delivery "as soon as possible" or in a two-hour window ${windowLabel({ startHour: WINDOWS[0].startHour, endHour: WINDOWS[WINDOWS.length - 1].endHour })} IST, today or tomorrow, bookable until ${LEAD_MINUTES} min before.`,
     'PAYMENT: online only, through Razorpay. No cash on delivery.',
     `FACTS:\n- ${KEY_FACTS.join('\n- ')}`,
     approved.length ? `POLICY PAGES: ${approved.map((p) => `${p.title} ${POLICY_PATHS[p.id] ?? `/policies/${p.id}`}`).join('; ')}.` : '',

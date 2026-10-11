@@ -1,8 +1,9 @@
 'use strict';
 
 // Seed script: fills Firestore with launch products, delivery zones and one
-// demo promo code so the UI has something to show, plus (emulator only) every
-// website policy, most of them placeholder text (scripts/policies.js).
+// demo promo code so the UI has something to show, the chat assistant's FAQ
+// bank (scripts/assistantFaqs.js), plus (emulator only) every website policy,
+// most of them placeholder text (scripts/policies.js).
 //
 //   npm run seed                 -> seeds the LOCAL EMULATOR (default, safe)
 //   npm run seed -- --remote     -> seeds a real project (guarded, see below)
@@ -19,6 +20,7 @@ const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { resolveTarget: resolveTargetFor } = require('./lib/target');
 const { allPolicies } = require('./policies');
+const { buildAssistantFaqs } = require('./assistantFaqs');
 
 // ---------- the data ----------
 
@@ -619,6 +621,14 @@ async function main() {
     db,
     'promoCodes',
     buildPromos().map(({ code, ...rest }) => ({ id: code, data: rest })),
+    opts,
+  );
+  // The chat assistant's FAQ bank: real answers about how the shop works, so a real project gets them too (add-only, so
+  // answers edited in the console are never overwritten).
+  await writeDocs(
+    db,
+    'assistantFaqs',
+    buildAssistantFaqs().map(({ id, ...rest }) => ({ id, data: { ...rest, updatedAt: now } })),
     opts,
   );
   // Policies hold placeholder text (scripts/policies.js), so they go to the emulator only: a real project gets its policies

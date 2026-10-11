@@ -11,9 +11,10 @@ Every question goes down this list and stops at the first step that can answer i
 | 1. Instant answer | `web/content/assistant.js` (`TOPICS`) | No | "Do you have cash on delivery?" |
 | 2. Product browsing | the catalogue already in the browser | No | "Show me Ramadan specials" |
 | 3. Asked before in this tab | the browser tab's memory | No | the same question twice |
-| 4. Asked before by anyone | the server's answer cache | No | a common question another visitor asked |
-| 5. The AI | `web/pages/api/assistant.js` → Groq, Gemini or OpenRouter | Yes | "Which fruit has the most vitamin C?" |
-| 6. AI unavailable | matching products, or links to the FAQ and Contact page | No | the same question during an outage |
+| 4. The FAQ bank | Firestore `assistantFaqs` (58 questions, 326 wordings), matched on the server | No | "refund kab aayega", "Can I tip the rider?" |
+| 5. Asked before by anyone | the server's answer cache | No | an AI answer another visitor already got |
+| 6. The AI | `web/pages/api/assistant.js` → Groq, Gemini or OpenRouter | Yes | "Which fruit has the most vitamin C?" |
+| 7. AI unavailable | matching products, or links to the FAQ and Contact page | No | the same question during an outage |
 
 The browser logic is in `web/lib/assistant.js`, the server logic in `web/lib/assistantServer.js`, and the chat window in `web/components/ChatAssistant.js`.
 
@@ -31,12 +32,22 @@ A long, detailed question (more than 14 words) skips the instant answers and goe
 
 **To add a frequent question:** add a topic in the right place in `TOPICS`, and if it is offered as a chip, add the question to `RELATED_QUESTIONS`. Then run `cd web; npm test`.
 
-### Step 5: the AI
+### Step 4: the FAQ bank
+
+The `assistantFaqs` collection in Firestore holds the questions customers of fruit and grocery delivery sites ask most (delivery areas and times, tracking, changing and cancelling, refunds, damaged or missing items, payment methods and failed payments, tips, receipts, offers and promo codes, stock, freshness, sizes, sugar, vegan, allergens, storage, contact, bulk orders, language), each answered from what this shop's code really does. The source is `firebase/scripts/assistantFaqs.js`; `npm run seed` in `firebase/` writes it (to a real project too with `--remote`, add-only, so answers edited in the console are never overwritten).
+
+Each document has a `question`, `variants` (other ways people ask it, Hinglish included), an `answer`, `links` and `active`. Answers can use `{{freeDeliveryFrom}}`, `{{deliveryHours}}`, `{{leadMinutes}}`, `{{maxQty}}`, `{{tips}}`, `{{supportEmail}}` and `{{contactLine}}`, filled in from the code when answering, so the numbers never drift from what checkout does.
+
+Matching (`web/lib/faqMatch.js`) reduces the question and every wording to their meaningful words (filler such as "the", "kya", "hai" dropped, plurals and synonyms merged: "coupon" = "promo", "cod" = "cash", "bangalore" = "bengaluru"), scores the overlap, and answers only when one FAQ clearly fits: two or more shared words for a longer question, and a clear lead over the next FAQ. Anything doubtful goes to the AI, because a wrong canned answer is worse than a slower right one. Long questions (over 12 meaningful words) always go to the AI. Answers take a few milliseconds and cost nothing; the server reloads the bank every 5 minutes.
+
+**To add or change a FAQ:** edit it in the Firestore console (live within 5 minutes), or add it to `firebase/scripts/assistantFaqs.js` and run the seed. Add several `variants`: the more ways of asking, the more questions it catches. Then run `cd web; npm test`: `web/tests/faqMatch.test.mjs` checks that every wording finds its own FAQ and no other, and `firebase/tests/assistantFaqs.test.js` checks links, `{{names}}` and that no answer promises a refund timeline, cash on delivery or a health benefit.
+
+### Step 6: the AI
 
 `POST /api/assistant` with `{ message, history }`. The server:
 
 1. checks the question (500 characters at most) and keeps the last 6 turns of the conversation, so follow-ups like "and the large size?" make sense;
-2. answers from its cache if anyone asked the same question before (within 6 hours);
+2. answers from the FAQ bank (step 4), then from its cache if anyone got an AI answer to the same question (within 6 hours);
 3. limits each visitor to 20 AI questions per 10 minutes;
 4. builds the shop facts (`buildKnowledge`): business details, delivery zones and windows, payment, key facts, links to the approved policies, and one short line per product (price, offer, sizes, stock, notes, allergens). They are refreshed every 5 minutes, so new products and prices are picked up without a deploy. Placeholder policies are never included;
 5. asks the providers in order: **Groq `openai/gpt-oss-120b`** (about 1 second), then **Groq `openai/gpt-oss-20b`**, then **Google Gemini `gemini-3.5-flash`** (about 3 to 5 seconds, through Google's OpenAI-compatible endpoint), then **OpenRouter `google/gemma-4-31b-it:free`**. Each call has a 12-second limit, and a reply that cannot be read (for example JSON cut off half way) counts as a failure, so the next provider answers;
@@ -88,6 +99,8 @@ The keys are read **only on the server**. Never give them a `NEXT_PUBLIC_` prefi
 - **No key at all:** the assistant still works with the instant answers and product search; questions that need the AI get the friendly fallback.
 
 ## Costs and limits
+
+- Most questions cost nothing: the browser's instant answers, the FAQ bank and both caches never call the AI. Only open questions ("which fruit has the most vitamin C?", recommendations, follow-ups) do.
 
 - **Groq's free tier allows 8,000 tokens per minute per model.** One AI question costs about 2,100 tokens (the shop facts are most of it), so the free tier handles roughly 3 AI questions a minute per model, about 6 a minute with both Groq models. When both are busy, Gemini answers (its free tier has its own, larger limits). Instant answers and cached answers cost nothing and do not count.
 - Groq's paid Developer tier raises the limit by about 30 times. `gpt-oss-120b` costs a fraction of a US cent per question; check Groq's current price list.

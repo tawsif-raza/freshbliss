@@ -50,6 +50,13 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // The chat assistant's FAQ bank (scripts/assistantFaqs.js): public answers, read by the server without credentials
+    // to answer common questions without calling the AI. Written only by the seed or the console.
+    match /assistantFaqs/{faqId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // ---------- carts (owner only, shape-checked) ----------
 
     // A cart is only the customer's intent. The server re-reads prices and

@@ -2,11 +2,11 @@
 //   1. cachedReply: the frequently asked questions in content/assistant.js (TOPICS), answered instantly, no AI call;
 //   2. cachedReply: browsing ("show me fitness packs"), answered from the products already loaded in the browser;
 //   3. a question asked before in this visit: the AI's earlier answer, from memory (no new call);
-//   4. the AI, through the shop's own server (pages/api/assistant.js), which keeps the API keys;
+//   4. the shop's own server (pages/api/assistant.js): its FAQ bank first (no AI call), then the AI, which keeps the keys;
 //   5. if the AI cannot be reached: matching products, or a friendly fallback with useful links.
 //
 // Every reply has the same shape, so the chat window needs no special cases:
-//   { text, links: [{ label, href }], products: [product], related: [question], suggest, source: 'cache' | 'ai' | 'offline' }
+//   { text, links: [{ label, href }], products: [product], related: [question], suggest, source: 'cache' | 'faq' | 'ai' | 'offline' }
 // `suggest` asks the window to show the popular questions again; `related` are follow-up chips.
 //
 // Pure apart from askAssistant's fetch (which tests replace), so it is easy to test.
@@ -136,7 +136,7 @@ function fromServer(data, products) {
     products: (data.productIds ?? []).map((id) => byId.get(id)).filter(Boolean).slice(0, MAX_PRODUCTS),
     related: [],
     suggest: false,
-    source: 'ai',
+    source: data.source === 'faq' ? 'faq' : 'ai', // 'faq': answered from the FAQ bank on the server, without the AI
   };
 }
 
@@ -157,7 +157,7 @@ export async function askAssistant(text, { products = [], supportEmail = '', his
     });
     const data = await res.json().catch(() => ({}));
     if (res.ok && typeof data.text === 'string' && data.text.trim()) {
-      const reply = { text: data.text, links: data.links ?? [], productIds: data.productIds ?? [] };
+      const reply = { text: data.text, links: data.links ?? [], productIds: data.productIds ?? [], source: data.source };
       if (history.length === 0) remember(key, reply);
       return fromServer(reply, products);
     }

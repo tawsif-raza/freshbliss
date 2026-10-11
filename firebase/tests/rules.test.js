@@ -227,6 +227,13 @@ describe('products and delivery zones', () => {
     await assertFails(setDoc(doc(asStaff(), 'policies/refunds'), { title: 'x', sections: [] }));
     await assertFails(deleteDoc(doc(asStaff(), 'policies/privacy')));
   });
+
+  it('lets anyone read the assistant FAQ bank but nobody change it, staff included', async () => {
+    await assertSucceeds(getDoc(doc(anon(), 'assistantFaqs/cod')));
+    await assertFails(setDoc(doc(asUser('alice'), 'assistantFaqs/cod'), { question: 'x', answer: 'Yes, cash on delivery!' }));
+    await assertFails(setDoc(doc(asStaff(), 'assistantFaqs/new'), { question: 'x', answer: 'y' }));
+    await assertFails(deleteDoc(doc(asStaff(), 'assistantFaqs/cod')));
+  });
 });
 
 // ============================================================
