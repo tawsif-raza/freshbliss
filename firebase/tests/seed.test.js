@@ -74,7 +74,40 @@ describe('seed catalogue', () => {
 
   it('only the chilled and frozen products have a storage note', () => {
     const withStorage = buildProducts().filter((p) => p.storage !== undefined).map((p) => p.slug).sort();
-    assert.deepEqual(withStorage, ['a2-organic-farm-milk', 'chilled-watermelon-mint-bowl', 'cold-pressed-orange-juice', 'madagascar-vanilla-ice-cream']);
+    assert.deepEqual(withStorage, [
+      'a2-organic-farm-milk', 'banana-shake', 'chilled-watermelon-mint-bowl', 'cold-pressed-orange-juice', 'dry-fruit-milkshake',
+      'fresh-mixed-fruit-juice', 'fresh-papaya-cut', 'fresh-toned-milk', 'fresh-watermelon-cut', 'jaljeera',
+      'madagascar-vanilla-ice-cream', 'mango-shake', 'masala-chaas', 'muskmelon-cut', 'nimbu-pani', 'rooh-afza-sharbat', 'sweet-lassi',
+    ]);
+  });
+
+  it('adds the Ramadan range: every fruit and drink asked for, under the Ramadan tab, at exactly "15% off"', async () => {
+    const { CATEGORIES } = await import('../../web/content/storefront.js');
+    const { inTab } = await import('../../web/lib/categories.js');
+    const { normaliseProduct } = await import('../../web/lib/product.js');
+    const { regularUnitPrice, percentOff } = await import('../../web/lib/pricing.js');
+    const ramadanTab = CATEGORIES.find((t) => t.id === 'ramadan');
+
+    const fruits = buildProducts().filter((p) => p.category === 'Ramadan Fruits').map((p) => p.slug);
+    const drinks = buildProducts().filter((p) => p.category === 'Ramadan Drinks').map((p) => p.slug);
+    assert.deepEqual(fruits, ['premium-dates-khajoor', 'fresh-watermelon-cut', 'fresh-bananas', 'fresh-apples', 'fresh-oranges', 'fresh-mangoes', 'fresh-papaya-cut', 'black-seedless-grapes', 'fresh-pomegranates', 'fresh-guavas', 'muskmelon-cut']);
+    assert.deepEqual(drinks, ['rooh-afza-sharbat', 'nimbu-pani', 'jaljeera', 'sweet-lassi', 'masala-chaas', 'dry-fruit-milkshake', 'mango-shake', 'banana-shake', 'fresh-mixed-fruit-juice', 'tender-coconut-water', 'fresh-toned-milk', 'packaged-drinking-water']);
+
+    for (const slug of [...fruits, ...drinks]) {
+      const p = bySlug[slug];
+      // what is charged is the regular price less 15%, rounded down to the rupee; the regular price is kept to show crossed out
+      assert.equal(p.price, Math.floor(p.compareAtPrice * 0.85), slug);
+      assert.ok(p.compareAtPrice > p.price, slug);
+      assert.equal(p.sizes.length, 1, `${slug}: one pack size, so the saving is the same on every pack`);
+      const n = normaliseProduct(slug, p);
+      assert.ok(inTab(n, ramadanTab), `${slug} is not under the Ramadan tab`);
+      assert.equal(n.compareAtPrice, p.compareAtPrice, slug);
+      const off = percentOff(regularUnitPrice(n, n.sizes[0].id), n.price);
+      assert.equal(off, 15, `${slug}: the card would say ${off}% off`);
+    }
+    // the existing Ramadan box stays in the tab, at its own price
+    assert.ok(inTab(normaliseProduct('ramadan-special-box', bySlug['ramadan-special-box']), ramadanTab));
+    assert.equal(bySlug['ramadan-special-box'].compareAtPrice, undefined);
   });
 
   it('gives EVERY product the four specification fields (shelf life, story, ingredients text, nutrition)', async () => {
@@ -97,7 +130,8 @@ describe('seed catalogue', () => {
     for (const p of buildProducts()) {
       assert.equal(p.nutrition.rows[0].label, 'Energy', p.slug);
       const kcal = Number(/(\d+)\s*kcal/.exec(p.nutrition.rows[0].value)?.[1]);
-      assert.ok(Number.isFinite(kcal) && kcal > 0, p.slug);
+      // only drinking water may honestly say 0 kcal
+      assert.ok(Number.isFinite(kcal) && (kcal > 0 || p.slug === 'packaged-drinking-water'), p.slug);
       if (p.calories) assert.equal(Number(/(\d+)\s*kcal/.exec(p.calories)?.[1]), kcal, `${p.slug}: calories text and nutrition Energy disagree`);
     }
   });

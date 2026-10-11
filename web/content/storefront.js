@@ -24,8 +24,8 @@ export const HERO_MODES = {
     label: 'Ramadan Special',
     eyebrow: 'Ramadan Special',
     headline: 'Open your fast with something fresh.',
-    body: 'Special boxes for iftar and suhoor, freshly packed and delivered to your door.',
-    primary: { label: 'Shop Ramadan boxes', category: 'ramadan' },
+    body: 'Dates, fresh fruit and chilled drinks for iftar and suhoor, at special Ramadan prices, delivered to your door.',
+    primary: { label: 'Shop Ramadan specials', category: 'ramadan' },
     secondary: { label: 'See everything', category: 'all' },
   },
 };
@@ -42,7 +42,7 @@ export const CATEGORIES = [
   { id: 'all', label: 'All', categories: [] },
   { id: 'fresh', label: 'Fresh Boxes', categories: ['Fresh'] },
   { id: 'fitness', label: 'Fitness Packs', categories: ['Fitness'] },
-  { id: 'ramadan', label: 'Ramadan Specials', categories: ['Ramadan'] },
+  { id: 'ramadan', label: 'Ramadan Specials', categories: ['Ramadan', 'Ramadan Fruits', 'Ramadan Drinks'] },
   { id: 'exotics', label: 'Exotics', categories: ['Exotics'] },
   { id: 'immunity', label: 'Immunity', categories: ['Immunity'] },
   { id: 'seasonal', label: 'Seasonal', categories: ['Seasonal'] },
@@ -51,7 +51,7 @@ export const CATEGORIES = [
   { id: 'combos', label: 'Combos', categories: ['Combos'] },
 ];
 
-export const FEATURED_LIMIT = 8; // boxes shown on the home page before "See all boxes"
+export const FEATURED_LIMIT = 8; // boxes the home page's "All" tab shows before "See all boxes" (a category tab shows all of its own)
 
 // ---------- the three pillars (the "Farm-to-Table" story on the home page) ----------
 

@@ -9,10 +9,17 @@
 //
 // `priority` is accepted for the one photo that is the first thing on the page (it is how Next 16 spells `preload`);
 // every other photo loads lazily.
+//
+// In development (`next dev`) photos skip the optimiser and load straight from their host. The local optimiser fetches
+// each new photo size from Unsplash on demand and gives up after 7 seconds, so a page showing many new photos at once
+// (the Ramadan tab) came up full of "Photo unavailable" tiles that would have loaded fine. Production builds always
+// optimise.
 
 import Image from 'next/image';
 import { useState } from 'react';
 import { BLUR_DATA_URL, canOptimize } from '@/lib/imageHosts.mjs';
+
+const OPTIMISE = process.env.NODE_ENV !== 'development';
 
 export default function OptimizedImage({ src, alt, priority = false, fill = false, className = '', ...rest }) {
   // Remember WHICH address failed, so a different photo in the same spot (the gallery) gets a fresh try.
@@ -39,7 +46,7 @@ export default function OptimizedImage({ src, alt, priority = false, fill = fals
       alt={alt}
       fill={fill}
       className={className}
-      unoptimized={!canOptimize(src)}
+      unoptimized={!OPTIMISE || !canOptimize(src)}
       placeholder="blur"
       blurDataURL={BLUR_DATA_URL}
       preload={priority}

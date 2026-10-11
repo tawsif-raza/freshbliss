@@ -1,6 +1,8 @@
 // The shop: every active fruit box from Firestore, in a responsive grid, with the same category tabs as the home page
-// (the phone tab bar's "Categories" button lands here).
+// (the phone tab bar's "Categories" button lands here). /products?category=ramadan opens on that tab (the home page's
+// "See all" link under a category uses it).
 
+import { useRouter } from 'next/router';
 import { useMemo, useState } from 'react';
 import CategoryTabs from '@/components/CategoryTabs';
 import ProductGrid from '@/components/ProductGrid';
@@ -28,7 +30,13 @@ export default function ProductsPage({ initialProducts }) {
   // Boxes you can buy first; sold-out ones last (lib/sort.js keeps that true for every sort order).
   const ordered = useMemo(() => sortProducts(products, 'featured'), [products]);
 
-  const [categoryId, setCategoryId] = useState('all');
+  // Which tab is showing: what the visitor picked, else the one in the address, else All. A click counts only for the
+  // address it was made under, so following a new link always wins (the same rule as the home page, pages/index.js).
+  const router = useRouter();
+  const fromAddress = router.isReady && typeof router.query.category === 'string' && CATEGORIES.some((c) => c.id === router.query.category) ? router.query.category : null;
+  const [pick, setPick] = useState({ id: null, forAddress: null });
+  const categoryId = (pick.forAddress === fromAddress ? pick.id : null) ?? fromAddress ?? 'all';
+  const setCategoryId = (id) => setPick({ id, forAddress: fromAddress });
   const [sort, setSort] = useState('featured');
   const [inStockOnly, setInStockOnly] = useState(false);
   const category = CATEGORIES.find((c) => c.id === categoryId) ?? CATEGORIES[0];

@@ -66,7 +66,9 @@ export default function HomePage({ initialProducts }) {
 
   const category = CATEGORIES.find((c) => c.id === categoryId) ?? CATEGORIES[0];
   const inCategory = useMemo(() => productsInTab(ordered, category), [ordered, category]);
-  const shown = inCategory.slice(0, FEATURED_LIMIT);
+  // "All" shows a first few, with a link to the full shop; a category the visitor chose shows everything in it (the
+  // Ramadan tab holds two dozen items, and hiding most of them behind a link made it look nearly empty).
+  const shown = categoryId === 'all' ? inCategory.slice(0, FEATURED_LIMIT) : inCategory;
 
   // How many boxes each tab holds, so a tab is never a surprise.
   const counts = useMemo(() => countByTab(ordered, CATEGORIES), [ordered]);
@@ -108,7 +110,7 @@ export default function HomePage({ initialProducts }) {
           {status === 'ready' && (
             <div className="mt-6">
               <Link
-                href="/products"
+                href={categoryId === 'all' ? '/products' : `/products?category=${categoryId}`}
                 className="inline-grid min-h-11 place-items-center rounded-pill border border-brand px-6 text-nav-link text-brand-text hover:bg-surface-cream"
               >
                 {inCategory.length > shown.length ? `See all ${inCategory.length} boxes` : 'See the full shop'}

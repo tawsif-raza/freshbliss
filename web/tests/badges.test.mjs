@@ -14,6 +14,11 @@ describe('the badge on a product card', () => {
     assert.equal(badgeFor({ badge: null, category: 'Ramadan' }), 'Ramadan Special');
     assert.equal(badgeFor({ badge: '', category: 'Ramadan' }), 'Ramadan Special');
   });
+  it('does the same for the Ramadan fruit and drinks', () => {
+    assert.equal(badgeFor({ badge: null, category: 'Ramadan Fruits' }), 'Ramadan Special');
+    assert.equal(badgeFor({ badge: null, category: 'Ramadan Drinks' }), 'Ramadan Special');
+    assert.equal(badgeFor({ badge: null, category: 'Ramadan Sweets' }), null); // only the categories the shop really has
+  });
   it('shows no badge, and never invents praise, for anything else', () => {
     for (const product of [{ badge: null, category: 'Fresh' }, { badge: undefined, category: 'Fitness' }, { badge: '   ', category: 'Seasonal' }, { category: null }]) {
       assert.equal(badgeFor(product), null);
