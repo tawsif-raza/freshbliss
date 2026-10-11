@@ -6,7 +6,7 @@
 // records are kept, who the delivery partners are, a grievance contact). See docs/GO_LIVE.md, section 8.3.
 // If any of the system changes (an analytics tool, a new payment provider), change this at the same time.
 
-export const PRIVACY_UPDATED = '5 October 2026';
+export const PRIVACY_UPDATED = '11 October 2026';
 
 // `sections` is rendered in order. Each has a title and a list of paragraphs or bullet lists.
 export const PRIVACY_SECTIONS = [
@@ -50,6 +50,16 @@ export const PRIVACY_SECTIONS = [
       {
         type: 'p',
         text: 'On the checkout page, "Use Current Location" is optional. If you press it, your browser asks your permission, and then your position is sent from your browser to OpenStreetMap (the free Nominatim service) to look up the nearest road, area and pincode. Those are put into the address boxes for you to check and change. We do not receive, store or keep your coordinates. OpenStreetMap handles that request under its own privacy policy. If you do not press the button, nothing is sent.',
+      },
+    ],
+  },
+  {
+    id: 'assistant',
+    title: 'The chat assistant',
+    items: [
+      {
+        type: 'p',
+        text: 'Common questions in the chat window are answered by your own browser, and nothing is sent. Other questions are sent, together with the last few messages of the conversation, to our server and from there to an AI provider to write the answer: Groq, or when it is unavailable Google (Gemini) or OpenRouter. We do not send your name, account, orders or address with them, and we do not save the conversation. Our server does keep a general question and its answer in memory for up to a few hours, so the same question from anyone is answered again without asking the AI. The providers handle the text under their own privacy policies. Please do not type personal or payment details in the chat. The conversation is kept in this browser tab until you close it or start a new chat.',
       },
     ],
   },

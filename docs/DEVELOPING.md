@@ -33,6 +33,7 @@ npm run dev
 This starts, together: the Firebase emulators (Firestore 8080, Auth 9099, Functions 5001, emulator console at http://localhost:4000), the seed (products, delivery zones, a demo promo code, and every website policy at `/policies`, most of them placeholder text), and the storefront at **http://localhost:3000**. Stop everything with Ctrl+C.
 
 What to know while it runs:
+- **The chat assistant** answers common questions without any key. For the AI answers, put `GROQ_API_KEY` (and optionally `GEMINI_API_KEY`, `OPENROUTER_API_KEY`) in `web/.env.local`; see `docs/CHATBOT.md`.
 - **Checkout does not use Razorpay locally.** The Pay button calls `createMockOrder`, an emulator-only function that writes a real order priced by the real code, with status `PREPARING` and payment `PAID_MOCK` (no stock taken). It can never run in production.
 - **Becoming staff** (to open `/admin/orders`): open `/admin/orders` and press **Enable dev staff mode** (it calls `devGrantStaff`, emulator only), or run `npm run set-admin -- <uid>` in `firebase/` (see the top of `firebase/scripts/setAdmin.js`).
 - **Reset the data** by stopping and starting `npm run dev` (the emulator forgets everything, and the seed runs again). `npm run seed` in `firebase/` re-seeds a running emulator, which also resets stock.
